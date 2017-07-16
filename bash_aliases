@@ -20,7 +20,7 @@ function git_branch() {
 # Docker aliases
 alias dgc="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc:/etc -e FORCE_IMAGE_REMOVAL=1 spotify/docker-gc"
 
-alias dls="docker ps -a && docker images"
+alias dls="docker network ls && docker ps -a && docker images"
 alias container="docker images -q $1"
 
 alias docker_stop_containers="docker ps -aq | xargs docker stop"
