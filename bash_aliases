@@ -4,6 +4,19 @@
 alias branch='git rev-parse --abbrev-ref HEAD'
 alias git="hub"
 
+function git_branch() {
+  local branch
+  if branch=$(git rev-parse --abbrev-ref HEAD 2> /dev/null); then
+    if [[ "$branch" == "HEAD" ]]; then
+      branch='detached*'
+    fi
+    git_branch="  ($branch):  "
+  else
+    git_branch=""
+  fi
+  echo $git_branch
+}
+
 # Docker aliases
 alias dgc="docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc:/etc -e FORCE_IMAGE_REMOVAL=1 spotify/docker-gc"
 
