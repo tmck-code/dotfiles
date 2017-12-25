@@ -1,0 +1,15 @@
+Style/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+Style/RegexpLiteral:
+  AllowInnerSlashes: true
+
+# Allow dashes instead of underscores
+Style/FileName:
+  Enabled: false
+
+# Just so I can have an empty line at the beginning of a class/module block.
+# Unfortunately, there must also be one at the bottom.
+Style/EmptyLinesAroundClassBody:
+  EnforcedStyle: empty_lines
+Style/EmptyLinesAroundModuleBody:
+  EnforcedStyle: empty_lines
