@@ -1,0 +1,65 @@
+#!/bin/bash
+
+function dgc() {
+    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc:/etc -e FORCE_IMAGE_REMOVAL=1 spotify/docker-gc
+}
+
+function dls () {
+    echo -e "\n- Networks\n"   && docker network ls
+    echo -e "\n- Containers\n" && docker ps -a
+    echo -e "\n- Images\n"     && docker images
+    echo
+}
+
+function docker_stop_containers () {
+    echo -e "\n> Stopping all containers"
+    ids=$(docker ps -aq)
+    if [ -n "${ids}" ]; then
+        docker stop "${ids}"
+    fi
+}
+
+function docker_purge_containers () {
+    echo -e "\n> Removing all containers"
+    docker ps -aq | xargs -n 1 -P 4 docker rm -f
+}
+
+function all_docker_network_ids() {
+    docker network ls | grep "bridge" | grep -vE "bridge\s*bridge" | awk '/ / { print $1 }'
+}
+
+function docker_cleanup_volumes() {
+    docker volume rm $(docker volume ls -qf dangling=true)
+}
+
+function docker_purge_networks() {
+    echo -e "\n> Purging all networks"
+    ids=$(all_docker_network_ids)
+    if [ -n "${ids}" ]; then
+        docker network rm $ids
+    fi
+}
+
+function docker_cleanup_images () {
+  docker images | grep '<none>' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi
+}
+
+function docker_cleanup () {
+    docker_purge_containers
+    docker_cleanup_images
+    docker_purge_networks
+    docker_cleanup_volumes
+    dls
+}
+
+case ${1} in
+    "gc" ) dgc ;;
+    "ls" ) dls;;
+    "sc" ) docker_stop_containers;;
+    "cv" ) docker_cleanup_volumes;;
+    "ci" ) docker_cleanup_images;;
+    "pn" ) docker_purge_networks;;
+    "pc" ) docker_purge_containers;;
+    "cleanup") docker_cleanup;;
+esac
+

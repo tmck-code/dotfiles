@@ -1,0 +1,5 @@
+# Fixing some OSX bs. -------------------------------------
+
+alias tc="tmux-code"
+alias sort="LC_ALL=C sort"
+

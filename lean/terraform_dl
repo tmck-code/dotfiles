@@ -1,0 +1,10 @@
+#!/bin/bash
+
+if [ ! -z ${1} ] ; then
+  (cd ${HOME}/bin && \
+  wget "https://releases.hashicorp.com/terraform/${1}/terraform_${1}_darwin_amd64.zip" && \
+  unzip -o terraform_$1_darwin_amd64.zip)
+else
+  echo "Please input version number you wish to download for Terraform"
+fi
+
