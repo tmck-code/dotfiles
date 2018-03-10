@@ -1,5 +1,3 @@
-# Fixing some OSX bs. -------------------------------------
-
-alias tc="tmux-code"
-alias sort="LC_ALL=C sort"
+alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
+alias ls="ls --color=auto" # Make ls have colours
 
