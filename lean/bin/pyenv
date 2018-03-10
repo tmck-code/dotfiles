@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ ! -z $PYENV_LOADED ]; then
+  export PATH="~/.pyenv/bin:$PATH"
+  eval "$(pyenv init -)"
+  eval "$(pyenv virtualenv-init -)"
+  export PYENV_LOADED="loaded"
+fi
+
+$HOME/.pyenv/bin/pyenv "$@"
+
