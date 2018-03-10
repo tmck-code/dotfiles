@@ -22,21 +22,20 @@ gitbranch() {
 
     # If we don't have a last seen git repo, or we are in a different directory
     if [[ -z "$repo" || "$PWD" != "$repo"* || ! -e "$gitdir" ]]; then
-        local cur="$PWD"
-        while [[ ! -z "$cur" ]]; do
-            if [[ -e "$cur/.git" ]]; then
-                repo="$cur"
-                gitdir="$cur/.git"
-                break
+        local curr=$PWD
+        while [[ ! -z "${curr}" ]]; do
+            if [[ -e "${curr}/.git" ]]; then
+                repo="${curr}"
+                gitdir="${curr}/.git"
+            else
+                unset _GITBRANCH_LAST_REPO
+                unset GITBRANCH
+                return 0
             fi
-            cur="${cur%/*}"
+            curr="${curr%/*}"
         done
     fi
 
-    if [[ -z "$gitdir" ]]; then
-        unset _GITBRANCH_LAST_REPO
-        return 0
-    fi
     export _GITBRANCH_LAST_REPO="${repo}"
     local head=""
     local branch=""
@@ -115,4 +114,6 @@ if [ -f ~/.bash_aliases ]; then
 fi
 
 echo fortune -a | cowsay
+
+cd $HOME
 
