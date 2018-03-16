@@ -9,15 +9,14 @@
 
 # -- general -------------------------------------------------------------------
 
-# set -g default-terminal "screen-256color" # colors!
-set -g default-terminal "xterm"
+set -g default-terminal "xterm-256color"
 
 setw -g xterm-keys on                     # make keyboard shortcuts work
 set -s escape-time 10                     # faster command sequences
 set -sg repeat-time 600                   # increase repeat timeout
 set -s focus-events on
 
-set -g prefix2 C-a                        # GNU-Screen compatible prefix
+set -g prefix2 C-a                        # GNU-Screen compatible secondary prefix (for nested sessions)
 bind C-a send-prefix -2
 
 set -q -g status-utf8 on                  # expect UTF-8 (tmux < 2.2)
@@ -25,20 +24,18 @@ setw -q -g utf8 on
 
 set -g history-limit 10000                # boost history
 
-# edit configuration
-bind e new-window -n '~/.tmux.conf.local' "sh -c '\${EDITOR:-vim} ~/.tmux.conf.local && tmux source ~/.tmux.conf && tmux display \"~/.tmux.conf sourced\"'"
-
 # reload configuration
 bind r source-file ~/.tmux.conf \; display '~/.tmux.conf sourced'
-
 
 # -- display -------------------------------------------------------------------
 
 set -g base-index 1         # start windows numbering at 1
 setw -g pane-base-index 1   # make pane numbering consistent with windows
 
+set-option -g status-interval 1 # Refresh status every 1 second 
 setw -g automatic-rename on # rename window to reflect current program
 set -g renumber-windows on  # renumber windows when a window is closed
+set-option -g automatic-rename-format '#{b:pane_current_path}' # name of each tab is the PWD
 
 set -g set-titles on                        # set terminal title
 set -g set-titles-string '#h ❐ #S ● #I #W'
@@ -60,7 +57,7 @@ set -g visual-activity off
 
 bind-key -n C-] next-window
 bind-key -n C-S-] previous-window
-# bind-key -n C-[ previous-window
+bind-key -n C-t new-window
 
 # create session
 bind C-c new-session
@@ -97,18 +94,10 @@ bind -r C-h previous-window # select previous window
 bind -r C-l next-window     # select next window
 bind Tab last-window        # move to last active window
 
+set -g mouse on 
+
 # toggle mouse
 bind m run "cut -c3- ~/.tmux.conf | sh -s _toggle_mouse"
-
-
-# -- urlview -------------------------------------------------------------------
-
-bind U run "cut -c3- ~/.tmux.conf | sh -s _urlview #{pane_id}"
-
-
-# -- facebook pathpicker -------------------------------------------------------
-
-bind F run "cut -c3- ~/.tmux.conf | sh -s _fpp #{pane_id}"
 
 
 # -- list choice (tmux < 2.4) --------------------------------------------------
@@ -1108,16 +1097,6 @@ run 'cut -c3- ~/.tmux.conf | sh -s _apply_configuration'
 #   _apply_bindings
 #   _apply_theme
 #   for name in $(printenv | grep -Eo '^tmux_conf_[^=]+'); do tmux setenv -gu "$name"; done;
-# }
-#
-# _urlview() {
-#   tmux capture-pane -J -S - -E - -b "urlview-$1" -t "$1"
-#   tmux split-window "tmux show-buffer -b urlview-$1 | urlview || true; tmux delete-buffer -b urlview-$1"
-# }
-#
-# _fpp() {
-#   tmux capture-pane -J -S - -E - -b "fpp-$1" -t "$1"
-#   tmux split-window "tmux show-buffer -b fpp-$1 | fpp || true; tmux delete-buffer -b fpp-$1"
 # }
 #
 # "$@"
