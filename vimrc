@@ -46,7 +46,7 @@ set background=dark
 set t_Co=256
 
 let g:quantum_italics = 1
-colorscheme one
+colorscheme onedark
 
 " NERDTree settings ---------------------------------------
 
