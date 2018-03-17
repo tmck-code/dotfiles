@@ -70,14 +70,10 @@ fi
 if [ "$color_prompt" = no ]; then
     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 else
-    # fortune -a | pokemonsay # | sed -e 's/^/      /g'
+    fortune -a | pokemonsay | sed -e 's/^/      /g'
     echo
-    sysinfo="\033[1;33m Ruby: \033[0m\033[1;3;36m$(ruby -v)\033[0m\n
-\033[1;33mGem: \033[0m\033[1;3;36m$(gem -v)\033[0m\n"
-    echo -e $sysinfo
     PS1=$'\\[\033[0m\\]`date +%T`\\[\033[0m\\] \
 \\[\033[34m\\]⭆  \u@\h → \\[\033[0m\\]\
-\\[\033[33m\\]$(git_branch)\\[\033[0m\\] \
 \\[\033[3;93m\\]`pwd`\\[\033[0m\\]\n\
 \\[\033[93m\\]◌ ▸ \\[\033[0m\\]'
 fi
