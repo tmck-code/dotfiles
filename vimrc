@@ -7,6 +7,7 @@ filetype plugin indent on
 syntax enable
 set clipboard=unnamed
 set mouse=a
+set ttymouse=xterm2
 
 " very basic editor behaviour
 set number    " line numbers
