@@ -7,9 +7,9 @@
 
 if [[ "$USER" == "root" ]]
 then
-    export PS1="\e[1;31m\]\u \[\e[1;33m\]\w\[\e[0m\] ";
+  export PS1="\[\e[1;31m\]\u\[\e[0m\] \[\e[1;33m\]\w\[\e[0m\] ";
 else
-    export PS1="\[\e[1;33m\]\w\[\e[0m\] ";
+    export PS1="\[☯ \e[1;33m\]\w\[\e[0m\] ";
 fi
 
 # 100% pure Bash (no forking) function to determine the name of the current git branch
@@ -117,7 +117,7 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-echo fortune -a | pokemonsay
+fortune -a | pokemonsay
 
 cd $HOME
 
