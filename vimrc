@@ -15,6 +15,12 @@ set expandtab " tabs -> spaces
 set tabstop=2 " ruby-level indentation
 set nowrap    " no line wrapping (for my 13" screen)
 
+set background=dark
+set t_Co=256
+
+let g:quantum_italics = 1
+colorscheme one
+
 " Shorctuts & key bindings --------------------------------
 
 " Move across panes with Cntrl+Shift+<arrow key>
@@ -42,12 +48,6 @@ let g:terraform_remap_spacebar=1
 if has("termguicolors")
     set termguicolors
 endif
-
-set background=dark
-set t_Co=256
-
-let g:quantum_italics = 1
-colorscheme onedark
 
 " Syntastic
 
