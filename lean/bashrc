@@ -18,24 +18,27 @@ gitbranch() {
 
     local repo="${_GITBRANCH_LAST_REPO-}"
     local gitdir=""
-    [[ ! -z "$repo" ]] && gitdir="$repo/.git"
+    if [[ ! -z "$repo" && "$PWD" == "$repo"* ]]; then
+        gitdir="$repo/.git"
+    fi
 
     # If we don't have a last seen git repo, or we are in a different directory
     if [[ -z "$repo" || "$PWD" != "$repo"* || ! -e "$gitdir" ]]; then
-        local curr=$PWD
-        while [[ ! -z "${curr}" ]]; do
-            if [[ -e "${curr}/.git" ]]; then
-                repo="${curr}"
-                gitdir="${curr}/.git"
-            else
-                unset _GITBRANCH_LAST_REPO
-                unset GITBRANCH
-                return 0
+        local curr="$PWD"
+        while [[ ! -z "$curr" ]]; do
+            if [[ -e "$curr/.git" ]]; then
+                repo="$curr"
+                gitdir="$curr/.git"
+                break
             fi
             curr="${curr%/*}"
         done
     fi
 
+    if [[ -z "$gitdir" ]]; then
+        unset _GITBRANCH_LAST_REPO
+        return 0
+    fi
     export _GITBRANCH_LAST_REPO="${repo}"
     local head=""
     local branch=""
@@ -60,6 +63,7 @@ gitbranch() {
 PS1_green='\[\e[32m\]'
 PS1_blue='\[\e[34m\]'
 PS1_reset='\[\e[0m\]'
+
 _mk_prompt() {
     # Change the window title of X terminals 
     case $TERM in
@@ -113,7 +117,7 @@ if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
 
-echo fortune -a | cowsay
+echo fortune -a | pokemonsay
 
 cd $HOME
 
