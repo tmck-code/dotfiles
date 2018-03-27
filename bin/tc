@@ -1,0 +1,24 @@
+#!/bin/bash
+
+repo=${1}
+
+if [[ "${repo}" == "." ]]; then
+  repo=${PWD##*/}
+else
+  cd $HOME/dev/${repo}
+fi
+
+# create a new session. Note the -d flag, we do not want to attach just yet!
+tmux new-session -s "dev" -n ${repo} -d
+
+tmux send-keys -t dev:${repo} 'vim' C-j
+
+# split the window *vertically*
+tmux split-window -v -p 15
+
+tmux send-keys 'git status' C-j
+tmux select-pane -t dev:${repo}.1
+
+# finally attach to the session
+tmux attach -t dev
+
