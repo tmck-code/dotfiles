@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
