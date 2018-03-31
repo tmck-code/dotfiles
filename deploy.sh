@@ -2,8 +2,6 @@
 
 set -euxo pipefail
 
-os="$1"
-
 cp $HOME/.bashrc $HOME/.bashrc.bak
 
 home_dotfiles=(
