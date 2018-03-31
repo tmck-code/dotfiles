@@ -2,7 +2,7 @@
 
 set -euxo pipefail
 
-cp $HOME/.bashrc $HOME/.bashrc.bak
+mv -v $HOME/.bashrc $HOME/.bashrc.bak
 
 home_dotfiles=(
   bashrc
@@ -15,7 +15,7 @@ home_dotfiles=(
 )
 
 for dotfile in ${home_dotfiles[@]}; do
-  ln -sv ${dotfile} $HOME/.${dotfile}
+  ln -sv "$PWD/${dotfile}" "$HOME/.${dotfile}"
 done
 
 mkdir $HOME/bin && cp -Rv bin/* $HOME/bin/
