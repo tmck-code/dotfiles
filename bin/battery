@@ -2,6 +2,28 @@
 
 # Get the charge %
 charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
-# Remove that pesky semicolon
-echo ${charge%;}
+# Remove that pesky semicolon and %
+charge=${charge%\%;}
+
+# A gradient of red -> yellow -> green
+gradient=(
+ "#[fg=colour160]◼"
+ "#[fg=colour166]◼"
+ "#[fg=colour172]◼"
+ "#[fg=colour178]◼"
+ "#[fg=colour184]◼"
+ "#[fg=colour190]◼"
+ "#[fg=colour154]◼"
+ "#[fg=colour118]◼"
+ "#[fg=colour82]◼"
+ "#[fg=colour46]◼"
+)
+empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
+
+if [ "$1" == "--bar" ];then
+  [ -z "${charge}" ] && charge_num=0 || charge_num="${charge%?}"
+  bar="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g') "
+fi
+
+echo "${bar}${charge}%"
 
