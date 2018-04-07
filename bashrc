@@ -2,8 +2,7 @@
 # github.com/tmck-code/dotfiles
 
 shopt -s histappend    # append to the history file, don't overwrite it
-HISTSIZE=100000        # for setting history length
-HISTFILESIZE=200000
+HISTSIZE=1000000       # for setting history length, control via no. of entries only
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
 
 if [[ "$USER" == "root" ]]; then
@@ -68,9 +67,16 @@ _mk_prompt() {
     local prefix=("\D{%T}")
     if [[ ! -z "$GITBRANCH" ]]; then
       prefix+=("${PS1_green}$GITBRANCH${PS1_reset}")
+
+      if [ ! -z "$(git ls-files -m)" ]; then
+        prefix+=("✹")
+      fi
+      if [ ! -z "$(git ls-files --others --exclude-standard --directory   --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
+        prefix+=("✭")
+      fi
     fi
 
-    export PS1="[${prefix[@]}] ☯ $_MK_PROMPT_ORIG_PS1"
+    export PS1="[${prefix[@]} ] ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export PROMPT_COMMAND=_mk_prompt
@@ -84,4 +90,6 @@ alias grep="grep --color=auto"
 
 # Present a pretty message
 fortune -a | pokemonsay
+
+# [ -z "$TMUX" ] && tmux
 
