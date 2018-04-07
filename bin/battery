@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Get the charge %
+charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
+# Remove that pesky semicolon
+echo ${charge%;}
+
