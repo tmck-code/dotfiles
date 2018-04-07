@@ -77,6 +77,7 @@ export PROMPT_COMMAND=_mk_prompt
 
 # Load aliases
 [ -f ~/.bash_aliases ] && . ~/.bash_aliases
+[ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 
 # Enable colours by default
 export CLICOLOR="exfxcxdxbxegedabagacad" # enable colours
