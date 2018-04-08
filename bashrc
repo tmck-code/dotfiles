@@ -68,9 +68,11 @@ _mk_prompt() {
     if [[ ! -z "$GITBRANCH" ]]; then
       prefix+=("${PS1_green}$GITBRANCH${PS1_reset}")
 
+      # Modified files
       if [ ! -z "$(git ls-files -m)" ]; then
         prefix+=("✹ ")
       fi
+      # New, untracked files
       if [ ! -z "$(git ls-files --others --exclude-standard --directory   --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
         prefix+=("✭ ")
       fi
