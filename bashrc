@@ -70,15 +70,14 @@ _mk_prompt() {
 
       # Modified files
       if [ ! -z "$(git ls-files -m)" ]; then
-        prefix+=("✹ ")
+        prefix+=("✹")
       fi
       # New, untracked files
       if [ ! -z "$(git ls-files --others --exclude-standard --directory   --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
-        prefix+=("✭ ")
+        prefix+=("✭")
       fi
     fi
-
-    export PS1="[${prefix[@]}] ☯ $_MK_PROMPT_ORIG_PS1"
+    export PS1="⟨${prefix[@]} │ ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export PROMPT_COMMAND=_mk_prompt
