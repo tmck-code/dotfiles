@@ -46,7 +46,6 @@ function _battery() {
     [ -z "${charge_num}" ] && charge_num=0
     # If the bar is not set, or if the gradient index nums don't match
     if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
-      echo "reproducing bar"
       # Use array slices to print the bars, then remove the spaces between elements
       export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g')"
     fi
@@ -55,5 +54,6 @@ function _battery() {
   echo "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}%"
 }
 
-_battery "$@"
+# Don't run if we're just sourcing the file
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || _battery "$@"
 
