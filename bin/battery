@@ -1,10 +1,5 @@
 #!/bin/bash
 
-# Get the charge %
-charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
-# Remove that pesky semicolon and %
-charge=${charge%\%;}
-
 # A gradient of red -> yellow -> green
 gradient=(
  "#[fg=colour160]◼"
@@ -18,12 +13,36 @@ gradient=(
  "#[fg=colour82]◼"
  "#[fg=colour46]◼"
 )
+# A bar of 10 empty elements
 empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
 
+os=$(uname -s)
+case "${os}" in
+  *Darwin*)
+    # Get the charge %
+    charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
+    # Remove that pesky semicolon and %
+    charge=${charge%\%;}
+    ;;
+  *Linux*)
+    charge=$(</sys/class/power_supply/BAT1/capacity)
+    status=$(</sys/class/power_supply/BAT1/status)
+esac
+
+case "${status}" in
+  Discharging) status_symbol="↓" ;;
+  Charging)    status_symbol="↑" ;;
+  Full)        status_symbol="↻" ;;
+  *)           status_symbol=""
+esac
+
 if [ "$1" == "--bar" ];then
-  [ -z "${charge}" ] && charge_num=0 || charge_num="${charge%?}"
+  # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
+  charge_num="${charge%?}"
+  [ -z "${charge_num}" ] && charge_num=0
+  # Use array slices to print the bars, then remove the spaces between elements
   bar="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g') "
 fi
 
-echo "${bar}${charge}%"
+echo "${bar}${status_symbol} ${charge}%"
 
