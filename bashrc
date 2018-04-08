@@ -97,3 +97,5 @@ alias grep="grep --color=auto"
 # Present a pretty message
 fortune -a | pokemonsay
 
+[ -z "${TMUX}" ] && tmux
+
