@@ -2,47 +2,58 @@
 
 # A gradient of red -> yellow -> green
 gradient=(
- "#[fg=colour160]◼"
- "#[fg=colour166]◼"
- "#[fg=colour172]◼"
- "#[fg=colour178]◼"
- "#[fg=colour184]◼"
- "#[fg=colour190]◼"
- "#[fg=colour154]◼"
- "#[fg=colour118]◼"
- "#[fg=colour82]◼"
- "#[fg=colour46]◼"
+   "#[fg=colour160]◼"
+   "#[fg=colour166]◼"
+   "#[fg=colour172]◼"
+   "#[fg=colour178]◼"
+   "#[fg=colour184]◼"
+   "#[fg=colour190]◼"
+   "#[fg=colour154]◼"
+   "#[fg=colour118]◼"
+   "#[fg=colour82]◼"
+   "#[fg=colour46]◼"
 )
 # A bar of 10 empty elements
 empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
 
-os=$(uname -s)
-case "${os}" in
-  *Darwin*)
-    # Get the charge %
-    charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
-    # Remove that pesky semicolon and %
-    charge=${charge%\%;}
-    ;;
-  *Linux*)
-    charge=$(</sys/class/power_supply/BAT1/capacity)
-    status=$(</sys/class/power_supply/BAT1/status)
-esac
+function _battery() {
+  os=$(uname -s)
+  case "${os}" in
+    *Darwin*)
+      # Get the charge %
+      charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
+      # Remove that pesky semicolon and %
+      charge=${charge%\%;}
+      ;;
+    *Linux*)
+      charge=$(</sys/class/power_supply/BAT1/capacity)
+      status=$(</sys/class/power_supply/BAT1/status)
+  esac
 
-case "${status}" in
-  Discharging) status_symbol="↓" ;;
-  Charging)    status_symbol="↑" ;;
-  Full)        status_symbol="↻" ;;
-  *)           status_symbol=""
-esac
+  case "${status}" in
+    Discharging) status_symbol="↓" ;;
+    Charging)    status_symbol="↑" ;;
+    Full)        status_symbol="↻" ;;
+    *)           status_symbol=""
+  esac
 
-if [ "$1" == "--bar" ];then
-  # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
-  charge_num="${charge%?}"
-  [ -z "${charge_num}" ] && charge_num=0
-  # Use array slices to print the bars, then remove the spaces between elements
-  bar="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g') "
-fi
+  export BATTERY_STATUS_SYMBOL="${status_symbol}"
+  export BATTERY_CHARGE="${charge}"
 
-echo "${bar}${status_symbol} ${charge}%"
+  if [ "$1" == "--bar" ];then
+    # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
+    charge_num="${charge%?}"
+    [ -z "${charge_num}" ] && charge_num=0
+    # If the bar is not set, or if the gradient index nums don't match
+    if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
+      echo "reproducing bar"
+      # Use array slices to print the bars, then remove the spaces between elements
+      export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g')"
+    fi
+  fi
+
+  echo "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}%"
+}
+
+_battery "$@"
 
