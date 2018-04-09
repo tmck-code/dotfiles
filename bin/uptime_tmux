@@ -2,7 +2,7 @@
 
 function _uptime() {
   # Translate H:M:S to Hh Mm Ss
-  echo "↑ $(uptime | awk '{ print $1 }' | sed -e 's/:/h /' -e 's/:/m /' -e 's/$/s/')"
+  echo "↑ $(uptime | cut -d ',' -f 1 | sed 's/^.*up //g')"
 }
 
 # Don't run if we're just sourcing the file
