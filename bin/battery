@@ -1,7 +1,19 @@
 #!/bin/bash
 
 # A gradient of red -> yellow -> green
-gradient=(
+bash_gradient=(
+   "\e[38;5;160m◼"
+   "\e[38;5;166m◼"
+   "\e[38;5;172m◼"
+   "\e[38;5;178m◼"
+   "\e[38;5;184m◼"
+   "\e[38;5;190m◼"
+   "\e[38;5;154m◼"
+   "\e[38;5;118m◼"
+   "\e[38;5;82m◼"
+   "\e[38;5;46m◼"
+)
+tmux_gradient=(
    "#[fg=colour160]◼"
    "#[fg=colour166]◼"
    "#[fg=colour172]◼"
@@ -15,7 +27,8 @@ gradient=(
 )
 # A bar of 10 empty elements
 empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
-colour_reset="#[bg=default,fg=default]"
+tmux_colour_reset="#[bg=default,fg=default]"
+bash_colour_reset="\e[0m"
 
 function _battery() {
   os=$(uname -s)
@@ -41,7 +54,13 @@ function _battery() {
   export BATTERY_STATUS_SYMBOL="${status_symbol}"
   export BATTERY_CHARGE="${charge}"
 
-  if [ "$1" == "--bar" ];then
+  case "${2}" in
+    --tmux) gradient=(${tmux_gradient[@]}) && reset=${tmux_colour_reset} ;;
+    --bash) gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
+    *)    gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
+  esac
+
+  if [ "${1}" == "--bar" ];then
     # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
     charge_num="${charge%?}"
     [ -z "${charge_num}" ] && charge_num=0
@@ -52,7 +71,7 @@ function _battery() {
     fi
   fi
 
-  echo "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}% ${colour_reset}"
+  echo -e "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}% ${reset}"
 }
 
 # Don't run if we're just sourcing the file
