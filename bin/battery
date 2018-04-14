@@ -15,6 +15,7 @@ gradient=(
 )
 # A bar of 10 empty elements
 empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
+colour_reset="#[bg=default,fg=default]"
 
 function _battery() {
   os=$(uname -s)
@@ -51,7 +52,7 @@ function _battery() {
     fi
   fi
 
-  echo "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}%"
+  echo "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}% ${colour_reset}"
 }
 
 # Don't run if we're just sourcing the file
