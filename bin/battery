@@ -33,13 +33,13 @@ bash_colour_reset="\e[0m"
 function _battery() {
   os=$(uname -s)
   case "${os}" in
-    *Darwin*)
+    Darwin)
       # Get the charge %
       charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
       # Remove that pesky semicolon and %
       charge=${charge%\%;}
       ;;
-    *Linux*)
+    Linux)
       charge=$(</sys/class/power_supply/BAT1/capacity)
       status=$(</sys/class/power_supply/BAT1/status)
   esac
