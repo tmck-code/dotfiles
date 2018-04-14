@@ -84,7 +84,7 @@ export PROMPT_COMMAND=_mk_prompt
 
 # Load aliases
 [ -f ~/.bash_aliases ] && . ~/.bash_aliases
-[ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
+[ -d ~/bin ] && export PATH="$HOME/bin:/usr/local/bin:$PATH"
 
 [ -f ~/bin/battery ]     && source ~/bin/battery
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
