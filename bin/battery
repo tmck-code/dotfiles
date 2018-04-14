@@ -3,27 +3,17 @@
 # A gradient of red -> yellow -> green
 bash_gradient=(
    "\e[38;5;160m◼"
-   "\e[38;5;166m◼"
    "\e[38;5;172m◼"
-   "\e[38;5;178m◼"
    "\e[38;5;184m◼"
-   "\e[38;5;190m◼"
    "\e[38;5;154m◼"
-   "\e[38;5;118m◼"
    "\e[38;5;82m◼"
-   "\e[38;5;46m◼"
 )
 tmux_gradient=(
    "#[fg=colour160]◼"
-   "#[fg=colour166]◼"
    "#[fg=colour172]◼"
-   "#[fg=colour178]◼"
    "#[fg=colour184]◼"
-   "#[fg=colour190]◼"
    "#[fg=colour154]◼"
-   "#[fg=colour118]◼"
    "#[fg=colour82]◼"
-   "#[fg=colour46]◼"
 )
 # A bar of 10 empty elements
 empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
@@ -64,10 +54,12 @@ function _battery() {
     # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
     charge_num="${charge%?}"
     [ -z "${charge_num}" ] && charge_num=0
+    charge_num="$[ ${charge_num} / 2 ]"
     # If the bar is not set, or if the gradient index nums don't match
     if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
       # Use array slices to print the bars, then remove the spaces between elements
-      export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:9}" | sed 's/ //g')"
+      n_empty="$[ 5 - ${charge_num} ]"
+      export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:charge_num:n_empty}" | sed 's/ //g')"
     fi
   fi
 
