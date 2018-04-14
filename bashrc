@@ -94,7 +94,8 @@ export CLICOLOR="exfxcxdxbxegedabagacad" # enable colours
 alias grep="grep --color=auto"
 
 # Present a pretty message
-fortune -a | pokemonsay
+fortune -a | pokemonsay | sed 's/^/  /g'
+echo
 
 [ -z "${TMUX}" ] && tmux
 
