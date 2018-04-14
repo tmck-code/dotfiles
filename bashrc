@@ -77,7 +77,7 @@ _mk_prompt() {
         prefix+=("✭")
       fi
     fi
-    export PS1="⟨${prefix[@]} │ ☯ $_MK_PROMPT_ORIG_PS1"
+    export PS1=" ${prefix[@]} │ ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export PROMPT_COMMAND=_mk_prompt
