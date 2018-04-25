@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# A gradient of red -> yellow -> green
+bash_gradient=(
+   "\e[38;5;160m◼"
+   "\e[38;5;172m◼"
+   "\e[38;5;184m◼"
+   "\e[38;5;154m◼"
+   "\e[38;5;82m◼"
+)
+tmux_gradient=(
+   "#[fg=colour160]◼"
+   "#[fg=colour172]◼"
+   "#[fg=colour184]◼"
+   "#[fg=colour154]◼"
+   "#[fg=colour82]◼"
+)
+# A bar of 10 empty elements
+empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
+tmux_colour_reset="#[bg=default,fg=default]"
+bash_colour_reset="\e[0m"
+
+function _battery() {
+  os=$(uname -s)
+  case "${os}" in
+    Darwin)
+      # Get the charge %
+      charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
+      # Remove that pesky semicolon and %
+      charge=${charge%\%;}
+      ;;
+    Linux)
+      charge=$(</sys/class/power_supply/BAT1/capacity)
+      status=$(</sys/class/power_supply/BAT1/status)
+  esac
+
+  case "${status}" in
+    Discharging) status_symbol="↓" ;;
+    Charging)    status_symbol="↑" ;;
+    Full)        status_symbol="↻" ;;
+    *)           status_symbol=""
+  esac
+
+  export BATTERY_STATUS_SYMBOL="${status_symbol}"
+  export BATTERY_CHARGE="${charge}"
+
+  case "${2}" in
+    --tmux) gradient=(${tmux_gradient[@]}) && reset=${tmux_colour_reset} ;;
+    --bash) gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
+    *)    gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
+  esac
+
+  if [ "${1}" == "--bar" ];then
+    # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
+    charge_num="${charge%?}"
+    [ -z "${charge_num}" ] && charge_num=0
+    charge_num="$[ $[ ${charge_num} / 2 ] + 1 ]"
+    # If the bar is not set, or if the gradient index nums don't match
+    if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
+      # Use array slices to print the bars, then remove the spaces between elements
+      n_empty="$[ 5 - ${charge_num} ]"
+      export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:0:n_empty}" | sed 's/ //g')"
+    fi
+  fi
+
+  echo -e "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}% ${reset}"
+}
+
+# Don't run if we're just sourcing the file
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || _battery "$@"
+

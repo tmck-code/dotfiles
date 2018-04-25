@@ -1,0 +1,10 @@
+#!/bin/bash
+
+function _uptime() {
+  # Translate H:M:S to Hh Mm Ss
+  echo "↑$(uptime | cut -d ',' -f 1 | sed 's/^.*up //g')"
+}
+
+# Don't run if we're just sourcing the file
+[[ "${BASH_SOURCE[0]}" != "${0}" ]] || _uptime "$@"
+
