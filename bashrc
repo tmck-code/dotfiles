@@ -119,5 +119,3 @@ fi
 
 fortune -a | pokemonsay
 
-cd $HOME
-
