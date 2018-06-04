@@ -1,7 +1,10 @@
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
+[ -z "${TMUX}" ] && tmux
+
 shopt -s histappend    # append to the history file, don't overwrite it
+
 HISTSIZE=1000000       # for setting history length, control via no. of entries only
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
 
@@ -97,5 +100,4 @@ alias grep="grep --color=auto"
 fortune -a | pokemonsay | sed 's/^/  /g'
 echo
 
-[ -z "${TMUX}" ] && tmux
 
