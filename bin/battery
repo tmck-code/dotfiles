@@ -45,8 +45,8 @@ function _battery() {
   export BATTERY_CHARGE="${charge}"
 
   case "${2}" in
-    --tmux) gradient=(${tmux_gradient[@]}) && reset=${tmux_colour_reset} ;;
-    --bash) gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
+    "--tmux") gradient=(${tmux_gradient[@]}) && reset=${tmux_colour_reset} ;;
+    "--bash") gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
     *)    gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
   esac
 
@@ -54,7 +54,7 @@ function _battery() {
     # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
     charge_num="${charge%?}"
     [ -z "${charge_num}" ] && charge_num=0
-    charge_num="$[ $[ ${charge_num} / 2 ] + 1 ]"
+    charge_num="$[ ${charge_num} / 2 ]"
     # If the bar is not set, or if the gradient index nums don't match
     if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
       # Use array slices to print the bars, then remove the spaces between elements

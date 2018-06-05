@@ -76,7 +76,7 @@ _mk_prompt() {
         prefix+=("✹")
       fi
       # New, untracked files
-      if [ ! -z "$(git ls-files --others --exclude-standard --directory   --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
+      if [ ! -z "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
         prefix+=("✭")
       fi
     fi
