@@ -1,17 +1,26 @@
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
-[ -z "${TMUX}" ] && tmux
+# Enter tmux as soon as possible, rather than at the end of the file
+# This avoids loading things again
+[ $TMUX ] || tmux -2
 
 shopt -s histappend    # append to the history file, don't overwrite it
-
-HISTSIZE=1000000       # for setting history length, control via no. of entries only
+HISTFILESIZE=10000000  # large history - 10 million
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
+PROMPT_DIRTRIM=2
+
+# Function to shorten the current directory
+short_pwd() {
+  local pwd=$(pwd)
+  pwd=${pwd/#$HOME/\~}
+  sed 's:\([^/]\)[^/]*/:\1/:g' <<<"$pwd"
+}
 
 if [[ "$USER" == "root" ]]; then
   export PS1="\[\e[1;31m\]\u\[\e[0m\] \[\e[1;33m\]\w\[\e[0m\] ";
 else
-  export PS1="\[\e[1;33m\]\w\[\e[0m\] ";
+  export PS1="\[\e[1;33m\]\$(short_pwd)\[\e[0m\] ";
 fi
 
 # Going to export PS1 again later with a prefix, so keep a static copy
