@@ -15,8 +15,8 @@ home_dotfiles=(
 )
 
 for dotfile in ${home_dotfiles[@]}; do
-  ln -sv "$PWD/${dotfile}" "$HOME/.${dotfile}"
+  ln -svf "$PWD/${dotfile}" "$HOME/.${dotfile}"
 done
 
-mkdir $HOME/bin && cp -Rv bin/* $HOME/bin/
+mkdir -p $HOME/bin && cp -Rv bin/* $HOME/bin/
 
