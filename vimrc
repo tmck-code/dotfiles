@@ -15,7 +15,15 @@ set expandtab " tabs -> spaces
 set tabstop=2 " default to 2 spaces for indentation
 set nowrap    " no line wrapping by default
 
-set encoding=utf8
+if &term =~ '256color'
+    " disable Background Color Erase (BCE) so that color schemes
+    " render properly when inside 256-color tmux and GNU screen.
+    " see also http://snk.tuxfamily.org/log/vim-256color-bce.html
+    set t_ut=
+endif
+
+set background=dark
+set t_Co=256
 
 " Detect file encoding
 if has("multi_byte")
