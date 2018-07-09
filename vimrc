@@ -122,21 +122,28 @@ let g:webdevicons_enable_airline_statusline = 1
 let g:webdevicons_enable_airline_tabline = 1
 let g:WebDevIconsNerdTreeAfterGlyphPadding = '  '
 
-" Syntastic settings --------------------------------------
-" NOTE: this makes everything very slow, disabling for now
+" Enable autocompletion
+let g:neocomplete#enable_at_startup = 1
 
-" set statusline+=%#warningmsg#
-" set statusline+=%{SyntasticStatuslineFlag()}
-" set statusline+=%*
+" Language-specific formatting
+autocmd FileType go setlocal autoindent noexpandtab tabstop=4 shiftwidth=4
+autocmd FileType py setlocal autoindent expandtab tabstop=4 shiftwidth=4
+autocmd FileType rb setlocal autoindent expandtab tabstop=2 shiftwidth=2
+autocmd FileType sh setlocal autoindent expandtab tabstop=2 shiftwidth=2
 
-" let g:syntastic_always_populate_loc_list = 1
-" let g:syntastic_auto_loc_list = 1
-" let g:syntastic_check_on_wq = 1
-"
-" " highlight errors
-" let g:syntastic_enable_highlighting=1
-" let g:syntastic_enable_signs=1
-"
-" let g:syntastic_python_checkers = ['pylint']
+" Alignment
 
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+
+" OSX specific --------------------------------------------
+
+" edit crontab files
+if $VIM_CRONTAB == "true"
+    set nobackup
+    set nowritebackup
+endif
 
