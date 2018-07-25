@@ -1,0 +1,37 @@
+#!/bin/bash
+
+gradient=(
+   "\e[38;5;160m◼"
+   "\e[38;5;172m◼"
+   "\e[38;5;184m◼"
+   "\e[38;5;154m◼"
+   "\e[38;5;82m◼"
+)
+
+colour_reset="\e[0m"
+
+MIN_TEMP=40  # approximate max ambient temperature
+MAX_TEMP=100 # standard max threshold for CPU temps
+
+function generate_gradient() {
+  local value
+
+  value=75
+
+  percentage=$[ $[ ${value} - ${MIN_TEMP} ] * 100 / $[ ${MAX_TEMP} - ${MIN_TEMP} ] ]
+  index=$[ $[ ${percentage} + 5 ] / 20 ]
+
+  echo -e "${gradient[@]:0:index}" | sed 's/ //g' 
+}
+
+function report_core_temp() {
+  temp_core=$(sensors | grep "Core ${1}" | sed 's/ \+/ /g' | cut -d ' ' -f 3)
+  echo -e "$(generate_gradient ${temp_core}) Core ${1}: ${temp_core}C ${colour_reset}"
+}
+
+function report_temps() {
+  echo "$(report_core_temp 0)
+$(report_core_temp 1)"
+}
+
+report_temps
