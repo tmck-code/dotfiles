@@ -10,7 +10,7 @@ GRADIENT=(
 
 colour_reset="\e[0m"
 
-MIN_TEMP=40  # approximate max ambient temperature
+MIN_TEMP=20  # approximate min ambient temperature
 MAX_TEMP=100 # standard max threshold for CPU temps
 
 function generate_gradient() {
