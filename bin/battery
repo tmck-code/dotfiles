@@ -52,14 +52,12 @@ function _battery() {
 
   if [ "${1}" == "--bar" ];then
     # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
-    charge_num="${charge%?}"
-    [ -z "${charge_num}" ] && charge_num=0
-    charge_num="$[ ${charge_num} / 2 ]"
+    index=$[ $[ ${charge} + 6 ] / 20 ]
     # If the bar is not set, or if the gradient index nums don't match
-    if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${charge_num}" ]; then
+    if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${index}" ]; then
       # Use array slices to print the bars, then remove the spaces between elements
-      n_empty="$[ 5 - ${charge_num} ]"
-      export BATTERY_BAR="$(echo -en "${gradient[@]:0:charge_num} ${empty_bar[@]:0:n_empty}" | sed 's/ //g')"
+      n_empty="$[ 5 - ${index} ]"
+      export BATTERY_BAR="$(echo -en "${gradient[@]:0:index} ${empty_bar[@]:0:n_empty}" | sed 's/ //g')"
     fi
   fi
 
