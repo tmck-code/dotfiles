@@ -1,6 +1,8 @@
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
+[ -z $PS1 ] && return 0
+
 # Enter tmux as soon as possible, rather than at the end of the file
 # This avoids loading things again
 [ $TMUX ] || tmux -2
