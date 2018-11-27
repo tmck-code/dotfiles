@@ -44,6 +44,11 @@ function docker_cleanup_images () {
   docker images | grep '<none>' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi
 }
 
+function docker_status() {
+  until docker ps; do sleep 1; done
+  echo -e "\n> Docker Engine is up"
+}
+
 function docker_cleanup () {
     docker_purge_containers
     docker_cleanup_images
@@ -53,13 +58,14 @@ function docker_cleanup () {
 }
 
 case ${1} in
-    "gc" ) dgc ;;
+    "gc" ) dgc;;
     "ls" ) dls;;
     "sc" ) docker_stop_containers;;
     "cv" ) docker_cleanup_volumes;;
     "ci" ) docker_cleanup_images;;
     "pn" ) docker_purge_networks;;
     "pc" ) docker_purge_containers;;
+    "st" ) docker_status;;
     "cleanup") docker_cleanup;;
 esac
 
