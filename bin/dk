@@ -4,10 +4,38 @@ function dgc() {
     docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc:/etc -e FORCE_IMAGE_REMOVAL=1 spotify/docker-gc
 }
 
+# e.g.
+# 2018-03-31 17:19:21 +1100 AEDT   memcached                                       latest              784b59c50820
+function dk_images_pretty() {
+	docker images --format "table {{.CreatedAt}}\t{{.Repository}}\t{{.Tag}}\t{{.ID}}"
+}
+
+function dk_ps_pretty() {
+  echo -e "\nContainers (all)"
+  docker ps -a --format "table {{.ID}}\t{{.RunningFor}}\t{{.Names}}\t{{.Image}}"
+}
+
+function count_all_images() {
+  echo -e "\nImages"
+  docker images -q | wc -l
+}
+
+function count_all_containers() {
+  docker ps -aq | wc -l
+}
+
+function dk_summarise() {
+  dk_ps_pretty
+  dk_images_pretty
+
+  echo -e "\nSummary\n"
+  echo "No. of images: $(count_all_images)"
+  echo "No. of containers: $(count_all_containers)"
+}
+
 function dls () {
     echo -e "\n- Networks\n"   && docker network ls
-    echo -e "\n- Containers\n" && docker ps -a
-    echo -e "\n- Images\n"     && docker images
+    dk_summarise
     echo
 }
 
