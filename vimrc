@@ -48,6 +48,11 @@ if $VIM_CRONTAB == "true"
     set nowritebackup
 endif
 
+" Enable syntax highlighting for trailing whitespace
+let g:better_whitespace_enabled=1
+" Strip whitespace on save
+let g:strip_whitespace_on_save=1
+
 " Shorctuts & key bindings -----------------------
 
 " Move across panes with Cntrl+Shift+<arrow key>
@@ -114,16 +119,15 @@ let g:strip_whitespace_on_save=1
 " Disable editor mode in default bar (as this is displayed by airline)
 set noshowmode
 
+" Only enable NerdTree syntax highlighting on common file types
+let g:NERDTreeLimitedSyntax = 1
+
 " Status bar and devicon settings
 " These can be commented out in favour of non-nerd statusline symbols
 let g:airline_theme='one'
-let g:airline_powerline_fonts = 1
+" let g:airline_powerline_fonts = 1
 let g:webdevicons_enable_airline_statusline = 1
 let g:webdevicons_enable_airline_tabline = 1
-let g:WebDevIconsNerdTreeAfterGlyphPadding = '  '
-
-" Enable autocompletion
-let g:neocomplete#enable_at_startup = 1
 
 " Language-specific formatting
 autocmd FileType go setlocal autoindent noexpandtab tabstop=4 shiftwidth=4

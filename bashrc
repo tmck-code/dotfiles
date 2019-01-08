@@ -1,7 +1,10 @@
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
-[ -z $PS1 ] && return 0
+[ -z "$PS1" ] && return 0
+
+# Homebrew installs to $HOME/bin now, need to set before using tmux
+[ -d ~/bin ] && export PATH="$HOME/bin:/usr/local/bin:$PATH"
 
 # Enter tmux as soon as possible, rather than at the end of the file
 # This avoids loading things again
@@ -101,7 +104,6 @@ export PROMPT_COMMAND=_mk_prompt
 
 # Load aliases
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
-[ -d ~/bin ]             && export PATH="$HOME/bin:/usr/local/bin:$PATH"
 
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
