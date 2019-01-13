@@ -11,7 +11,8 @@
 [ $TMUX ] || tmux -2
 
 shopt -s histappend  # append to the history file, don't overwrite it
-HISTFILESIZE=10000000  # large history - 10 million
+HISTFILESIZE=10000000  # largest history written to file at one time - 10 million lines
+HISTSIZE=10000000      # large history file - 10 million lines
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
 PROMPT_DIRTRIM=2
 
@@ -33,9 +34,6 @@ export _MK_PROMPT_ORIG_PS1="$PS1"
 
 # 100% pure Bash (no forking) function to determine the name of the current git branch
 gitbranch() {
-  # Update the ~/.bash_history every time
-  history -a
-
   export GITBRANCH=""
 
   local repo="${_GITBRANCH_LAST_REPO-}"
@@ -76,6 +74,9 @@ PS1_green='\[\e[32m\]'
 PS1_reset='\[\e[0m\]'
 
 _mk_prompt() {
+  # Update the ~/.bash_history every time
+  history -a
+
   # Change the window title of X terminals
   case $TERM in
     xterm*) echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007" ;;
