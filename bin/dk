@@ -16,7 +16,6 @@ function dk_ps_pretty() {
 }
 
 function count_all_images() {
-  echo -e "\nImages"
   docker images -q | wc -l
 }
 
