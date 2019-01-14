@@ -5,7 +5,16 @@ execute pathogen#infect()
 syntax on
 filetype plugin indent on
 syntax enable
-set clipboard=unnamed
+
+" yank to clipboard
+if has("clipboard")
+  set clipboard=unnamed " copy to the system clipboard
+
+  if has("unnamedplus") " X11 support
+    set clipboard+=unnamedplus
+  endif
+endif
+
 set mouse=a
 set ttymouse=xterm2
 
