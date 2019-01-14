@@ -1,1 +1,0 @@
-osx/bash_aliases
