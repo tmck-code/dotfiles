@@ -5,4 +5,4 @@ alias pip="python -m pip"
 alias j="cat ${1} | jq ."
 alias shuf="gshuf"
 alias sed="gsed"
-
+alias tr="gtr"

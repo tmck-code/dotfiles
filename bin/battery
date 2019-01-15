@@ -28,16 +28,17 @@ function _battery() {
       charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
       # Remove that pesky semicolon and %
       charge=${charge%\%;}
+      status=$(pmset -g batt | tail -n 1 | cut -d ';' -f 2 | tr -d '[:space:]')
       ;;
     Linux)
       charge=$(</sys/class/power_supply/BAT1/capacity)
-      status=$(</sys/class/power_supply/BAT1/status)
+      status=$(</sys/class/power_supply/BAT1/status | tr 'A-Z' 'a-z')
   esac
 
   case "${status}" in
-    Discharging) status_symbol="↓" ;;
-    Charging)    status_symbol="↑" ;;
-    Full)        status_symbol="↻" ;;
+    discharging) status_symbol="↓" ;;
+    charging)    status_symbol="↑" ;;
+    full)        status_symbol="↻" ;;
     *)           status_symbol=""
   esac
 
