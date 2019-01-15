@@ -1,0 +1,17 @@
+#!/bin/bash
+
+function temp() {
+  istats ${@} --no-graphs --no-labels | tr -d '[:space:]'
+}
+
+components=(
+  'extra Th1H'
+  'extra TG0D'
+  'cpu temp'
+)
+gpu=$(temp 'extra Th1H')
+cpu=$(temp 'cpu temp')
+pipe=$(temp 'extra TG0D')
+
+echo -en "HeatPipe: ${pipe}   GPU: ${gpu}   CPU: ${cpu}"
+
