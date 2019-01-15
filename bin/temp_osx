@@ -4,14 +4,9 @@ function temp() {
   istats ${@} --no-graphs --no-labels | tr -d '[:space:]'
 }
 
-components=(
-  'extra Th1H'
-  'extra TG0D'
-  'cpu temp'
-)
-gpu=$(temp 'extra Th1H')
+gpu=$(temp 'extra TG0D')
 cpu=$(temp 'cpu temp')
-pipe=$(temp 'extra TG0D')
+pipe=$(temp 'extra Th1H')
 
 echo -en "HeatPipe: ${pipe}   GPU: ${gpu}   CPU: ${cpu}"
 
