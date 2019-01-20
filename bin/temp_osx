@@ -8,5 +8,5 @@ gpu=$(temp 'extra TG0D')
 cpu=$(temp 'cpu temp')
 pipe=$(temp 'extra Th1H')
 
-echo -en "HeatPipe: ${pipe}   GPU: ${gpu}   CPU: ${cpu}"
+echo -en "${cpu} / ${gpu} / ${pipe}"
 
