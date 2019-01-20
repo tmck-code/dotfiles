@@ -45,11 +45,14 @@ if has("multi_byte")
   set fileencodings=ucs-bom,utf-8,latin1
 endif
 
-" Language-specific formatting
+" Language-specific settings
 autocmd FileType go setlocal autoindent noexpandtab tabstop=4 shiftwidth=4
 autocmd FileType py setlocal autoindent expandtab   tabstop=4 shiftwidth=4
 autocmd FileType rb setlocal autoindent expandtab   tabstop=2 shiftwidth=2
 autocmd FileType sh setlocal autoindent expandtab   tabstop=2 shiftwidth=2
+
+" Python settings
+let g:pymode_python = 'python3'
 
 " (OSX specific) edit crontab files
 if $VIM_CRONTAB == "true"
