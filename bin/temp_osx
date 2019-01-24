@@ -1,8 +1,10 @@
 #!/bin/bash
 
 function temp() {
-  istats ${@} --no-graphs --no-labels | tr -d '[:space:]'
+  reading="$(istats ${@} --no-graphs --no-labels | tr -d '[:space:]')"
+  echo "${reading%?}" # Truncate the C from the end of the temperature
 }
+export -f temp
 
 gpu=$(temp 'extra TG0D')
 cpu=$(temp 'cpu temp')

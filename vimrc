@@ -141,6 +141,10 @@ let g:airline_theme='one'
 let g:webdevicons_enable_airline_statusline = 1
 let g:webdevicons_enable_airline_tabline = 1
 
+" Searching options
+let g:ctrlsf_position = 'bottom'
+let g:ctrlsf_winsize = '30%'
+
 " Language-specific formatting
 autocmd FileType go setlocal autoindent noexpandtab tabstop=4 shiftwidth=4
 autocmd FileType py setlocal autoindent expandtab tabstop=4 shiftwidth=4

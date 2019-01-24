@@ -7,11 +7,12 @@ function dgc() {
 # e.g.
 # 2018-03-31 17:19:21 +1100 AEDT   memcached                                       latest              784b59c50820
 function dk_images_pretty() {
+  echo -e "\n- Images:\n"
 	docker images --format "table {{.CreatedAt}}\t{{.Repository}}\t{{.Tag}}\t{{.ID}}"
 }
 
 function dk_ps_pretty() {
-  echo -e "\nContainers (all)"
+  echo -e "\n- Containers (all)\n"
   docker ps -a --format "table {{.ID}}\t{{.RunningFor}}\t{{.Names}}\t{{.Image}}"
 }
 
@@ -33,7 +34,7 @@ function dk_summarise() {
 }
 
 function dls () {
-    echo -e "\n- Networks\n"   && docker network ls
+    echo -e "\n- Networks\n" && docker network ls
     dk_summarise
     echo
 }
