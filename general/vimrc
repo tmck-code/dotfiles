@@ -31,9 +31,6 @@ if &term =~ '256color'
     set t_ut=
 endif
 
-set background=dark
-set t_Co=256
-
 " Detect file encoding
 if has("multi_byte")
   if &termencoding == ""
@@ -84,18 +81,6 @@ map <C-n> :NERDTreeToggle<CR>
 " Map Cntrl+S to :w
 vmap <C-s> :w<CR>
 
-" Colours ----------------------------------------
-
-" set background=dark
-set t_Co=256
-
-let g:quantum_italics = 1
-colorscheme one
-
-if has("termguicolors")
-    set termguicolors
-endif
-
 " Map tab to be autocomplete (Cntrl+N)
 if has("gui_running")
     " C-Space seems to work under gVim on both Linux and win32
@@ -104,6 +89,22 @@ else
   if has("unix")
     inoremap <Nul> <C-n>
   endif
+endif
+
+" Colours ----------------------------------------
+
+set t_Co=256        " Heaps o' colours
+set background=dark " Dark style for theme
+
+colorscheme one     " Set colorscheme
+
+" Set comments to appear in italics for all colorschemes
+let g:quantum_italics = 1
+let g:one_allow_italics = 1
+
+" TODO: find out/remember what this magic is and why I need it
+if has("termguicolors")
+  set termguicolors
 endif
 
 " Terraform settings -----------------------------
