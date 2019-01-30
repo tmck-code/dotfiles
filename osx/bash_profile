@@ -1,0 +1,18 @@
+# Setting PATH for Python 3.7
+export PATH="/Library/Frameworks/Python.framework/Versions/3.7/bin:$HOME/.rvm/bin:$PATH"
+
+# Load Ruby Versino Manager
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
+
+# needed for Homebrew readline
+# export LDFLAGS="-L/usr/local/opt/readline/lib"
+# export CPPFLAGS="-I/usr/local/opt/readline/include"
+# export LDFLAGS="-L/usr/local/opt/libffi/lib"
+export PATH
+
+# Load iterm Shell Integration & Utilities (it2* commands)
+test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
+
+# Lastly, source the aliases
+[ -f ~/.bash_aliases ] && source  ~/.bash_aliases
+
