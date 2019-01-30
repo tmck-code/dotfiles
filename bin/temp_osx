@@ -1,14 +1,17 @@
 #!/bin/bash
 
 function temp() {
-  reading="$(istats ${@} --no-graphs --no-labels | tr -d '[:space:]')"
-  echo "${reading%?}" # Truncate the C from the end of the temperature
+  sample="$(istats ${@} --value-only)"
+  printf "%0.1f\n" $sample
 }
 export -f temp
 
 gpu=$(temp 'extra TG0D')
 cpu=$(temp 'cpu temp')
-pipe=$(temp 'extra Th1H')
+# TODO: implement heatpipe after performance improvements
+# Currently takes 0.7s to run and the refresh rate of the
+# tmux status is 1s
+# pipe=$(temp 'extra Th1H')
 
-echo -en "${cpu} / ${gpu} / ${pipe}"
+echo -en "${cpu}° / ${gpu}°" #  / ${pipe}°"
 
