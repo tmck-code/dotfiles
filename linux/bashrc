@@ -1,13 +1,16 @@
 #!/bin/bash
 # github.com/tmck-code/dotfiles
 
+# TODO: clarify this statement
 [ -z "$PS1" ] && return 0
 
-# Homebrew installs to $HOME/bin now, need to set before using tmux
-[ -d ~/bin ] && export PATH="$HOME/bin:/usr/local/bin:$PATH"
+# Link Homebrew installs in $HOME/bin
+[ -d /usr/local/bin ] && export PATH="/usr/local/bin:$PATH"
+# My utils that need to set before using tmux
+[ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 
 # Enter tmux as soon as possible, rather than at the end of the file
-# This avoids loading things again
+# This avoids loading the bashrc and other dotfiles twice
 [ $TMUX ] || tmux -2
 
 shopt -s histappend  # append to the history file, don't overwrite it
