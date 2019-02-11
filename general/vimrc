@@ -107,6 +107,13 @@ if has("termguicolors")
   set termguicolors
 endif
 
+" ctrlp settings --------------------------------
+" speed up because it's slow af
+let g:ctrlp_cache_dir = $HOME . '/.cache/ctrlp'
+if executable('ag')
+  let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
+endif
+
 " Terraform settings -----------------------------
 
 let g:terraform_align=1
