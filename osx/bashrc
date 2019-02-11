@@ -14,8 +14,8 @@
 [ $TMUX ] || tmux -2
 
 shopt -s histappend  # append to the history file, don't overwrite it
-HISTFILESIZE=10000000  # largest history written to file at one time - 10 million lines
-HISTSIZE=10000000      # large history file - 10 million lines
+HISTFILESIZE=100000000 # largest history written to file at one time
+HISTSIZE=100000000     # large history file
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
 PROMPT_DIRTRIM=2
 
