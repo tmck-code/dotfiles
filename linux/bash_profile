@@ -1,4 +1,6 @@
-source ~/.profile
+echo "- sourcing ~/.bash_profile"
+
+# source ~/.profile
 export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin
 
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
@@ -25,4 +27,4 @@ alias crontab="VIM_CRONTAB=true crontab"
 export EDITOR=vim
 export VISUAL=vim
 
-
+echo "x sourced ~/.bash_profile"
