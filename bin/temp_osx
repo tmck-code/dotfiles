@@ -12,6 +12,9 @@ cpu=$(temp 'cpu temp')
 # Currently takes 0.7s to run and the refresh rate of the
 # tmux status is 1s
 pipe=$(temp 'extra Th1H')
+msg="${cpu}° / ${gpu}° / ${pipe}°"
 
-echo -en "${cpu}° / ${gpu}° / ${pipe}°"
+[ "$1" == "--palm-rest" ] && msg+=" / $(temp 'extra Ts0P')"
+
+echo -en "${msg}"
 
