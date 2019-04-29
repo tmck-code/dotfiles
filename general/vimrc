@@ -116,8 +116,7 @@ endif
 " Plugin settings -------------------------------
 
 " enable smart completion switcher
-let g:SuperTabDefaultCompletionType = "context"
-let g:SuperTabContextDefaultCompletionType = "<c-x><c-o>"
+let g:mucomplete#enable_auto_at_startup = 1
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
