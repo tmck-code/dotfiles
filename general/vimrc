@@ -2,8 +2,8 @@
 execute pathogen#infect()
 
 " global variables to enable plugins
-syntax on
 filetype plugin indent on
+syntax on
 syntax enable
 
 " yank to clipboard
@@ -62,11 +62,10 @@ let g:strip_whitespace_on_save=1  " Strip whitespace on save
 
 " Shorctuts & key bindings -----------------------
 
-" Move across panes with Cntrl+Shift+<arrow key>
-map <C-S-left> <C-W><left>
+map <C-S-left>  <C-W><left> " Move across panes with Cntrl+Shift+<arrow key>
 map <C-S-right> <C-W><right>
-map <C-S-up> <C-W><up>
-map <C-S-down> <C-W><down>
+map <C-S-up>    <C-W><up>
+map <C-S-down>  <C-W><down>
 
 " Resize panes
 map <C-D-left> <C-W><<>
@@ -79,22 +78,18 @@ map <C-n> :NERDTreeToggle<CR>
 " Map Cntrl+S to :w
 vmap <C-s> :w<CR>
 
-" Map tab to be autocomplete (Cntrl+N)
-if has("gui_running")
-    " C-Space seems to work under gVim on both Linux and win32
-    inoremap <C-Space> <C-n>
-else
-  if has("unix")
-    inoremap <Nul> <C-n>
-  endif
-endif
+" autocompletions
+filetype plugin on
+set omnifunc=syntaxcomplete#Complete " enable built-in engine
+
+inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+set completeopt+=menuone,noinsert " improve menu selection defaults
 
 " Colours ----------------------------------------
 
 set t_Co=256        " Heaps o' colours
 set background=dark " Dark style for theme
 
-colorscheme one     " Set colorscheme
 
 " Set comments to appear in italics for all colorschemes
 let g:quantum_italics = 1
@@ -111,6 +106,7 @@ let g:ctrlp_cache_dir = $HOME . '/.cache/ctrlp'
 if executable('ag')
   let g:ctrlp_user_command = 'ag %s -l --nocolor -g ""'
 endif
+let g:ctrlp_user_command = ['.git/', 'git --git-dir=%s/.git ls-files -oc --exclude-standard']
 
 " Terraform settings -----------------------------
 
@@ -120,11 +116,13 @@ let g:terraform_remap_spacebar=1
 
 " NERDTree settings ------------------------------
 
+colorscheme gruvbox
+
 " open NERDTree by default
 autocmd vimenter * if !argc() | NERDTree | endif
 autocmd bufenter * if (winnr("$") == 1 && exists("b:NERDTreeType") && b:NERDTreeType == "primary") | q | endif
-
 syn match NERDTreeTxtFile #^\s\+.*txt$#
+
 " Set some colours
 highlight NERDTreeTxtFile ctermbg=red ctermfg=magenta
 
