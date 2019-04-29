@@ -81,9 +81,9 @@ vmap <C-s> :w<CR>
 " autocompletions
 filetype plugin on
 set omnifunc=syntaxcomplete#Complete " enable built-in engine
-
 inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
 set completeopt+=menuone,noinsert " improve menu selection defaults
+let g:mucomplete#enable_auto_at_startup = 1 " enable smart completion switcher
 
 " Colours ----------------------------------------
 
