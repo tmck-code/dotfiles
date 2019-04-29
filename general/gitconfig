@@ -80,4 +80,10 @@
 	svnd = svn dcommit
 	svnl = svn log --oneline --show-commit
 [push]
-	default = simple
+	default = current
+
+# [filter "lfs"]
+# 	required = true
+# 	clean = git-lfs clean -- %f
+# 	smudge = git-lfs smudge -- %f
+# 	process = git-lfs filter-process
