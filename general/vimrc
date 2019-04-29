@@ -18,6 +18,13 @@ syntax enable
 set mouse=a
 set ttymouse=xterm2
 
+" autocompletions via built in engine
+set omnifunc=syntaxcomplete#Complete " enable built-in engine
+" Just select autocomplete option with return, don't also insert a newline
+inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+" Some better menu defaults
+set completeopt+=longest,menuone,noinsert
+
 " Detect file encoding and use utf8 if possible
 if has("multi_byte")
   if &termencoding == ""
@@ -109,7 +116,8 @@ endif
 " Plugin settings -------------------------------
 
 " enable smart completion switcher
-let g:mucomplete#enable_auto_at_startup = 1
+let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabContextDefaultCompletionType = "<c-x><c-o>"
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
@@ -155,9 +163,4 @@ let g:webdevicons_enable_airline_tabline = 1
 " Searching options
 let g:ctrlsf_position = 'bottom'
 let g:ctrlsf_winsize = '30%'
-
-" autocompletions via built in engine
-set omnifunc=syntaxcomplete#Complete " enable built-in engine
-" improve menu selection defaults
-set completeopt+=menuone,noselect
 
