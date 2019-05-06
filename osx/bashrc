@@ -6,12 +6,11 @@
 
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && export PATH="/usr/local/bin:$PATH"
-# My utils that need to set before using tmux
+# My utils that need to set when using tmux and other tools
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 
 # Enter tmux as soon as possible, rather than at the end of the file
 # This avoids loading the bashrc and other dotfiles twice
-[ $TMUX ] || tmux -2
 
 shopt -s histappend  # append to the history file, don't overwrite it
 HISTFILESIZE=100000000 # largest history written to file at one time
@@ -110,6 +109,7 @@ export PROMPT_COMMAND=_mk_prompt
 
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
+[ -f ~/.bash_aliases ]   && source ~/.bash_aliases
 
 # Present a pretty message
 fortune -a | pokemonsay | gsed 's/^/  /g'
