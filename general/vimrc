@@ -1,4 +1,4 @@
-" taken from tmck-code/dotfiles
+" taken from github.com/tmck-code/dotfiles
 
 " package manager
 execute pathogen#infect()
@@ -12,11 +12,11 @@ set expandtab " tabs -> spaces
 set tabstop=2 " default 2 spaces for indentation
 set nowrap    " no line wrapping by default
 syntax on     " basic syntax highlighting
-syntax enable
+syntax enable " syntax recognition
 
-" mouse behaviour enabled
-set mouse=a
-set ttymouse=xterm2
+" mouse behaviour
+set mouse=a         " enable mouse
+set ttymouse=xterm2 " make mouse work correctly
 
 " autocompletions via built in engine
 set omnifunc=syntaxcomplete#Complete " enable built-in engine
