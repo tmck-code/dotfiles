@@ -1,13 +1,13 @@
 # Setting PATH for Python 3.7
-export PATH="/Library/Frameworks/Python.framework/Versions/3.7/bin:$HOME/.rvm/bin:$PATH"
+export PYENV_ROOT="$HOME/.pyenv"
 
-# Load Ruby Versino Manager
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
+echo '~~~'
+shopt -q login_shell && echo 'Login shell' || echo 'Not login shell'
 
-# needed for Homebrew readline
-# export LDFLAGS="-L/usr/local/opt/readline/lib"
-# export CPPFLAGS="-I/usr/local/opt/readline/include"
-# export LDFLAGS="-L/usr/local/opt/libffi/lib"
+PATH="/Library/Frameworks/Python.framework/Versions/3.7/bin:$HOME/Library/Python/3.7/bin:$PATH"
+PATH="$HOME/.rvm/bin:$PATH"
+PATH="$PYENV_ROOT/bin:$PATH"
+
 export PATH
 
 # Load iterm Shell Integration & Utilities (it2* commands)
@@ -16,3 +16,13 @@ test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shel
 # Lastly, source the aliases
 [ -f ~/.bash_aliases ] && source  ~/.bash_aliases
 
+# Enable bash completion
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+
+export BASH_PROFILE_SOURCED="true"
+
+export PATH="$HOME/.cargo/bin:$PATH"
+# source /Users/freman/Personal/dev/alacritty/extra/completions/alacritty.bash
+
+# Load tmux once before entering .bashrc, ensure that we're not already in tmux
+[ $TMUX ] || tmux -2
