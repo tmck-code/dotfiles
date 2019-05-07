@@ -1,14 +1,25 @@
-# Setting PATH for Python 3.7
+echo '~~~'
+if $(shopt -q login_shell); then
+  echo 'Login shell'
+  [ ! -z "${BASH_PROFILE_SOURCED:-}" ] && echo '~/.bash_profile already loaded, exiting' && exit 0
+fi
+
 export PYENV_ROOT="$HOME/.pyenv"
 
-echo '~~~'
-shopt -q login_shell && echo 'Login shell' || echo 'Not login shell'
-
+# Setting PATH for Python 3.7
 PATH="/Library/Frameworks/Python.framework/Versions/3.7/bin:$HOME/Library/Python/3.7/bin:$PATH"
 PATH="$HOME/.rvm/bin:$PATH"
 PATH="$PYENV_ROOT/bin:$PATH"
 
 export PATH
+
+# Load Ruby Version Manager
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
+
+# Load pyenv
+if command -v pyenv 1>/dev/null 2>&1; then
+  eval "$(pyenv init -)"
+fi
 
 # Load iterm Shell Integration & Utilities (it2* commands)
 test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"

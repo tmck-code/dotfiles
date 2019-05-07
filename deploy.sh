@@ -11,31 +11,43 @@ OS="${1}"
 
 mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc file found! Nothing to back up here"
 
-general_dotfiles=(
-  gitconfig
-  rubocop.yml
-  tmux.conf
-  vimrc
+general_dotfiles=$(cat <<EOF
+gitconfig
+rubocop.yml
+tmux.conf
+vimrc
+EOF
 )
 
-linux_dotfiles=(
-  bash_aliases
-  bash_profile
-  bashrc
-  inputrc
-  tmux.conf
+linux_dotfiles=$(cat <<EOF
+bash_aliases
+bash_profile
+bashrc
+inputrc
+tmux.conf
+EOF
+)
+
+osx_kitty_dotfiles=$(cat <<EOF
+kitty.conf
+kitty.light-gruvbox.conf
+EOF
 )
 
 function install_general() {
-  for dotfile in ${general_dotfiles[@]}; do
-    ln -svf "$PWD/general/${dotfile}" "$HOME/.${dotfile}" 
-  done
+    install_set "${general_dotfiles[@]}"
 }
 
 function install_linux() {
-  for dotfile in ${linux_dotfiles[@]}; do
-    ln -svf "$PWD/linux/${dotfile}" "$HOME/.${dotfile}" 
-  done
+  install_set "${linux_dotfiles[@]}"
+}
+
+function install_osx() {
+  install_set "{osx_dotfiles[@]}"
+}
+
+function install_set() {
+
 }
 
 install_general
