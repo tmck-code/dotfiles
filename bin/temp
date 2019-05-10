@@ -17,12 +17,19 @@ function generate_gradient() {
   percentage=$[ $[ ${1} - ${MIN_TEMP} ] * 100 / $[ ${MAX_TEMP} - ${MIN_TEMP} ] ]
   index=$[ $[ ${percentage} + 5 ] / 20 ]
 
-  echo -e "${GRADIENT[@]:0:index} [${percentage}%]" | sed 's/ //g' 
+  echo -e "${GRADIENT[@]:0:index} [${percentage}%]" | sed 's/ //g'
+}
+
+function temp_core() {
+  echo $(sensors | grep "Core ${1}" | sed 's/ \+/ /g' | cut -d ' ' -f 3 | sed 's/[^0-9.]//g' | cut -d '.' -f 1)
 }
 
 function report_core_temp() {
-  temp_core=$(sensors | grep "Core ${1}" | sed 's/ \+/ /g' | cut -d ' ' -f 3 | sed 's/[^0-9.]//g' | cut -d '.' -f 1)
   echo -e "$(generate_gradient ${temp_core}) Core ${1}: ${temp_core}C ${colour_reset}"
+}
+
+function report_inline() {
+  echo "$(temp_core 0)° / $(temp_core 1)°"
 }
 
 function report_temps() {
@@ -30,4 +37,4 @@ function report_temps() {
 $(report_core_temp 1)"
 }
 
-report_temps
+report_inline
