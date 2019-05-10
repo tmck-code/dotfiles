@@ -116,11 +116,12 @@ endif
 " Plugin settings -------------------------------
 
 " enable smart completion switcher
-let g:mucomplete#enable_auto_at_startup = 1
+" let g:mucomplete#enable_auto_at_startup = 1
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
 let g:strip_whitespace_on_save=1  " Strip whitespace on save
+let g:strip_whitespace_confirm=0  " Strip whitespace without asking for confirmation
 
 " ctrlp settings
 " speed up because it's slow af
