@@ -25,8 +25,8 @@ function count_all_containers() {
 }
 
 function dk_summarise() {
-  dk_ps_pretty
   dk_images_pretty
+  dk_ps_pretty
 
   echo -e "\nSummary\n"
   echo "No. of images: $(count_all_images)"
