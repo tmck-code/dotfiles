@@ -14,14 +14,14 @@
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
 
-# Enable bash completion
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
-
 shopt -s histappend    # append to the history file, don't overwrite it
 HISTFILESIZE=100000000 # largest history written to file at one time
 HISTSIZE=100000000     # large history file
 HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
 PROMPT_DIRTRIM=2
+
+# Enable bash completion
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 
 # Function to shorten the current directory
 short_pwd() {
@@ -112,6 +112,6 @@ export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
 [ -f ~/bin/battery ]     && source ~/bin/battery
 
 # Present a pretty message
-fortune -a | pokemonsay | gsed 's/^/  /g'
+fortune | pokemonsay | gsed 's/^/  /g'
 echo
 
