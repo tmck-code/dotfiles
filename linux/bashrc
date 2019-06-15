@@ -106,6 +106,7 @@ _mk_prompt() {
 
 export PROMPT_COMMAND=_mk_prompt
 
+[ -f ~/.bash_aliases ]   && source ~/.bash_aliases
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
 

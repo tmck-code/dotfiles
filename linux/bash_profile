@@ -1,7 +1,7 @@
 export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/latest/bin
 
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
-if [ -f ~/.bashrc ]; then . ~/.bashrc; fi
+[ -f "$HOME/.bashrc" ] && source ~/.bashrc
 
 # Add ruby and rvm to the PATH
 export PATH="$PATH:$HOME/.rvm/bin"
