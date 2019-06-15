@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euxo pipefail
+set -euo pipefail
 
 if [ -z "${1:-}" ]; then
   echo "Must provide an OS as \$1"
@@ -36,26 +36,19 @@ EOF
 
 function install_general() {
   for d in "$(echo ${general_dotfiles[@]})"; do
-    ln -s "$(pwd)/general/${d}"
+    ln -svf "$(pwd)/general/${d}"
   done
 }
 
 function install_linux() {
   for d in "$(echo ${linux_dotfiles[@]})"; do
-    ln -s "$(pwd)/linux/${d}"
+    ln -svf "$(pwd)/linux/${d}"
   done
 }
 
 function install_osx() {
   for d in "$(echo ${osx_dotfiles[@]})"; do
-    ln -s "$(pwd)/osx/${d}"
-  done
-}
-
-function install_set() {
-  dotfiles="${1}"
-  for i in "${dotfiles[@]}"; do
-    echo "${i}"
+    ln -svf "$(pwd)/osx/${d}"
   done
 }
 
