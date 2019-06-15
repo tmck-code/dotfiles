@@ -35,19 +35,28 @@ EOF
 )
 
 function install_general() {
-    install_set "${general_dotfiles[@]}"
+  for d in "$(echo ${general_dotfiles[@]})"; do
+    ln -s "$(pwd)/general/${d}"
+  done
 }
 
 function install_linux() {
-  install_set "${linux_dotfiles[@]}"
+  for d in "$(echo ${linux_dotfiles[@]})"; do
+    ln -s "$(pwd)/linux/${d}"
+  done
 }
 
 function install_osx() {
-  install_set "{osx_dotfiles[@]}"
+  for d in "$(echo ${osx_dotfiles[@]})"; do
+    ln -s "$(pwd)/osx/${d}"
+  done
 }
 
 function install_set() {
-
+  dotfiles="${1}"
+  for i in "${dotfiles[@]}"; do
+    echo "${i}"
+  done
 }
 
 install_general
