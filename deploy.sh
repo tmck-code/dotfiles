@@ -25,6 +25,9 @@ bashrc
 inputrc
 tmux.conf"
 
+termux_dotfiles="
+bash_aliases"
+
 osx_kitty_dotfiles="
 kitty.conf
 kitty.light-gruvbox.conf
@@ -48,6 +51,13 @@ function install_osx() {
   echo "- Installing osx dotfiles"
   for d in $(echo "${osx_dotfiles}"); do
     ln -svf "$(pwd)/osx/${d}" "$HOME/.${d}"
+  done
+}
+
+function install_termux() {
+  echo "- Installing termux dotfiles"
+  for d in $(echo "${termux_dotfiles}"); do
+    ln -svf "$(pwd)/termux/${d}" "$HOME/.${d}"
   done
 }
 
