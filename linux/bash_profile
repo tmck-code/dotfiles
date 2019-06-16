@@ -1,3 +1,9 @@
+echo '~~~'
+if $(shopt -q login_shell); then
+  echo 'Login shell'
+  [ ! -z "${BASH_PROFILE_SOURCED:-}" ] && echo '~/.bash_profile already loaded, exiting' && exit 0
+fi
+
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm" # Load RVM into a shell session *as a function*
 
 # Add ruby and rvm to the PATH
@@ -20,5 +26,13 @@ export PATH=$PATH:$GOROOT/bin
 alias crontab="VIM_CRONTAB=true crontab"
 export EDITOR=vim
 export VISUAL=vim
+
+# Enable bash completion
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+
+export BASH_PROFILE_SOURCED="true"
+
+# Load tmux once before entering .bashrc, ensure that we're not already in tmux
+[ $TMUX ] || tmux -2
 
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc
