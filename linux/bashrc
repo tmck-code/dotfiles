@@ -111,5 +111,5 @@ export PROMPT_COMMAND=_mk_prompt
 [ -f ~/bin/battery ]     && source ~/bin/battery
 
 # Present a pretty message
-fortune -a | pokemonsay | sed 's/^/  /g'
+fortune | pokemonsay | sed 's/^/  /g'
 
