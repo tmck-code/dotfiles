@@ -8,8 +8,6 @@
 # Enter tmux as soon as possible, rather than at the end of the file
 [ $TMUX ] || tmux -2
 
-# Link Homebrew installs in $HOME/bin
-[ -d /usr/local/bin ] && export PATH="/usr/local/bin:$PATH"
 # My utils that need to set when using tmux and other tools
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
