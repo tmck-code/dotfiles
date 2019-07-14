@@ -13,20 +13,28 @@ function ps_pretty() {
 }
 
 function networks_pretty()  {
-  echo -e "\n- Networks:\n"
-  docker network ls
+  cat <<EOF
+Networks:
+$(docker network ls)
+EOF
 }
 
-function count_images()     { docker images -q | wc -l }
-function count_containers() { docker ps -aq | wc -l }
+function count_images() {
+  docker images -q | wc -l
+}
+
+function count_containers() {
+  docker ps -aq | wc -l
+}
 
 function dls() {
-  networks_pretty && images_pretty && ps_pretty
+  cat <<EOF
+$(networks_pretty && images_pretty && ps_pretty)
 
-  echo -e "\nSummary\n"
-  echo "No. of images: $(count_images)"
-  echo "No. of containers: $(count_containers)"
-  echo
+Summary
+No. of images: $(count_images)
+No. of containers: $(count_containers)
+EOF
 }
 
 function stop_containers () {
