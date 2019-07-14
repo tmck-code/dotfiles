@@ -1,45 +1,40 @@
 #!/bin/bash
 
-function dgc() {
-    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v /etc:/etc -e FORCE_IMAGE_REMOVAL=1 spotify/docker-gc
-}
-
 # e.g.
 # 2018-03-31 17:19:21 +1100 AEDT   memcached                                       latest              784b59c50820
-function dk_images_pretty() {
+function images_pretty() {
   echo -e "\n- Images:\n"
 	docker images --format "table {{.CreatedAt}} {{.ID}} {{.Repository}}:{{.Tag}}"
 }
 
-function dk_ps_pretty() {
+function ps_pretty() {
   echo -e "\n- Containers (all)\n"
   docker ps -a --format "table {{.RunningFor}}\t{{.ID}} {{.Names}}\t{{.Image}}"
 }
 
-function count_all_images() {
+function networks_pretty() {
+  echo -e "\n- Networks\n"
+  docker network ls
+}
+
+function count_images() {
   docker images -q | wc -l
 }
 
-function count_all_containers() {
+function count_containers() {
   docker ps -aq | wc -l
 }
 
-function dk_summarise() {
-  dk_images_pretty
-  dk_ps_pretty
+function dls() {
+  networks_pretty && images_pretty && ps_pretty
 
   echo -e "\nSummary\n"
-  echo "No. of images: $(count_all_images)"
-  echo "No. of containers: $(count_all_containers)"
+  echo "No. of images: $(count_images)"
+  echo "No. of containers: $(count_containers)"
+  echo
 }
 
-function dls () {
-    echo -e "\n- Networks\n" && docker network ls
-    dk_summarise
-    echo
-}
-
-function docker_stop_containers () {
+function stop_containers () {
     echo -e "\n> Stopping all containers"
     ids=$(docker ps -aq)
     if [ -n "${ids}" ]; then
@@ -47,53 +42,44 @@ function docker_stop_containers () {
     fi
 }
 
-function docker_purge_containers () {
-    echo -e "\n> Removing all containers"
+function purge_containers () {
+    echo -e "\n> Force-removing all containers"
     docker ps -aq | xargs -n 1 -P 4 docker rm -f
 }
 
-function all_docker_network_ids() {
-    docker network ls | grep "bridge" | grep -vE "bridge\s*bridge" | awk '/ / { print $1 }'
+function prune_volumes() {
+    docker volume prune -f
 }
 
-function docker_cleanup_volumes() {
-    docker volume rm $(docker volume ls -qf dangling=true)
+function prune_networks() {
+    echo -e "\n> Pruning networks"
+    docker network prune -f
 }
 
-function docker_purge_networks() {
-    echo -e "\n> Purging all networks"
-    ids=$(all_docker_network_ids)
-    if [ -n "${ids}" ]; then
-        docker network rm $ids
-    fi
-}
-
-function docker_cleanup_images () {
+function cleanup_images () {
   docker images | grep '<none>' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi
 }
 
-function docker_status() {
+function engine_status() {
   until docker ps; do sleep 1; done
   echo -e "\n> Docker Engine is up"
 }
 
-function docker_cleanup () {
-    docker_purge_containers
-    docker_cleanup_images
-    docker_purge_networks
-    docker_cleanup_volumes
+function cleanup () {
+    purge_containers
+    cleanup_images
+    prune_networks
     dls
 }
 
 case ${1} in
-    "gc" ) dgc;;
     "ls" ) dls;;
-    "sc" ) docker_stop_containers;;
-    "cv" ) docker_cleanup_volumes;;
-    "ci" ) docker_cleanup_images;;
-    "pn" ) docker_purge_networks;;
-    "pc" ) docker_purge_containers;;
-    "st" ) docker_status;;
-    "cleanup") docker_cleanup;;
+    "st" ) engine_status;;
+    "sc" ) stop_containers;;
+    "ci" ) cleanup_images;;
+    "pv" ) prune_volumes;;
+    "pn" ) prune_networks;;
+    "pc" ) purge_containers;;
+    "cleanup") cleanup;;
 esac
 
