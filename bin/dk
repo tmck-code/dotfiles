@@ -8,22 +8,17 @@ function images_pretty() {
 }
 
 function ps_pretty() {
-  echo -e "\n- Containers (all)\n"
+  echo -e "\n- Containers:\n"
   docker ps -a --format "table {{.RunningFor}}\t{{.ID}} {{.Names}}\t{{.Image}}"
 }
 
-function networks_pretty() {
-  echo -e "\n- Networks\n"
+function networks_pretty()  {
+  echo -e "\n- Networks:\n"
   docker network ls
 }
 
-function count_images() {
-  docker images -q | wc -l
-}
-
-function count_containers() {
-  docker ps -aq | wc -l
-}
+function count_images()     { docker images -q | wc -l }
+function count_containers() { docker ps -aq | wc -l }
 
 function dls() {
   networks_pretty && images_pretty && ps_pretty
@@ -48,6 +43,7 @@ function purge_containers () {
 }
 
 function prune_volumes() {
+    echo -e "\n> Pruning networks"
     docker volume prune -f
 }
 
@@ -57,6 +53,7 @@ function prune_networks() {
 }
 
 function cleanup_images () {
+  echo -e "\n> Removing all <none> images"
   docker images | grep '<none>' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi
 }
 
