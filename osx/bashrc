@@ -112,4 +112,4 @@ export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
 # Present a pretty message
 fortune | pokemonsay | gsed 's/^/  /g'
 echo
-
+export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"

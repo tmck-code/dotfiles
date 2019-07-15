@@ -3,6 +3,7 @@
 export CLICOLOR="exfxcxdxbxegedabagacad" # enable colours in OSX bash
 
 alias grep="grep --color=auto" # Enable grep colours
+alias ls="ls --color" # Enable GNU ls colours
 alias g="git"
 alias v="vim"
 
