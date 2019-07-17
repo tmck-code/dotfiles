@@ -8,19 +8,16 @@ echo -e "~~ login shell\n"
 export PYENV_ROOT="$HOME/.pyenv"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 
-PATH="$PYENV_ROOT/shims:$PATH"
-PATH="$HOME/.rvm/bin:$PATH"
-PATH="$PYENV_ROOT/bin:$PATH"
-PATH="$PYENV_ROOT/versions/3.7.2/:$PATH"
+PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"       # Add python bins & shims under PYENV_ROOT
+PATH="$HOME/.rvm/bin:$PATH"  n                       # Add rvm binaries
+PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Ensure that GNU utils are used over BSD
 PATH="/Library/Frameworks/Python.framework/Versions/3.8/bin:${PATH}"
 
 export PATH
 
 # Load Ruby Version Manager & pyenv
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm" && echo 'sourced rvm'
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
 command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
-
-wait
 
 export BASH_PROFILE_SOURCED="true"
 source "$HOME/.bashrc"
