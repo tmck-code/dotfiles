@@ -1,39 +1,27 @@
-echo '~~~'
-if $(shopt -q login_shell); then
-  echo 'Login shell'
-  [ ! -z "${BASH_PROFILE_SOURCED:-}" ] && echo '~/.bash_profile already loaded, exiting' && exit 0
-fi
+# Exit if we are a login shell, and ~/.bash_profile has already been sourced.
+$(shopt -q login_shell) && [ ! -z "${BASH_PROFILE_SOURCED:-}" ] && return 0
+echo -e "~~ login shell\n"
+
+# Link Homebrew installs in $HOME/bin
+[ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
 
 export PYENV_ROOT="$HOME/.pyenv"
+export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 
-# Setting PATH for Python 3.7
-PATH="/Library/Frameworks/Python.framework/Versions/3.7/bin:$HOME/Library/Python/3.7/bin:$PATH"
+PATH="$PYENV_ROOT/shims:$PATH"
 PATH="$HOME/.rvm/bin:$PATH"
 PATH="$PYENV_ROOT/bin:$PATH"
+PATH="$PYENV_ROOT/versions/3.7.2/:$PATH"
+PATH="/Library/Frameworks/Python.framework/Versions/3.8/bin:${PATH}"
 
 export PATH
 
-# Load Ruby Version Manager
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
+# Load Ruby Version Manager & pyenv
+[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm" && echo 'sourced rvm'
+command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
 
-# Load pyenv
-if command -v pyenv 1>/dev/null 2>&1; then
-  eval "$(pyenv init -)"
-fi
-
-# Load iterm Shell Integration & Utilities (it2* commands)
-test -e "${HOME}/.iterm2_shell_integration.bash" && source "${HOME}/.iterm2_shell_integration.bash"
-
-# Lastly, source the aliases
-[ -f ~/.bash_aliases ] && source  ~/.bash_aliases
-
-# Enable bash completion
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+wait
 
 export BASH_PROFILE_SOURCED="true"
+source "$HOME/.bashrc"
 
-export PATH="$HOME/.cargo/bin:$PATH"
-# source /Users/freman/Personal/dev/alacritty/extra/completions/alacritty.bash
-
-# Load tmux once before entering .bashrc, ensure that we're not already in tmux
-[ $TMUX ] || tmux -2
