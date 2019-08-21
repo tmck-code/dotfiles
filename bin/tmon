@@ -3,21 +3,14 @@
 # create a new session. Note the -d flag, we do not want to attach just yet!
 tmux new-session -s "dev" -n "mon" -d
 
+tmux send-keys -t dev:mon 'htop' C-j
 
-# split the window *vertically*
-tmux split-window -v
+tmux split-window -v -p 80
+tmux send-keys -t dev:mon 'gotop -m -a -p --rate 0.5' C-j
 
-tmux send-keys -t dev:mon 'htop -u nobody' C-j
+tmux split-window -h
+tmux send-keys -t dev:mon 'sleep 1 && slurm -i en0 -t foo' C-j
 
-tmux split-window -v
-tmux send-keys -t dev:mon 'bmon -p wlp2s-' C-j
-
-tmux split-window -v
-tmux send-keys -t dev:mon 'sudo iotop' C-j
- 
-# tmux send-keys 'git status' C-j
-# tmux select-pane -t dev:${repo}.1
-# 
 # # finally attach to the session
 tmux attach -t dev:mon
 
