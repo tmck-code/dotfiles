@@ -29,6 +29,3 @@ set convert-meta off
 # tab
 TAB: complete
 
-# cd to previous dir and ls
-"\e\ex": 'cd !$ \015ls\015'
-

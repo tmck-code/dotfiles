@@ -2,7 +2,7 @@
 # github.com/tmck-code/dotfiles
 
 # TODO: clarify this statement
-[ -z "$PS1" ] && return 0
+[ -z "$PS1" ] && echo "No $PS1" && return 0
 [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - profile not sourced" && return 0
 
 # Enter tmux as soon as possible, rather than at the end of the file
@@ -106,10 +106,17 @@ _mk_prompt() {
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
 export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
 
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
+
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
 
 # Present a pretty message
 fortune | pokemonsay | gsed 's/^/  /g'
 echo
-export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
