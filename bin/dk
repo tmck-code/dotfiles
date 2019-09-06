@@ -51,7 +51,7 @@ function purge_containers () {
 }
 
 function prune_volumes() {
-    echo -e "\n> Pruning networks"
+    echo -e "\n> Pruning volumes"
     docker volume prune -f
 }
 
@@ -74,6 +74,7 @@ function cleanup () {
     purge_containers
     cleanup_images
     prune_networks
+    # prune_volumes
     dls
 }
 
