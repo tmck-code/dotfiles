@@ -1,22 +1,27 @@
 " taken from github.com/tmck-code/dotfiles
 
-" package manager
+" Package manager
 execute pathogen#infect()
-
-" global variables to enable plugins
+" Global variables to enable plugins
 filetype plugin indent on
 
-" very basic editor behaviour
+" Basic editor behaviour
 set number    " line numbers
 set expandtab " tabs -> spaces
 set tabstop=2 " default 2 spaces for indentation
-set nowrap    " no line wrapping by default
+set nowrap    " disable line wrapping by default
 syntax on     " basic syntax highlighting
 syntax enable " syntax recognition
 
+set textwidth=80     " Set the text width used by `gq` as 100
+set formatoptions-=t " Disable auto-wrap at the textwidth:
+:set colorcolumn=81  " Sets a visual column marking the width
+
 " mouse behaviour
-set mouse=a         " enable mouse
-set ttymouse=xterm2 " make mouse work correctly
+set mouse=a     " enable mouse
+if !has('nvim') " set better click/drag etc, only for neovim
+  set ttymouse=xterm2
+endif
 
 " autocompletions via built in engine
 set omnifunc=syntaxcomplete#Complete " enable built-in engine
@@ -80,19 +85,24 @@ map <C-n> :NERDTreeToggle<CR>
 vmap <C-s> :w<CR>
 
 " Map tab to be autocomplete (Cntrl+N)
-" if has("gui_running")
-"     " C-Space seems to work under gVim on both Linux and win32
-"     inoremap <C-Space> <C-n>
-" else
-"   if has("unix")
-"     inoremap <Nul> <C-n>
-"   endif
-" endif
+if has("gui_running")
+    " C-Space seems to work under gVim on both Linux and win32
+    inoremap <C-Space> <C-n>
+else
+  if has("unix")
+    inoremap <Nul> <C-n>
+  endif
+endif
 
 " Colours ----------------------------------------
 
-colorscheme gruvbox
 set background=dark " Dark style for theme
+
+colorscheme gruvbox " Set current theme
+
+" enable monokai italics
+let g:monokai_term_italic = 1
+let g:monokai_gui_italic = 1
 
 " ensure colours work correctly even in tmux
 if &term =~ '256color'
@@ -102,21 +112,49 @@ if &term =~ '256color'
     set t_ut=
 endif
 
-set t_Co=256 " Enable heaps o' colours
-
 " Set comments to appear in italics for all colorschemes
 let g:quantum_italics = 1
 let g:one_allow_italics = 1
 
-" TODO: find out/remember what this magic is and why I need it
+" Found a nice description of this at
+" https://github.com/crusoexia/vim-monokai#terminal-support
+"
+" If you are using a terminal which support truecolor like iterm2, enable the
+" gui color by adding below setting in ~/.vimrc or ~/.vim/init.vim
+" `set termguicolors`
+"
+" Otherwise, use below setting to activate the 256 color in terminal
+" `set t_Co=256`
 if has("termguicolors")
   set termguicolors
+else
+  set t_Co=256
 endif
 
 " Plugin settings -------------------------------
 
-" enable smart completion switcher
-" let g:mucomplete#enable_auto_at_startup = 1
+" Rainbow parenthesis
+let g:rbpt_colorpairs = [
+    \ ['brown',       'RoyalBlue3'],
+    \ ['Darkblue',    'SeaGreen3'],
+    \ ['darkgray',    'DarkOrchid3'],
+    \ ['darkgreen',   'firebrick3'],
+    \ ['darkcyan',    'RoyalBlue3'],
+    \ ['darkred',     'SeaGreen3'],
+    \ ['darkmagenta', 'DarkOrchid3'],
+    \ ['brown',       'firebrick3'],
+    \ ['gray',        'RoyalBlue3'],
+    \ ['black',       'SeaGreen3'],
+    \ ['darkmagenta', 'DarkOrchid3'],
+    \ ['Darkblue',    'firebrick3'],
+    \ ['darkgreen',   'RoyalBlue3'],
+    \ ['darkcyan',    'SeaGreen3'],
+    \ ['darkred',     'DarkOrchid3'],
+    \ ['red',         'firebrick3'],
+    \ ]
+
+let g:rbpt_max = 16 " let g:rbpt_loadcmd_toggle = 0
+let g:mucomplete#enable_auto_at_startup = 1 " smart completion switcher
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
@@ -136,6 +174,22 @@ let g:ctrlp_prompt_mappings = {
     \ 'AcceptSelection("t")': ['<cr>'],
     \ }
 
+" Silicon png code generator
+let g:silicon = {
+      \ 'theme':              '1337',
+      \ 'font':                  'Hack',
+      \ 'background':         '#aaaaff',
+      \ 'shadow-color':       '#555555',
+      \ 'line-pad':                   2,
+      \ 'pad-horiz':                 80,
+      \ 'pad-vert':                 100,
+      \ 'shadow-blur-radius':         0,
+      \ 'shadow-offset-x':            0,
+      \ 'shadow-offset-y':            0,
+      \ 'line-number':           v:true,
+      \ 'round-corner':          v:true,
+      \ 'window-controls':       v:true,
+      \ }
 " Terraform settings
 let g:terraform_align=1
 let g:terraform_fold_sections=1
@@ -160,12 +214,12 @@ set noshowmode
 
 " Status bar and devicon settings
 " These can be commented out in favour of non-nerd statusline symbols
-let g:airline_theme='one'
-" let g:airline_powerline_fonts = 1
+let g:airline_theme='gruvbox'
+let g:airline_powerline_fonts = 1
 let g:webdevicons_enable_airline_statusline = 1
 let g:webdevicons_enable_airline_tabline = 1
 
 " Searching options
 let g:ctrlsf_position = 'bottom'
 let g:ctrlsf_winsize = '30%'
-
+let g:go_bin_path = $HOME."/go/bin"
