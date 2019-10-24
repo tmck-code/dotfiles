@@ -3,9 +3,18 @@
 export CLICOLOR="exfxcxdxbxegedabagacad" # enable colours in OSX bash
 
 alias grep="grep --color=auto" # Enable grep colours
-alias ls="ls --color" # Enable GNU ls colours
 alias g="git"
+# alias vim="nvim"
 alias v="vim"
+alias ls="ls --color"
+
+function cb() {
+  git checkout $(gb)
+}
+
+function gb() {
+  git branch | fzf-tmux -d 15 | sed -e 's/^[[:space:]]*//'
+}
 
 # Just alias gnu variants over BSD default utilities
 alias shuf="gshuf"
