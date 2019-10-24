@@ -30,7 +30,7 @@ alias j="cat ${1} | jq ."
 
 if [ -f ~/.aws/credentials ] && [ "$(head -n 1 ~/.aws/credentials)" == "[default]" ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
-  export AWS_ACCESS_KEY_ID="$(sed '2q;d' ~/.aws/credentials | cut -d ' ' -f 3)"
+  export AWS_ACCESS_KEY_ID="$(sed '3q;d' ~/.aws/credentials | cut -d ' ' -f 3)"
   export AWS_SECRET_ACCESS_KEY="$(sed '4q;d' ~/.aws/credentials | cut -d ' ' -f 3)"
 fi
 
