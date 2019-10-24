@@ -133,6 +133,9 @@ endif
 
 " Plugin settings -------------------------------
 
+" FZF (FuZzy Finder)
+set rtp+=~/.fzf
+
 " Rainbow parenthesis
 let g:rbpt_colorpairs = [
     \ ['brown',       'RoyalBlue3'],
