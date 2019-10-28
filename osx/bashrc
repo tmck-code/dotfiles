@@ -72,12 +72,14 @@ gitbranch() {
     *)   export GITBRANCH="$branch""d:${head:0:7}" ;;
   esac
 
-  local commit=""
-  read commit < "$gitdir/ORIG_HEAD"
-  export GITCOMMIT="${commit:0:7}"
+  if [ -f "$gitdir/ORIG_HEAD" ]; then
+    local commit=""
+    read commit < "$gitdir/ORIG_HEAD"
+    export GITCOMMIT="${commit:0:7}"
+  fi
 }
 
-PS1_green='\[\e[1;3;32m\]'
+PS1_green='\[\e[1;32m\]'
 PS1_purple='\[\e[3;35m\]'
 PS1_reset='\[\e[0m\]'
 PS1_yellow_bg='\[\e[1;33m\]'
@@ -96,7 +98,7 @@ _mk_prompt() {
   sep="∈"
   local prefix=(" \D{%T}")
   if [[ ! -z "${GITBRANCH:-}" ]]; then
-    prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} [ ${PS1_green}${GITBRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset} ]")
+    prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GITBRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
 
     # Modified files
     if [ ! -z "$(git ls-files -m)" ]; then
