@@ -75,7 +75,7 @@ gitbranch() {
   if [ -f "$gitdir/ORIG_HEAD" ]; then
     local commit=""
     read commit < "$gitdir/ORIG_HEAD"
-    export GITCOMMIT="${commit:0:7}"
+    export GITCOMMIT="${commit:0:9}"
   fi
 }
 

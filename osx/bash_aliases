@@ -22,7 +22,8 @@ alias readlink="greadlink"
 alias sed="gsed"
 alias tr="gtr"
 alias sort="LC_ALL=C gsort" # Makes GNU sort much faster
-alias bmon="bmon -p en0 -o 'curses:bgchar= '"
+# alias bmon="bmon -p en0 -o 'curses:bgchar= '"
+
 alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
 
 # Some nice helpers & shortcuts

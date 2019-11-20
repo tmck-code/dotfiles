@@ -61,13 +61,18 @@ endif
 " Language-specific settings --------------------
 
 " Default indentations by file extension
-autocmd FileType go setlocal autoindent noexpandtab tabstop=4 shiftwidth=4
-autocmd FileType py setlocal autoindent expandtab   tabstop=4 shiftwidth=4
-autocmd FileType rb setlocal autoindent expandtab   tabstop=2 shiftwidth=2
-autocmd FileType sh setlocal autoindent expandtab   tabstop=2 shiftwidth=2
+autocmd FileType go  setlocal autoindent noexpandtab tabstop=4 shiftwidth=4
+autocmd FileType py  setlocal autoindent expandtab   tabstop=4 shiftwidth=4 textwidth=100 colorcolumn=101
+autocmd FileType rb  setlocal autoindent expandtab   tabstop=2 shiftwidth=2
+autocmd FileType sh  setlocal autoindent expandtab   tabstop=2 shiftwidth=2
+autocmd FileType psv setlocal csv_delim='|'
 
 " Python settings
-let g:pymode_python = 'python3'
+" let g:pymode_python = 'python3'
+let g:python_highlight_all = 1
+
+" CSV/PSV settings
+let g:csv_delim_test = ',	|'
 
 " Shorctuts & key bindings -----------------------
 
@@ -96,46 +101,49 @@ endif
 
 " Colours ----------------------------------------
 
+let g:airline_theme='shades_of_purple'
+let g:shades_of_purple_airline = 1
+let g:airline_powerline_fonts = 1
+
 set background=dark " Dark style for theme
-
-colorscheme gruvbox " Set current theme
-
-" enable monokai italics
-let g:monokai_term_italic = 1
-let g:monokai_gui_italic = 1
+colorscheme Pink_Cat_Boo " Set current theme
 
 " ensure colours work correctly even in tmux
-if &term =~ '256color'
-    " disable Background Color Erase (BCE) so that color schemes
-    " render properly when inside 256-color tmux and GNU screen.
-    " see also http://snk.tuxfamily.org/log/vim-256color-bce.html
-    set t_ut=
-endif
-
-" Set comments to appear in italics for all colorschemes
-let g:quantum_italics = 1
-let g:one_allow_italics = 1
-
-" Found a nice description of this at
-" https://github.com/crusoexia/vim-monokai#terminal-support
-"
-" If you are using a terminal which support truecolor like iterm2, enable the
-" gui color by adding below setting in ~/.vimrc or ~/.vim/init.vim
-" `set termguicolors`
-"
-" Otherwise, use below setting to activate the 256 color in terminal
-" `set t_Co=256`
+" if &term =~ '256color'
+" disable Background Color Erase (BCE) so that color schemes
+" render properly when inside 256-color tmux and GNU screen.
+" see also http://snk.tuxfamily.org/log/vim-256color-bce.html
+set t_ut=
+" Activate 256 colors
+set t_Co=256
+" If terminal supports truecolor, this is needed for correct colours
+" - via https://github.com/crusoexia/vim-monokai#terminal-support
 if has("termguicolors")
   set termguicolors
-else
-  set t_Co=256
 endif
+" endif
+set t_ZH=[3m
+set t_ZR=[23m
+
+" set t_ZH="\e[3m"
+" set t_ZR="\e[23m"
+
+" Set comments to appear in italics for all colorschemes
+highlight Comment cterm=italic
+
 
 " Plugin settings -------------------------------
+
+" EasyAlign
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
 
 " FZF (FuZzy Finder)
 set rtp+=~/.fzf
 
+" let b:RainbowDelim = '|'
 " Rainbow parenthesis
 let g:rbpt_colorpairs = [
     \ ['brown',       'RoyalBlue3'],
@@ -157,7 +165,7 @@ let g:rbpt_colorpairs = [
     \ ]
 
 let g:rbpt_max = 16 " let g:rbpt_loadcmd_toggle = 0
-" let g:mucomplete#enable_auto_at_startup = 1 " smart completion switcher
+let g:mucomplete#enable_auto_at_startup = 1 " smart completion switcher
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
@@ -179,7 +187,7 @@ let g:ctrlp_prompt_mappings = {
 
 " Silicon png code generator
 let g:silicon = {
-      \ 'theme':              '1337',
+      \ 'theme':                 '1337',
       \ 'font':                  'Hack',
       \ 'background':         '#aaaaff',
       \ 'shadow-color':       '#555555',
@@ -215,10 +223,6 @@ let g:strip_whitespace_on_save=1
 " Disable editor mode in default bar (as this is displayed by airline)
 set noshowmode
 
-" Status bar and devicon settings
-" These can be commented out in favour of non-nerd statusline symbols
-let g:airline_theme='gruvbox'
-let g:airline_powerline_fonts = 1
 let g:webdevicons_enable_airline_statusline = 1
 let g:webdevicons_enable_airline_tabline = 1
 
