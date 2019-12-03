@@ -1,70 +1,50 @@
 #!/bin/bash
 
-# A gradient of red -> yellow -> green
-bash_gradient=(
-   "\e[38;5;160m◼"
-   "\e[38;5;172m◼"
-   "\e[38;5;184m◼"
-   "\e[38;5;154m◼"
+GRADIENT=(
    "\e[38;5;82m◼"
+   "\e[38;5;154m◼"
+   "\e[38;5;184m◼"
+   "\e[38;5;172m◼"
+   "\e[38;5;160m◼"
 )
-tmux_gradient=(
-   "#[fg=colour160]◼"
-   "#[fg=colour172]◼"
-   "#[fg=colour184]◼"
-   "#[fg=colour154]◼"
-   "#[fg=colour82]◼"
-)
-# A bar of 10 empty elements
-empty_bar=(◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻ ◻)
-tmux_colour_reset="#[bg=default,fg=default]"
-bash_colour_reset="\e[0m"
 
-function _battery() {
-  os=$(uname -s)
-  case "${os}" in
-    Darwin)
-      # Get the charge %
-      charge=$(pmset -g batt | grep 'InternalBattery' | awk '{ print $3 }')
-      # Remove that pesky semicolon and %
-      charge=${charge%\%;}
-      status=$(pmset -g batt | tail -n 1 | cut -d ';' -f 2 | tr -d '[:space:]')
-      ;;
-    Linux)
-      charge=$(</sys/class/power_supply/BAT1/capacity)
-      status=$(</sys/class/power_supply/BAT1/status | tr 'A-Z' 'a-z')
-  esac
+colour_reset="\e[0m"
 
-  case "${status}" in
-    discharging) status_symbol="↓" ;;
-    charging)    status_symbol="↑" ;;
-    full)        status_symbol="↻" ;;
-    *)           status_symbol=""
-  esac
+MIN_TEMP=20  # approximate min ambient temperature
+MAX_TEMP=100 # standard max threshold for CPU temps
 
-  export BATTERY_STATUS_SYMBOL="${status_symbol}"
-  export BATTERY_CHARGE="${charge}"
+function generate_gradient() {
+  percentage=$[ $[ ${1} - ${MIN_TEMP} ] * 100 / $[ ${MAX_TEMP} - ${MIN_TEMP} ] ]
+  index=$[ $[ ${percentage} + 5 ] / 20 ]
 
-  case "${2}" in
-    "--tmux") gradient=(${tmux_gradient[@]}) && reset=${tmux_colour_reset} ;;
-    "--bash") gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
-    *)    gradient=(${bash_gradient[@]}) && reset=${bash_colour_reset} ;;
-  esac
-
-  if [ "${1}" == "--bar" ];then
-    # Get the index of the end of the gradient bar, e.g. 48% -> 4, 8% -> 0
-    index=$[ $[ ${charge} + 6 ] / 20 ]
-    # If the bar is not set, or if the gradient index nums don't match
-    if [ -z "${BATTERY_BAR}" ] || [ "${BATTERY_CHARGE%?}" != "${index}" ]; then
-      # Use array slices to print the bars, then remove the spaces between elements
-      n_empty="$[ 5 - ${index} ]"
-      export BATTERY_BAR="$(echo -en "${gradient[@]:0:index} ${empty_bar[@]:0:n_empty}" | sed 's/ //g')"
-    fi
-  fi
-
-  echo -e "${BATTERY_BAR} ${BATTERY_STATUS_SYMBOL} ${BATTERY_CHARGE}% ${reset}"
+  echo -e "${GRADIENT[@]:0:index} [${percentage}%]" | sed 's/ //g'
 }
 
-# Don't run if we're just sourcing the file
-[[ "${BASH_SOURCE[0]}" != "${0}" ]] || _battery "$@"
+function temp_core() {
+  echo $(sensors | grep "Core ${1}" | sed 's/ \+/ /g' | cut -d ' ' -f 3 | sed 's/[^0-9.]//g' | cut -d '.' -f 1)
+}
 
+function report_core_temp() {
+  echo -e "$(generate_gradient ${temp_core}) Core ${1}: ${temp_core}C ${colour_reset}"
+}
+
+function report_inline() {
+  echo "$(temp_core 0)° / $(temp_core 1)°"
+}
+
+function report_termux() {
+  echo "$(termux-battery-status | jq -r '.temperature')°"
+}
+
+function report_core_temps() {
+  cat <<EOF
+$(report_core_temp 0)
+$(report_core_temp 1)
+EOF
+}
+
+if [ "${TERMUX:-}" == 1 ]; then
+  report_termux
+else
+  report_inline
+fi

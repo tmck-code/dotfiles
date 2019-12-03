@@ -32,9 +32,19 @@ function report_inline() {
   echo "$(temp_core 0)° / $(temp_core 1)°"
 }
 
-function report_temps() {
-  echo "$(report_core_temp 0)
-$(report_core_temp 1)"
+function report_termux() {
+  echo "$(termux-battery-status | jq -r '.temperature')°"
 }
 
-report_inline
+function report_core_temps() {
+  cat <<EOF
+$(report_core_temp 0)
+$(report_core_temp 1)
+EOF
+}
+
+if [ "${TERMUX:-}" == 1 ]; then
+  report_termux
+else
+  report_inline
+fi
