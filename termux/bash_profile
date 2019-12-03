@@ -1,4 +1,3 @@
-echo '~~~'
 if $(shopt -q login_shell); then
   echo 'Login shell'
   if [ ! -z "${BASH_PROFILE_SOURCED:-}" ]; then
@@ -6,24 +5,27 @@ if $(shopt -q login_shell); then
   fi
 fi
 
-# Load personal scripts
-PATH="$PATH:$HOME/bin/"
-
-# Set up go
-export GOPATH=$HOME/go
-PATH=$PATH:$GOPATH/bin
-PATH=$PATH:$GOROOT/bin
-
-export PATH
-
+# Load Bash completions
+if [ -f $PREFIX/etc/bash_completion.d/* ]; then
+  source $PREFIX/etc/bash_completion.d/*
+fi
+# Set vim as default editor
 alias crontab="VIM_CRONTAB=true crontab"
 export EDITOR=vim
 export VISUAL=vim
 
-if [ -f $PREFIX/etc/bash_completion.d/* ]; then
-  source $PREFIX/etc/bash_completion.d/*
-fi
+# Load personal scripts
+PATH="$PATH:$HOME/bin/"
+# Set up go
+export GOPATH=$HOME/go
+PATH=$PATH:$GOPATH/bin
 
+export PATH
+
+# Export some helper ENV vars
+if [ "$(uname -o)" == "Android" ]; then
+  export TERMUX=1
+fi
 export BASH_PROFILE_SOURCED="true"
 
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
