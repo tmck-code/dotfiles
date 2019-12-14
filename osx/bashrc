@@ -13,8 +13,8 @@
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
 
 shopt -s histappend                  # append to the history file, don't overwrite it
-export HISTFILESIZE= # largest history written to file at one time
-export HISTSIZE= # large history file
+export HISTFILESIZE=100000000 # largest history written to file at one time
+export HISTSIZE=100000000000000 # large history file
 export HISTCONTROL=ignoreboth        # don't put duplicate lines or lines starting with space in the history.
 export PROMPT_DIRTRIM=2
 
@@ -125,6 +125,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
+[ -d ~/bin/z ]           && source ~/bin/z/z.sh
 
 # Present a pretty message
 fortune | pokemonsay | gsed 's/^/  /g'

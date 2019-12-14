@@ -68,7 +68,7 @@ autocmd FileType sh  setlocal autoindent expandtab   tabstop=2 shiftwidth=2
 autocmd FileType psv setlocal csv_delim='|'
 
 " Python settings
-" let g:pymode_python = 'python3'
+let g:pymode_python = 'python3'
 let g:python_highlight_all = 1
 
 " CSV/PSV settings
@@ -84,7 +84,7 @@ map <C-S-down>  <C-W><down>
 
 " Map Cntrl+N to toggle NERDTree on & off
 map <C-N> :NERDTreeFocus<CR>
-map <C-n> :NERDTreeToggle<CR>
+map ;; :NERDTreeToggle<CR>
 
 " Map Cntrl+S to :w
 vmap <C-s> :w<CR>
@@ -133,6 +133,11 @@ highlight Comment cterm=italic
 
 
 " Plugin settings -------------------------------
+
+" Syntastic Python version
+let g:syntastic_python_python_exec = 'python3'
+let g:syntastic_python_checkers = ['python']
+
 
 " EasyAlign
 " Start interactive EasyAlign in visual mode (e.g. vipga)
