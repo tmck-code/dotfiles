@@ -61,8 +61,16 @@ function install_termux() {
   done
 }
 
+
+function install_bin() {
+  echo "- Installing bin files"
+  mkdir $HOME/bin
+  for f in bin/*; do
+    ln -svf "$(pwd)/${f}" "$HOME/bin/"
+  done
+}
+
 install_general
 install_linux
-
-mkdir -p $HOME/bin && cp -Rv bin/* $HOME/bin/
+install_bin
 

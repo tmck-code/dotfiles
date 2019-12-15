@@ -5,8 +5,9 @@ if $(shopt -q login_shell); then
   fi
 fi
 
+
 # Load Bash completions
-if [ -f $PREFIX/etc/bash_completion.d/* ]; then
+if [ -f "$PREFIX/etc/bash_completion.d/*" ]; then
   source $PREFIX/etc/bash_completion.d/*
 fi
 # Set vim as default editor
