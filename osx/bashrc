@@ -127,8 +127,12 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 [ -f ~/bin/battery ]     && source ~/bin/battery
 [ -d ~/bin/z ]           && source ~/bin/z/z.sh
 
-# Present a pretty message
-fortune | pokemonsay | gsed 's/^/  /g'
+# Present a pretty message, with a small chance to print a "shiny" version
+if [ $[ $RANDOM % 10 ] == 0 ]; then
+  fortune | pokemonsay -n | gsed 's/^/  /g' | lolcat
+else
+  fortune | pokemonsay -n | gsed 's/^/  /g'
+fi
 echo
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash

@@ -110,6 +110,10 @@ export PROMPT_COMMAND=_mk_prompt
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
 [ -f ~/bin/battery ]     && source ~/bin/battery
 
-# Present a pretty message
-fortune | pokemonsay | sed 's/^/  /g'
-
+# Present a pretty message, with a small chance to print a "shiny" version
+if [ $[ $RANDOM % 10 ] == 0 ]; then
+  fortune | pokemonsay -n | gsed 's/^/  /g' | lolcat
+else
+  fortune | pokemonsay -n | gsed 's/^/  /g'
+fi
+echo
