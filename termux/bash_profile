@@ -23,6 +23,8 @@ PATH=$PATH:$GOPATH/bin
 
 export PATH
 
+source $HOME/bin/z.sh
+
 # Export some helper ENV vars
 if [ "$(uname -o)" == "Android" ]; then
   export TERMUX=1
@@ -32,4 +34,4 @@ export BASH_PROFILE_SOURCED="true"
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
 [ $TMUX ] || tmux
 
-[ -f "$HOME/.bashrc" ] && source ~/.bashrc
+# [ -f "$HOME/.bashrc" ] && source ~/.bashrc

@@ -112,8 +112,8 @@ export PROMPT_COMMAND=_mk_prompt
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokemonsay -n | gsed 's/^/  /g' | lolcat
+  fortune | pokemonsay | sed 's/^/  /g' | lolcat
 else
-  fortune | pokemonsay -n | gsed 's/^/  /g'
+  fortune | pokemonsay | sed 's/^/  /g'
 fi
 echo
