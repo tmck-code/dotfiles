@@ -20,6 +20,7 @@ export PROMPT_DIRTRIM=2
 
 # Enable bash completion
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+[[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
 
 # Function to shorten the current directory
 short_pwd() {
@@ -129,9 +130,9 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokemonsay -n | gsed 's/^/  /g' | lolcat
+  fortune -a | ppokemonsay -n | gsed 's/^/  /g' | lolcat
 else
-  fortune | pokemonsay -n | gsed 's/^/  /g'
+  fortune -a | ppokemonsay | gsed 's/^/  /g'
 fi
 echo
 
