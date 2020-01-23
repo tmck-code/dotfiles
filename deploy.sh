@@ -64,7 +64,7 @@ function install_termux() {
 
 function install_bin() {
   echo "- Installing bin files"
-  mkdir $HOME/bin
+  mkdir -p $HOME/bin
   for f in bin/*; do
     ln -svf "$(pwd)/${f}" "$HOME/bin/"
   done
