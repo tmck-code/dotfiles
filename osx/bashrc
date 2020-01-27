@@ -19,7 +19,7 @@ export HISTCONTROL=ignoreboth        # don't put duplicate lines or lines starti
 export PROMPT_DIRTRIM=2
 
 # Enable bash completion
-# [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 # [[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
 
 # Function to shorten the current directory
