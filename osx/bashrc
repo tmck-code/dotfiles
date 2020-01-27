@@ -125,8 +125,6 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
-[ -f ~/bin/battery ]     && source ~/bin/battery
-[ -d ~/bin/z ]           && source ~/bin/z/z.sh
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
@@ -136,4 +134,3 @@ else
 fi
 echo
 
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash

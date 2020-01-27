@@ -6,7 +6,7 @@ alias grep="grep --color=auto" # Enable grep colours
 alias g="git"
 # alias vim="nvim"
 alias v="vim"
-alias ls="ls --color"
+alias ls="gls --color"
 alias find="gfind"
 
 function cb() {
