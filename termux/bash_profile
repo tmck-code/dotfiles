@@ -1,7 +1,9 @@
 if $(shopt -q login_shell); then
   echo 'Login shell'
   if [ ! -z "${BASH_PROFILE_SOURCED:-}" ]; then
-    echo '~/.bash_profile already loaded, exiting' && exit 0
+    echo '~/.bash_profile already loaded, exiting'
+    source $HOME/.bashrc
+    exit 0
   fi
 fi
 

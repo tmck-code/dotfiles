@@ -108,12 +108,12 @@ export PROMPT_COMMAND=_mk_prompt
 
 [ -f ~/.bash_aliases ]   && source ~/.bash_aliases
 [ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
-[ -f ~/bin/battery ]     && source ~/bin/battery
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokemonsay | sed 's/^/  /g' | lolcat
+  fortune | ppokemonsay | sed 's/^/  /g' | lolcat
 else
-  fortune | pokemonsay | sed 's/^/  /g'
+  fortune | ppokemonsay | sed 's/^/  /g'
 fi
 echo
+
