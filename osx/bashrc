@@ -120,15 +120,20 @@ export LESS_TERMCAP_so=$'\e[01;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
-[ -f ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
+[ -r ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
+[ -d ~/bin/z ]           && source ~/bin/z/z.sh
+
+[ -r /usr/local/etc/profile.d/bash_completion.sh ] && \
+  source /usr/local/etc/profile.d/bash_completion.sh
+
+[ -r /usr/local/etc/bash_completion.d/git-completion.bash ] && \
+  source /usr/local/etc/bash_completion.d/git-completion.bash
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune -a | ppokemonsay -n | gsed 's/^/  /g' | lolcat
+  fortune | ppokemonsay -n | gsed 's/^/  /g' | lolcat
 else
-  fortune -a | ppokemonsay | gsed 's/^/  /g'
+  fortune | ppokemonsay -n | gsed 's/^/  /g'
 fi
 echo
 
-[ -d ~/bin/z ]           && source ~/bin/z/z.sh
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
