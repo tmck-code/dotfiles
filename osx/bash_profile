@@ -1,24 +1,41 @@
 # Exit if we are a login shell, and ~/.bash_profile has already been sourced.
-$(shopt -q login_shell) && [ ! -z "${BASH_PROFILE_SOURCED:-}" ] && return 0
 echo -e "~~ login shell\n"
+if $(shopt -q login_shell) && [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
+  source ~/.bashrc
+  return 0
+fi
 
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
 
-export PYENV_ROOT="$HOME/.pyenv"
+# export PYENV_ROOT="$HOME/.pyenv"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
+export CARGO_HOME=$HOME/.cargo
+export GOPATH=$HOME/go
+export GOROOT=/usr/local/go
 
 PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"       # Add python bins & shims under PYENV_ROOT
-PATH="$HOME/.rvm/bin:$PATH"  n                       # Add rvm binaries
+PATH="$HOME/.rvm/bin:$PATH"                          # Add rvm binaries
 PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Ensure that GNU utils are used over BSD
 PATH="/Library/Frameworks/Python.framework/Versions/3.8/bin:${PATH}"
+PATH="$PATH:$HOME/Personal/dev/nvim-osx64/bin"       # Neovim
+PATH="$CARGO_HOME:$CARGO_HOME/bin:$PATH"
+PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 
 export PATH
+export TERM=xterm-256color
+
+[ -d ~/bin/z ]     && source ~/bin/z/z.sh
+[ -f ~/.fzf.bash ] && source ~/.fzf.bash
 
 # Load Ruby Version Manager & pyenv
 [[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
 command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
 
-export BASH_PROFILE_SOURCED="true"
-source "$HOME/.bashrc"
+# Silence OSX Catalina warning about using bash instead of zsh
+export BASH_SILENCE_DEPRECATION_WARNING=1
 
+export BASH_PROFILE_SOURCED="true"
+
+# Enter tmux as soon as possible, rather than at the end of the file
+[ $TMUX ] || tmux -2
