@@ -5,21 +5,17 @@
 [ -z "$PS1" ] && echo "No $PS1" && return 0
 [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - profile not sourced" && return 0
 
-# Enter tmux as soon as possible, rather than at the end of the file
-[ $TMUX ] || tmux -2
-
 # My utils that need to set when using tmux and other tools
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
 
 shopt -s histappend                  # append to the history file, don't overwrite it
-export HISTFILESIZE=100000000 # largest history written to file at one time
+export HISTFILESIZE=10000000000 # largest history written to file at one time
 export HISTSIZE=100000000000000 # large history file
 export HISTCONTROL=ignoreboth        # don't put duplicate lines or lines starting with space in the history.
 export PROMPT_DIRTRIM=2
 
 # Enable bash completion
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 # [[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
 
 # Function to shorten the current directory
@@ -134,3 +130,5 @@ else
 fi
 echo
 
+[ -d ~/bin/z ]           && source ~/bin/z/z.sh
+[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
