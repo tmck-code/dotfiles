@@ -4,10 +4,11 @@
 # TODO: clarify this statement
 [ -z "$PS1" ] && return 0
 
-# Link Homebrew installs in $HOME/bin
-[ -d /usr/local/bin ] && export PATH="/usr/local/bin:$PATH"
 # My utils that need to set before using tmux
-[ -d ~/bin ] && export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+for dirpath in /usr/local/bin $HOME/bin $HOME/.local/bin; do
+  [ -d "${dirpath}" ] && PATH="$PATH:$dirpath"
+done
+export PATH
 
 # Enter tmux as soon as possible, rather than at the end of the file
 # This avoids loading the bashrc and other dotfiles twice
@@ -26,6 +27,8 @@ short_pwd() {
   sed 's:\([^/]\)[^/]*/:\1/:g' <<<"$pwd"
 }
 
+# Use different PS1s for regular vs. root users.
+# This this can help remind what permissions you have at the time.
 if [[ "$USER" == "root" ]]; then
   export PS1="\[\e[1;31m\]\u\[\e[0m\] \[\e[1;33m\]\w\[\e[0m\] ";
 else
@@ -42,42 +45,56 @@ gitbranch() {
   local repo="${_GITBRANCH_LAST_REPO-}"
   local gitdir=""
 
-  # If repo is set, and we are in that repo
+  # If we were previously in a git repo, and that repo is our current directory
   if [[ ! -z "${repo}" && "$PWD" == "${repo}/*" ]]; then
+    # Set the gitdir with the .git dir path in our current repo
     gitdir="$repo/.git"
   else
+    # Else, we're either entered a git repo for the first time, or we are
+    # entering a different repo to our previous one.
     local curr="$PWD"
-    while [[ ! -z "$curr" ]]; do
-      if [[ -e "$curr/.git" ]]; then
+    # While we still have a current directory to check
+    while [[ -n "$curr" ]]; do
+      # If our current dir has a .git subdir, then assign the vars from there
+      # and break
+      if [[ -r "$curr/.git" ]]; then
         repo="$curr"
         gitdir="$curr/.git"
         break
       fi
+      # Otherwise, traverse up one directory level at a time and try again,
+      # until we have reached the root of the file system
       curr="${curr%/*}"
     done
   fi
 
+  # Here, we set the variable the holds the name of the current git branch
+  #
+  # If we aren't inside a git repo, then unset the "previous git repo" var
   if [[ -z "$gitdir" ]]; then
     unset _GITBRANCH_LAST_REPO
-    return 0
+  # Else, set this current repo as the "last repo", and set the current branch
+  else
+    export _GITBRANCH_LAST_REPO="${repo}"
+
+    local head=""
+    # This is the fastest method I could find to read in branch info from git
+    read head < "$gitdir/HEAD"
+    case "$head" in
+      ref:*) export GITBRANCH="${head##*/}" ;;
+      "")    return 0 ;;
+      *)     export GITBRANCH="$branch""d:${head:0:7}" ;;
+    esac
   fi
-
-  export _GITBRANCH_LAST_REPO="${repo}"
-
-  local head=""
-  read head < "$gitdir/HEAD"
-  case "$head" in
-    ref:*) export GITBRANCH="${head##*/}" ;;
-    "")  return 0 ;;
-    *)   export GITBRANCH="$branch""d:${head:0:7}" ;;
-  esac
 }
 
+# Define some basic colours
+# TODO: add more colour codes
 PS1_green='\[\e[32m\]'
 PS1_reset='\[\e[0m\]'
 
 _mk_prompt() {
-  # Update the ~/.bash_history every time
+  # Update the ~/.bash_history after every command, across all terminal sessions
   history -a
 
   # Change the window title of X terminals
@@ -86,19 +103,20 @@ _mk_prompt() {
     screen) echo -ne "\033_${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\033\\" ;;
   esac
 
+  # Set the git-related env vars to use for adding status symbols to the PS1
   gitbranch
 
   local prefix=("\D{%T}")
-  if [[ ! -z "$GITBRANCH" ]]; then
-    prefix+=("${PS1_green}$GITBRANCH${PS1_reset}")
+  if [[ -n "${GITBRANCH}" ]]; then
+    prefix+=("${PS1_green}${GITBRANCH}${PS1_reset}")
 
     # Modified files
-    if [ ! -z "$(git ls-files -m)" ]; then
-    prefix+=("✹")
+    if [ -n "$(git ls-files -m)" ]; then
+      prefix+=("✹")
     fi
     # New, untracked files
-    if [ ! -z "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
-    prefix+=("✭")
+    if [ -n "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
+      prefix+=("✭")
     fi
   fi
   export PS1=" ${prefix[@]} │ ☯ $_MK_PROMPT_ORIG_PS1"
