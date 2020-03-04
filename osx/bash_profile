@@ -1,14 +1,23 @@
 # Exit if we are a login shell, and ~/.bash_profile has already been sourced.
-echo -e "~~ login shell\n"
-if $(shopt -q login_shell) && [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
-  source ~/.bashrc
+if ! $(shopt -q login_shell); then
+  echo "~~ non-login shell, exiting"
   return 0
+else
+  echo "~~ login shell"
+  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
+    source ~/.bashrc
+    return 0
+  fi
 fi
+echo "~~ sourcing .bash_profile"
 
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
+[ -d $HOME/bin ] && PATH="$HOME/bin:$PATH"
 
-# export PYENV_ROOT="$HOME/.pyenv"
+$HOME/bin/iterm_set_title_colour.sh $(hostname)
+
+export PYENV_ROOT="$HOME/.pyenv"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 export CARGO_HOME=$HOME/.cargo
 export GOPATH=$HOME/go
