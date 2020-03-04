@@ -62,7 +62,7 @@ function prune_networks() {
 
 function cleanup_images () {
   echo -e "\n> Removing all <none> images"
-  docker images | grep '<none>' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi
+  docker images | grep '\s<none>\s' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi -f
 }
 
 function engine_status() {
