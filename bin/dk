@@ -1,25 +1,11 @@
 #!/bin/bash
 
-function ls_images() {
-  # 2018-03-31 17:19:21 +1100 AEDT  memcached  latest 784b59c50820
-	docker images --format "table {{.CreatedAt}} {{.ID}} {{.Repository}}:{{.Tag}}"
-}
-
-function ps() {
-  docker ps -a --format "table {{.RunningFor}}\t{{.ID}} {{.Names}}\t{{.Image}}"
-}
-
-function ls_networks()  {
-  docker network ls
-}
-
-function count_images() {
-  docker images -q | wc -l
-}
-
-function count_containers() {
-  docker ps -aq | wc -l
-}
+# 2018-03-31 17:19:21 +1100 AEDT  memcached  latest 784b59c50820
+function ls_images()        { docker images --format "table {{.CreatedAt}} {{.ID}} {{.Repository}}:{{.Tag}}"; }
+function ps()               { docker ps -a --format "table {{.RunningFor}}\t{{.ID}} {{.Names}}\t{{.Image}}"; }
+function ls_networks()      { docker network ls; }
+function count_images()     { docker images -q | wc -l; }
+function count_containers() { docker ps -aq | wc -l; }
 
 function dls() {
   cat <<EOF
@@ -33,40 +19,18 @@ $(ls_images)
 $(ps)
 
 - Summary:
-No. of images:\t$(count_images)
-No. of containers:\t$(count_containers)
+No. of images:		$(count_images)
+No. of containers:	$(count_containers)
 EOF
 }
 
-function stop_containers () {
-  echo -e "\n> Stopping all containers"
-  ids=$(docker ps -aq)
-  [ -n "${ids}" ] && docker stop "${ids}"
-}
-
-function purge_containers () {
-  echo -e "\n> Force-removing all containers"
-  docker ps -aq | xargs docker rm -f
-}
-
-function prune_volumes() {
-  echo -e "\n> Pruning volumes"
-  docker volume prune -f
-}
-
-function prune_networks() {
-  echo -e "\n> Pruning networks"
-  docker network prune -f
-}
+function purge_containers () { echo -e "\n> Purging all containers"; docker ps -aq | xargs docker rm -f; }
+function prune_volumes()     { echo -e "\n> Pruning volumes"; docker volume prune -f; }
+function prune_networks()    { echo -e "\n> Pruning networks"; docker network prune -f; }
 
 function cleanup_images () {
-  echo -e "\n> Removing all <none> images"
+  echo -e "\n> Removing dangling images"
   docker images --filter=dangling=true -q | xargs docker rmi -f
-}
-
-function engine_status() {
-  until docker ps; do sleep 1; done
-  echo -e "\n> Docker Engine is up"
 }
 
 function cleanup () {
@@ -77,14 +41,14 @@ function cleanup () {
   dls
 }
 
+function engine_status() {
+  until docker ps; do sleep 1; done
+  echo -e "\n> Docker Engine is up"
+}
+
 case ${1} in
-  "ls" ) dls;;
-  "st" ) engine_status;;
-  "sc" ) stop_containers;;
-  "ci" ) cleanup_images;;
-  "pv" ) prune_volumes;;
-  "pn" ) prune_networks;;
-  "pc" ) purge_containers;;
+  "ls")      dls;;
   "cleanup") cleanup;;
+  "st")      engine_status;;
 esac
 
