@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # e.g.
-# 2018-03-31 17:19:21 +1100 AEDT   memcached                                       latest              784b59c50820
+# 2018-03-31 17:19:21 +1100 AEDT  memcached  latest 784b59c50820
 function images_pretty() {
   echo -e "\n- Images:\n"
 	docker images --format "table {{.CreatedAt}} {{.ID}} {{.Repository}}:{{.Tag}}"
@@ -13,10 +13,8 @@ function ps_pretty() {
 }
 
 function networks_pretty()  {
-  cat <<EOF
-Networks:
-$(docker network ls)
-EOF
+  echo -e "\n- Networks:\n"
+  docker network ls
 }
 
 function count_images() {
@@ -38,31 +36,29 @@ EOF
 }
 
 function stop_containers () {
-    echo -e "\n> Stopping all containers"
-    ids=$(docker ps -aq)
-    if [ -n "${ids}" ]; then
-        docker stop "${ids}"
-    fi
+  echo -e "\n> Stopping all containers"
+  ids=$(docker ps -aq)
+  [ -n "${ids}" ] && docker stop "${ids}"
 }
 
 function purge_containers () {
-    echo -e "\n> Force-removing all containers"
-    docker ps -aq | xargs -n 1 -P 4 docker rm -f
+  echo -e "\n> Force-removing all containers"
+  docker ps -aq | xargs docker rm -f
 }
 
 function prune_volumes() {
-    echo -e "\n> Pruning volumes"
-    docker volume prune -f
+  echo -e "\n> Pruning volumes"
+  docker volume prune -f
 }
 
 function prune_networks() {
-    echo -e "\n> Pruning networks"
-    docker network prune -f
+  echo -e "\n> Pruning networks"
+  docker network prune -f
 }
 
 function cleanup_images () {
   echo -e "\n> Removing all <none> images"
-  docker images | grep '\s<none>\s' | sed -E 's/ +/,/g' | cut -d ',' -f 3 | xargs docker rmi -f
+  docker images --filter=dangling=true -q | xargs docker rmi -f
 }
 
 function engine_status() {
@@ -71,21 +67,21 @@ function engine_status() {
 }
 
 function cleanup () {
-    purge_containers
-    cleanup_images
-    prune_networks
-    # prune_volumes
-    dls
+  purge_containers
+  cleanup_images
+  prune_networks
+  # prune_volumes
+  dls
 }
 
 case ${1} in
-    "ls" ) dls;;
-    "st" ) engine_status;;
-    "sc" ) stop_containers;;
-    "ci" ) cleanup_images;;
-    "pv" ) prune_volumes;;
-    "pn" ) prune_networks;;
-    "pc" ) purge_containers;;
-    "cleanup") cleanup;;
+  "ls" ) dls;;
+  "st" ) engine_status;;
+  "sc" ) stop_containers;;
+  "ci" ) cleanup_images;;
+  "pv" ) prune_volumes;;
+  "pn" ) prune_networks;;
+  "pc" ) purge_containers;;
+  "cleanup") cleanup;;
 esac
 
