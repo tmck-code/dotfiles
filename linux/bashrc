@@ -12,7 +12,7 @@ export PATH
 
 # Enter tmux as soon as possible, rather than at the end of the file
 # This avoids loading the bashrc and other dotfiles twice
-# [ $TMUX ] || tmux -2
+[ $TMUX ] || tmux -2
 
 shopt -s histappend  # append to the history file, don't overwrite it
 HISTFILESIZE=10000000  # largest history written to file at one time - 10 million lines
