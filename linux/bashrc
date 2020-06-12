@@ -97,10 +97,9 @@ _mk_prompt() {
   # Update the ~/.bash_history after every command, across all terminal sessions
   history -a
 
-  # Change the window title of X terminals
+  # Change the window title of tmux X terminal
   case $TERM in
     xterm*) echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007" ;;
-    screen) echo -ne "\033_${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\033\\" ;;
   esac
 
   # Set the git-related env vars to use for adding status symbols to the PS1
