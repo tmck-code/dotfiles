@@ -12,8 +12,6 @@ LS_COLORS_AUDIO="*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.m
 export LS_COLORS="${LS_COLORS_MISC}:${LS_COLORS_ARCHIVES}:${LS_COLORS_IMAGES}:${LS_COLORS_VIDEOS}:${LS_COLORS_AUDIO}"
 alias ls="ls --color=auto"
 
-ls -alh "$HOME/Videos/c/r/"
-
 alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
 alias grep="grep --color"  # Enable grep colours
 alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
