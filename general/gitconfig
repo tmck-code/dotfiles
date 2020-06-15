@@ -5,6 +5,9 @@
 [push]
   default = current                   # Never have to set upstream when pushing a new branch
 
+[pull]
+  rebase = true
+
 [alias]
   ap = add --patch                    # add to/stage commits chunk by chunk
   b = branch -v                       # branch (verbose)
