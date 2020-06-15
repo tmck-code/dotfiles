@@ -106,7 +106,7 @@ let g:shades_of_purple_airline = 1
 let g:airline_powerline_fonts = 1
 
 set background=dark " Dark style for theme
-colorscheme Pink_Cat_Boo " Set current theme
+colorscheme horizon " Set current theme
 
 " ensure colours work correctly even in tmux
 " if &term =~ '256color'
