@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for vpn in operations identity; do
+  systemctl --no-pager status openvpn@${vpn}.service
+done
+
