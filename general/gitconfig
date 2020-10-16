@@ -24,18 +24,8 @@
   mt = mergetool                      # fire up the merge tool
 
   l = log --graph --date=short
-  changes = log --pretty=format:\"%h %cr %cn %Cgreen%s%Creset\" --name-status
-  short = log --pretty=format:\"%h %cr %cn %Cgreen%s%Creset\"
-  simple = log --pretty=format:\" * %s\"
-  shortnocolor = log --pretty=format:\"%h %cr %cn %s\"
 
   # Longer commands -----------------------------
-
-  # via http://blog.apiaxle.com/post/handy-git-tips-to-stop-you-getting-fired/
-  snapshot = !git stash save "snapshot: $(date)" && git stash apply "stash@{0}"
-  snapshots = !git stash list --grep snapshot
-  # via http://stackoverflow.com/questions/5188320/how-can-i-get-a-list-of-git-branches-ordered-by-most-recent-commit
-  recent-branches = !git for-each-ref --count=15 --sort=-committerdate refs/heads/ --format='%(refname:short)'
 
   gpurge = !git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d
 
