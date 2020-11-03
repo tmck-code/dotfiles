@@ -170,7 +170,6 @@ let g:rbpt_colorpairs = [
     \ ]
 
 let g:rbpt_max = 16 " let g:rbpt_loadcmd_toggle = 0
-let g:mucomplete#enable_auto_at_startup = 1 " smart completion switcher
 
 " better-whitespace settings
 let g:better_whitespace_enabled=1 " Enable syntax highlighting for trailing whitespace
