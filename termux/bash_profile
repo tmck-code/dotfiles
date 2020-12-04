@@ -35,5 +35,6 @@ export BASH_PROFILE_SOURCED="true"
 
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
 [ $TMUX ] || tmux
+echo "entered tmux in bash_profile"
 
-# [ -f "$HOME/.bashrc" ] && source ~/.bashrc
+[ -f "$HOME/.bashrc" ] && source ~/.bashrc

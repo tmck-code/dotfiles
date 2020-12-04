@@ -101,8 +101,8 @@ endif
 
 " Colours ----------------------------------------
 
-let g:airline_theme='shades_of_purple'
-let g:shades_of_purple_airline = 1
+" let g:airline_theme='shades_of_purple'
+" let g:shades_of_purple_airline = 1
 let g:airline_powerline_fonts = 1
 
 set background=dark " Dark style for theme
