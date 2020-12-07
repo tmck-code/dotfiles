@@ -21,6 +21,9 @@ export HISTSIZE=100000000000000 # large history file
 export HISTCONTROL=ignoreboth   # don't put duplicate lines or lines starting with space in the history.
 export PROMPT_DIRTRIM=2
 
+# Enable bash completion
+[[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
+
 # Function to shorten the current directory
 short_pwd() {
   sed 's:\([^/]\)[^/]*/:\1/:g' <<< "${PWD/#${HOME}/\~}"
@@ -125,10 +128,13 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
 [ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 
-# Present a pretty message, with a small chance to print a "shiny" version
-if [ $(( RANDOM % 10 )) == 0 ]; then
-  fortune | pokesay -v -n | lolcat
-else
-  fortune | pokesay -v -n
+# Check that we're running an interactive shell, as printing the pokesay message
+# causes scp to fail
+if [ -n "$PS1" ] && $(shopt -q login_shell); then
+  # Present a pretty message, with a small chance to print a "shiny" version
+  if [ $(( RANDOM % 10 )) == 0 ]; then
+    fortune | pokesay -v -n | lolcat
+  else
+    fortune | pokesay -v -n
+  fi
 fi
-
