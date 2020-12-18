@@ -106,31 +106,30 @@ endif
 let g:airline_powerline_fonts = 1
 
 set background=dark " Dark style for theme
-colorscheme horizon " Set current theme
+" colorscheme horizon " Set current theme
+colorscheme molokai
+" Set comments to appear in italics for all colorschemes
+highlight Comment cterm=italic
 
 " ensure colours work correctly even in tmux
-" if &term =~ '256color'
+if &term =~ '256color'
 " disable Background Color Erase (BCE) so that color schemes
 " render properly when inside 256-color tmux and GNU screen.
 " see also http://snk.tuxfamily.org/log/vim-256color-bce.html
-set t_ut=
-" Activate 256 colors
-set t_Co=256
-" If terminal supports truecolor, this is needed for correct colours
-" - via https://github.com/crusoexia/vim-monokai#terminal-support
-if has("termguicolors")
-  set termguicolors
+  set t_ut=
+  " Activate 256 colors
+  set t_Co=256
+  " If terminal supports truecolor, this is needed for correct colours
+  " - via https://github.com/crusoexia/vim-monokai#terminal-support
+  if has("termguicolors")
+    set termguicolors
+  endif
 endif
-" endif
 set t_ZH=[3m
 set t_ZR=[23m
 
 " set t_ZH="\e[3m"
 " set t_ZR="\e[23m"
-
-" Set comments to appear in italics for all colorschemes
-highlight Comment cterm=italic
-
 
 " Plugin settings -------------------------------
 
@@ -138,6 +137,9 @@ highlight Comment cterm=italic
 let g:syntastic_python_python_exec = 'python3'
 let g:syntastic_python_checkers = ['python']
 
+" Terraform settings
+let g:terraform_align=1
+let g:terraform_fold_sections=1
 
 " EasyAlign
 " Start interactive EasyAlign in visual mode (e.g. vipga)
@@ -233,4 +235,6 @@ let g:webdevicons_enable_airline_tabline = 1
 " Searching options
 let g:ctrlsf_position = 'bottom'
 let g:ctrlsf_winsize = '30%'
+let g:ctrlsf_backend = 'ag'
 let g:go_bin_path = $HOME."/go/bin"
+
