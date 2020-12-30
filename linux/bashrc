@@ -123,6 +123,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 [ -r /etc/bash_completion ]    && source /etc/bash_completion
 [ -r "$HOME/dev/z/z.sh" ]      && source "$HOME/dev/z/z.sh"
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
+[ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $(( RANDOM % 10 )) == 0 ]; then

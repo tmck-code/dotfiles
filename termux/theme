@@ -1,26 +1,9 @@
 #!/bin/bash
 
-set -euxo pipefail
-
-reset_color() {
-	tput sgr0   # reset attributes
-	tput op     # reset color
-  return
-}
-
-reload_settings () {
-    echo "Reloading Settings..."
-    am broadcast --user 0 -a com.termux.app.reload_style com.termux > /dev/null
-    { echo "Applied Successfully."; }
-    return
-}
-
 function set_theme() {
-  local theme="${1}"
-  cp $HOME/dev/dotfiles/termux/${1}.properties $HOME/termux/colors.properties
-  { reload_settings; reset_color; exit; }
+  local theme="${1:-}"
+  cp $HOME/dev/dotfiles/termux/gruvbox-${theme}.properties $HOME/.termux/colors.properties
+  echo "Reloading Settings..."
+  am broadcast --user 0 -a com.termux.app.reload_style com.termux > /dev/null
+  export TERMUX_THEME="${theme}"
 }
-
-case ${1} in
-  "light"|"dark") set_theme ;;
-esac
