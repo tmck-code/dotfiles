@@ -105,9 +105,14 @@ endif
 " let g:shades_of_purple_airline = 1
 let g:airline_powerline_fonts = 1
 
-set background=dark " Dark style for theme
+if ($TERMUX_THEME == "light")
+  set background=light " Light style for theme
+else
+  set background=dark " Dark style for theme
+endif
+
 " colorscheme horizon " Set current theme
-colorscheme molokai
+colorscheme gruvbox
 " Set comments to appear in italics for all colorschemes
 highlight Comment cterm=italic
 
