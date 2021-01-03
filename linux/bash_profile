@@ -3,7 +3,7 @@ if ! $(shopt -q login_shell); then
   echo "~~ non-login shell, exiting"
   return 0
 else
-  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
+  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
     source ~/.bashrc
     return 0
   fi
@@ -25,17 +25,16 @@ export VISUAL=vim
 # Enable bash completion
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
 
-# Setup kitty
-source <(kitty + complete setup bash)
-KITTY_CONFIG_DIRECTORY="$HOME/.config/kitty/"
-
 # Export final path & other important vars
 export PATH
 export TERM=xterm-256color
 
 export BASH_PROFILE_SOURCED="true"
 
-# Load tmux once before entering .bashrc, ensure that we're not already in tmux
-[ $TMUX ] || tmux -2
+# Enter tmux before entering .bashrc
+# Ensure that we're not already in tmux, and attach to existing session if possible
+if [ ! $TMUX ]; then
+  tmux ls &> /dev/null && tmux a || tmux -2
+fi
 
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc
