@@ -22,7 +22,7 @@ export HISTCONTROL=ignoreboth   # don't put duplicate lines or lines starting wi
 export PROMPT_DIRTRIM=2
 
 # Enable bash completion
-# [[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
+[[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
 
 # Function to shorten the current directory
 short_pwd() {

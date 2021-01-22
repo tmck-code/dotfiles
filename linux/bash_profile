@@ -11,7 +11,10 @@ fi
 echo "~~ sourcing .bash_profile"
 
 # Load personal scripts
-PATH="$PATH:$HOME/bin/:$HOME/.local/bin"
+PATH="$HOME/bin/:$HOME/.local/bin:$PATH"
+
+# Set up rustup
+PATH="$HOME/.cargo/bin:$PATH"
 
 # Set up go
 export GOPATH=$HOME/go
@@ -24,6 +27,7 @@ export VISUAL=vim
 
 # Enable bash completion
 [[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+. $HOME/dev/alacritty/extra/completions/alacritty.bash
 
 # Setup kitty
 source <(kitty + complete setup bash)
@@ -39,3 +43,5 @@ export BASH_PROFILE_SOURCED="true"
 [ $TMUX ] || tmux -2
 
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc
+
+export PATH="$HOME/.cargo/bin:$PATH"
