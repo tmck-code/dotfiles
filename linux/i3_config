@@ -28,9 +28,9 @@ bindsym $mod+t exec alacritty
 
 # - menu/launcher
 # dmenu (minimal launcher)
-bindsym $mod+space exec dmenu_run
+bindsym $mod+Shift+space exec dmenu_run
 # desktop variant (desktop apps only)
-bindsym $mod+Shift+space exec --no-startup-id i3-dmenu-desktop
+bindsym $mod+space exec --no-startup-id j4-dmenu-desktop
 # extendo variant (fuzzy matching)
 bindsym $mod+Return exec dmenu_extended_run
 
