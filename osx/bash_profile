@@ -13,9 +13,10 @@ echo "~~ sourcing .bash_profile"
 
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
-[ -d $HOME/bin ] && PATH="$HOME/bin:$PATH"
+[ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
 
-$HOME/bin/iterm_set_title_colour.sh $(hostname)
+# TODO: Re-enable if needed, have switched to alacritty for the moment
+# $HOME/bin/iterm_set_title_colour.sh $(hostname)
 
 export PYENV_ROOT="$HOME/.pyenv"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
@@ -34,11 +35,13 @@ PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
 export PATH
 export TERM=xterm-256color
 
-[ -r ~/.fzf.bash ] && source ~/.fzf.bash
+[ -r "$HOME/.fzf.bash" ] && source "$HOME/.fzf.bash"
 
+# TODO: Should probably just remove these. They're really slow to load and
+# affect the speed of opening any new bash session
 # Load Ruby Version Manager & pyenv
-[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
-command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
+# [[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
+# command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
 
 # Silence OSX Catalina warning about using bash instead of zsh
 export BASH_SILENCE_DEPRECATION_WARNING=1
@@ -47,4 +50,3 @@ export BASH_PROFILE_SOURCED="true"
 
 # Enter tmux as soon as possible, rather than at the end of the file
 [ $TMUX ] || tmux -2
-
