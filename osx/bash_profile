@@ -48,4 +48,3 @@ export BASH_PROFILE_SOURCED="true"
 # Enter tmux as soon as possible, rather than at the end of the file
 [ $TMUX ] || tmux -2
 
-source ~/.bashrc
