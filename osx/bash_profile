@@ -5,7 +5,7 @@ if ! $(shopt -q login_shell); then
 else
   echo "~~ login shell"
   if [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
-    source ~/.bashrc
+    source "$HOME/.bashrc"
     return 0
   fi
 fi
