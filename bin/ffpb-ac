@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -euo pipefail
+
+input="${1}"
+output="output.mp4"
+
+# crop_filter=$(ffplay -vf cropdetect "${input}" 2>&1 ) || true
+crop_filter=$(ffmpeg -ss 5 -i "${input}" -vf cropdetect -f null - 2>&1 | grep -m1 crop= | sed 's/^.*crop=/crop=/g') || true
+
+echo "input: ${input}, output: ${output}, crop: ${crop_filter}"
+
+ffpb \
+  -i "${input}" \
+  -vf "${crop_filter}" \
+  -f mp4 \
+  "${output}"
+
+ls -alh "${input}"
+
+mv -v "${input}" "${input}.orig"
+mv -v "${output}" "${input}"

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -euo pipefail
+
+concat="concat:"
+
+for i in "${@}"; do
+  ffmpeg -i "${i}" -c copy -bsf:v h264_mp4toannexb -f mpegts "${i}.ts"
+  concat+="${i}.ts|"
+done
+
+concat="${concat:0:-1}"
+
+ffpb -i "${concat}" -c copy -bsf:a aac_adtstoasc output.mp4
+
+rm -v ./*.ts "${@}"
+mv -v output.mp4 "${1}"
+
