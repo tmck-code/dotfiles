@@ -140,6 +140,12 @@ bar {
   status_command i3status
 }
 
+# enable some MATE features
+exec --no-startup-id exec mate-settings-daemon
+exec --no-startup-id exec mate-screensaver
+exec --no-startup-id exec nm-applet
+
 # launch with an internet browser & a terminall
 exec google-chrome
 exec alacritty
+
