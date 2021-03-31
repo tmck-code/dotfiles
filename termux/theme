@@ -5,5 +5,12 @@ function set_theme() {
   cp $HOME/dev/dotfiles/termux/gruvbox-${theme}.properties $HOME/.termux/colors.properties
   echo "Reloading Settings..."
   am broadcast --user 0 -a com.termux.app.reload_style com.termux > /dev/null
-  export TERMUX_THEME="${theme}"
+  echo TERMUX_THEME=${theme} > $HOME/.termux/current
+  export TERMUX_THEME=${theme}
+  cat $HOME/.termux/current
+}
+
+function get_theme() {
+  . $HOME/.termux/current
+  echo $TERMUX_THEME
 }
