@@ -143,10 +143,11 @@ bar {
 }
 
 # Ensure that mate services are started
-exec --no-startup-id mate-settings-daemon
 # exec --no-startup-id nm-applet
-exec --no-startup-id mate-power-manager
 # exec --no-startup-id blueman-applet
+exec --no-startup-id mate-settings-daemon
+exec --no-startup-id mate-power-manager
+exec --no-startup-id exec mate-screensaver
 exec --no-startup-id compton
 
 # launch with an internet browser & a terminal
