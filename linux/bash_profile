@@ -23,7 +23,8 @@ export EDITOR=vim
 export VISUAL=vim
 
 # Enable bash completion
-[[ -r "/usr/local/etc/profile.d/bash_completion.sh" ]] && . "/usr/local/etc/profile.d/bash_completion.sh"
+[[ -r /etc/bash_completion ]] && . /etc/bash_completion
+[[ -d /etc/bash_completion.d ]] && . /etc/bash_completion.d/*
 
 # Export final path & other important vars
 export PATH
@@ -37,4 +38,6 @@ if [ ! $TMUX ]; then
   tmux ls &> /dev/null && tmux a || tmux -2
 fi
 
+eval "$(pyenv init -)"
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc
+source "$HOME/.cargo/env"

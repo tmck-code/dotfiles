@@ -16,7 +16,7 @@ alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
 alias grep="grep --color"  # Enable grep colours
 alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
 
-if [ -f ~/.aws/credentials ]; then # && [ "$(head -n 1 ~/.aws/credentials)" == "[default]" ]; then
+if [ -f ~/.aws/credentials ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
   AWS_ACCESS_KEY_ID="$(sed '2q;d' ~/.aws/credentials | cut -d '=' -f 2)"
   AWS_SECRET_ACCESS_KEY="$(sed '3q;d' ~/.aws/credentials | cut -d '=' -f 2)"
