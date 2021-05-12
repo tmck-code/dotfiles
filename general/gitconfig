@@ -6,7 +6,7 @@
   default = current                   # Never have to set upstream when pushing a new branch
 
 [pull]
-  rebase = true
+  rebase = false
 
 [alias]
   ap = add --patch                    # add to/stage commits chunk by chunk
@@ -43,3 +43,5 @@
 
 [color "branch"]
   remote = yellow
+[core]
+	editor = vim
