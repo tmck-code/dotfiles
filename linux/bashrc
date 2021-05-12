@@ -21,9 +21,6 @@ export HISTSIZE=100000000000000 # large history file
 export HISTCONTROL=ignoreboth   # don't put duplicate lines or lines starting with space in the history.
 export PROMPT_DIRTRIM=2
 
-# Enable bash completion
-[[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
-
 # Function to shorten the current directory
 short_pwd() {
   sed 's:\([^/]\)[^/]*/:\1/:g' <<< "${PWD/#${HOME}/\~}"
@@ -124,9 +121,10 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 [ -r /etc/bash_completion ]    && source /etc/bash_completion
-[ -r "$HOME/dev/z/z.sh" ]      && source "$HOME/dev/z/z.sh"
+[ -r "$HOME/bin/z/z.sh" ]      && source "$HOME/bin/z/z.sh"
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
 [ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
+[ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
 
 # Check if we're running an interactive shell, as printing the pokesay message
 # causes scp to fail
@@ -138,3 +136,5 @@ if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
     fortune | pokesay -v
   fi
 fi
+source "$HOME/.cargo/env"
+eval "$(pyenv init -)"
