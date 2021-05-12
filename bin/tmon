@@ -1,16 +1,18 @@
 #!/bin/bash
 
+mon="${1:-bpytop}"
+
+case "${mon}" in
+  gotop) mon_command='gotop -a -p --rate 0.5';;
+  bpytop) mon_command='bpytop' ;;
+  *) echo 'usage: tmon <monitor:gotop/bpytop>' ;;
+esac
+
 # create a new session. Note the -d flag, we do not want to attach just yet!
 tmux new-session -s "dev" -n "mon" -d
 
-tmux send-keys -t dev:mon 'htop' C-j
+tmux send-keys -t dev:mon "${mon_command}" C-j
 
-tmux split-window -v -p 80
-tmux send-keys -t dev:mon 'gotop -m -a -p --rate 0.5' C-j
-
-tmux split-window -h
-tmux send-keys -t dev:mon 'sleep 1 && slurm -i en0 -t foo' C-j
-
-# # finally attach to the session
+# finally attach to the session
 tmux attach -t dev:mon
 
