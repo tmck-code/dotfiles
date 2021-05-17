@@ -4,16 +4,17 @@ set -euo pipefail
 
 function install_homedir() {
   local os=$1
-  echo "- Installing ${os} dotfiles"
   cd "${os}"
+  echo -e "\n- Installing ${os} dotfiles"
+
   for i in $(find ./ -maxdepth 1 -type f | cut -c3-); do
     ln -svf "$PWD/$i" "$HOME/"
   done
-  for i in $(find -mindepth 2 -type d | cut -c3-); do
+  for i in $(find -mindepth 1 -type d | cut -c3-); do
     mkdir -p "$HOME/$i"
-    echo "creating directory $i"
-    for j in $(find $i -type f);
-      do ln -svf "$PWD/$j" "$HOME/$i/"
+    echo "-- creating directory $i"
+    for j in $(find $i -type f); do
+      ln -svf "$PWD/$j" "$HOME/$i/"
     done
   done
   cd -
