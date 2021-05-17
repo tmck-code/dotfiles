@@ -35,7 +35,8 @@ export BASH_PROFILE_SOURCED="true"
 # Enter tmux before entering .bashrc
 # Ensure that we're not already in tmux, and attach to existing session if possible
 if [ ! $TMUX ]; then
-  tmux ls &> /dev/null && tmux a || tmux -2
+  tmux -2
+  # tmux ls &> /dev/null && tmux a || tmux -2
 fi
 
 eval "$(pyenv init -)"
