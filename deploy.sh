@@ -10,9 +10,10 @@ function install_homedir() {
   for i in $(find ./ -maxdepth 1 -type f | cut -c3-); do
     ln -svf "$PWD/$i" "$HOME/"
   done
+
   for i in $(find -mindepth 1 -type d | cut -c3-); do
-    mkdir -p "$HOME/$i"
     echo "-- creating directory $i"
+    mkdir -p "$HOME/$i"
     for j in $(find $i -type f); do
       ln -svf "$PWD/$j" "$HOME/$i/"
     done
