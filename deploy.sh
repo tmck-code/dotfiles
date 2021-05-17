@@ -21,24 +21,17 @@ function install_homedir() {
 
 function install_os() {
   local os=$1
+  echo "- Installing dotfiles for OS: '${os}'"
+
+  mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc file found! Nothing to back up here"
   install_homedir $os
   install_homedir general
   install_homedir bin
 }
 
-if [ -z "${1:-}" ]; then
-  echo "- Must provide an OS as \$1"
-  exit 1
-fi
-
-OS="${1}"
-echo "- Installing dotfiles for OS: '${OS}'"
-
-mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc file found! Nothing to back up here"
-
 case ${1:-} in
   "linux" )  install_os linux  ;;
   "termux" ) install_os termux ;;
   "osx" )    install_os osx    ;;
-  * )        echo "must choose linux/osx/termux" ;;
+  * )        echo "must choose linux/osx/termux" && exit 1;;
 esac
