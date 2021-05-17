@@ -30,8 +30,6 @@ function install_os() {
 }
 
 case ${1:-} in
-  "linux" )  install_os linux  ;;
-  "termux" ) install_os termux ;;
-  "osx" )    install_os osx    ;;
-  * )        echo "must choose linux/osx/termux" && exit 1;;
+  linux|termux|osx ) install_os $1  ;;
+  * )                echo "must choose linux/osx/termux" && exit 1;;
 esac
