@@ -5,7 +5,7 @@ set -euo pipefail
 function install_homedir() {
   local os=$1
   cd "${os}"
-  echo -e "\n- Installing ${os} dotfiles"
+  echo "- Installing ${os} dotfiles"
 
   for i in $(find ./ -maxdepth 1 -type f | cut -c3-); do
     ln -svf "$PWD/$i" "$HOME/"
@@ -21,18 +21,21 @@ function install_homedir() {
   cd -
 }
 
+function install_general() {
+  mv -v "$HOME/.bashrc" "$HOME/.bashrc.bak" || echo "- No bashrc, skipping backup!"
+  install_homedir general
+  install_homedir bin
+}
+
 function install_os() {
   local os=$1
   echo "- Installing dotfiles for OS: '${os}'"
 
-  mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc, skipping backup!"
-  install_homedir general
-  install_homedir $os
-  install_homedir bin
+  install_homedir "$os"
 }
 
 case ${1:-} in
-  linux|termux|osx ) install_os $1 ;;
-  wsl )              install_os linux ; install_os $1 ;;
+  linux|termux|osx ) install_general ; install_os "$1" ;;
+  wsl )              install_general ; install_os linux ; install_os "$1" ;;
   * )                echo "must choose linux/osx/termux" ; exit 1;;
 esac
