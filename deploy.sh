@@ -26,8 +26,8 @@ function install_os() {
   echo "- Installing dotfiles for OS: '${os}'"
 
   mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc, skipping backup!"
-  install_homedir $os
   install_homedir general
+  install_homedir $os
   install_homedir bin
 }
 
