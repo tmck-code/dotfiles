@@ -25,13 +25,14 @@ function install_os() {
   local os=$1
   echo "- Installing dotfiles for OS: '${os}'"
 
-  mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc file found! Nothing to back up here"
+  mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc, skipping backup!"
   install_homedir $os
   install_homedir general
   install_homedir bin
 }
 
 case ${1:-} in
-  linux|termux|osx ) install_os $1  ;;
-  * )                echo "must choose linux/osx/termux" && exit 1;;
+  linux|termux|osx ) install_os $1 ;;
+  wsl )              install_os linux ; install_os $1 ;;
+  * )                echo "must choose linux/osx/termux" ; exit 1;;
 esac
