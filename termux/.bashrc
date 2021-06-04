@@ -136,5 +136,5 @@ if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
     fortune | pokesay -v
   fi
 fi
-source "$HOME/.cargo/env"
-eval "$(pyenv init -)"
+# source "$HOME/.cargo/env"
+# eval "$(pyenv init -)"
