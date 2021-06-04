@@ -33,7 +33,7 @@ function report_inline() {
 }
 
 function report_termux() {
-  echo "$(termux-battery-status | jq -r '.temperature')°"
+  printf "%0.1f°" "$(termux-battery-status | jq -r '.temperature')"
 }
 
 function report_core_temps() {
