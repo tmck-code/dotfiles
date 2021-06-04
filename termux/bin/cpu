@@ -16,7 +16,7 @@ function fetch_stat() {
 }
 
 for i in {0..7}; do
-  for stat in freq state; do
-    fetch_stat "cpu${i}" "${stats[$stat]}"
+  for stat in freq min_freq max_freq; do
+    echo -n "cpu${i} ($stat): " && fetch_stat "cpu${i}" "${stats[$stat]}"
   done
 done
