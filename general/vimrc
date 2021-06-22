@@ -1,5 +1,4 @@
 " taken from github.com/tmck-code/dotfiles
-
 " Package manager
 execute pathogen#infect()
 " Global variables to enable plugins
@@ -138,9 +137,15 @@ set t_ZR=[23m
 
 " Plugin settings -------------------------------
 
+if has('nvim') " set better click/drag etc, only for neovim
+  let g:deoplete#enable_at_startup = 1
+endif
+
 " Syntastic Python version
 let g:syntastic_python_python_exec = 'python3'
-let g:syntastic_python_checkers = ['python']
+let g:syntastic_python_checkers = ['pylint']
+let g:syntastic_check_on_open = 0
+let g:syntastic_check_on_wq = 1
 
 " Terraform settings
 let g:terraform_align=1

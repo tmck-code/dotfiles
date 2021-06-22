@@ -4,7 +4,7 @@ mon="${1:-bpytop}"
 
 case "${mon}" in
   gotop) mon_command='gotop -a -p --rate 0.5';;
-  bpytop) mon_command='bpytop' ;;
+  bpytop) mon_command='~/.pyenv/shims/bpytop' ;;
   *) echo 'usage: tmon <monitor:gotop/bpytop>' ;;
 esac
 
