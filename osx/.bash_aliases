@@ -30,10 +30,11 @@ alias gpurge="git fetch origin --prune && git branch --merged | grep -v master |
 # Some nice helpers & shortcuts
 alias j="cat ${1} | jq ."
 
-if [ -f ~/.aws/credentials ] && [ "$(head -n 1 ~/.aws/credentials)" == "[default]" ]; then
+if [ -f ~/.aws/credentials ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
-  export AWS_ACCESS_KEY_ID="$(sed '3q;d' ~/.aws/credentials | cut -d ' ' -f 3)"
-  export AWS_SECRET_ACCESS_KEY="$(sed '4q;d' ~/.aws/credentials | cut -d ' ' -f 3)"
+  export AWS_ACCESS_KEY_ID=$(sed '2q;d' ~/.aws/credentials | cut -d '=' -f 2)
+  export AWS_SECRET_ACCESS_KEY=$(sed '3q;d' ~/.aws/credentials | cut -d '=' -f 2)
   export AWS_DEFAULT_REGION="ap-southeast-2"
+  export AWS_SESSION_TOKEN=$(sed '4q;d' ~/.aws/credentials | cut -d '=' -f 2)
 fi
 

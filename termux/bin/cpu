@@ -1,0 +1,22 @@
+#!/bin/bash
+
+declare -A stats
+
+base_dir="/sys/devices/system/cpu/"
+stats[freq]="cpufreq/scaling_cur_freq"
+stats[min_freq]="cpufreq/cpuinfo_min_freq"
+stats[max_freq]="cpufreq/cpuinfo_max_freq"
+stats[state]="cpufreq/stats/time_in_state"
+
+
+function fetch_stat() {
+    local cpu="$1"
+    local stat="$2"
+    cat "${base_dir}${cpu}/${stat}"
+}
+
+for i in {0..7}; do
+  for stat in freq min_freq max_freq; do
+    echo -n "cpu${i} ($stat): " && fetch_stat "cpu${i}" "${stats[$stat]}"
+  done
+done

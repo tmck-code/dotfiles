@@ -1,0 +1,38 @@
+# Show stuff
+set mark-directories on
+set mark-symlinked-directories on
+set show-all-if-unmodified on
+# set show-all-if-ambiguous on
+set visible-stats on
+# ask before showing >200 results
+set completion-query-items 200
+
+# show all completions
+set page-completions on
+# more intelligent auto-complete behaviour for partial words
+set skip-completed-text on
+
+# Allow UTF-8 input and output, instead of showing stuff like $'\0123\0456'
+set input-meta on
+set output-meta on
+set convert-meta off
+
+# arrow keys
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# alt-arrow keys
+# "\e[1;3C": forward-word
+# "\e[C": forward-word
+"\e\e[C": forward-word
+
+# "\e[1;3D": backward-word
+# "\e[D": backward-word
+"\e\e[D": backward-word
+
+# tab
+TAB: complete
+
+# cd to previous dir and ls
+"\e\ex": 'cd !$ \015ls\015'
+

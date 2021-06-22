@@ -2,75 +2,40 @@
 
 set -euo pipefail
 
-if [ -z "${1:-}" ]; then
-  echo "- Must provide an OS as \$1"
-  exit 1
-fi
+function install_homedir() {
+  local os=$1
+  cd "${os}"
+  echo "- Installing ${os} dotfiles"
 
-OS="${1}"
-echo "- Installing dotfiles for OS: '${OS}'"
+  for i in $(find ./ -maxdepth 1 -type f | cut -c3-); do
+    ln -svf "$PWD/$i" "$HOME/"
+  done
 
-mv -v $HOME/.bashrc $HOME/.bashrc.bak || echo "- No bashrc file found! Nothing to back up here"
-
-general_dotfiles="
-gitconfig
-rubocop.yml
-tmux.conf
-vimrc"
-
-linux_dotfiles="
-bash_aliases
-bash_profile
-bashrc
-inputrc
-tmux.conf"
-
-termux_dotfiles="
-bash_aliases"
-
-osx_kitty_dotfiles="
-kitty.conf
-kitty.light-gruvbox.conf
-"
+  for i in $(find . -mindepth 1 -type d | cut -c3-); do
+    echo "-- creating directory $i"
+    mkdir -p "$HOME/$i"
+    for j in $(find $i -type f); do
+      ln -svf "$PWD/$j" "$HOME/$i/"
+    done
+  done
+  cd -
+}
 
 function install_general() {
-  echo "- Installing 'general' dotfiles"
-  for d in $(echo "${general_dotfiles}"); do
-    ln -svf "$(pwd)/general/${d}" "$HOME/.${d}"
-  done
+  mv -v "$HOME/.bashrc" "$HOME/.bashrc.bak" || echo "- No bashrc, skipping backup!"
+  install_homedir general
+  install_homedir bin
 }
 
-function install_linux() {
-  echo "- Installing linux dotfiles"
-  for d in $(echo "${linux_dotfiles}"); do
-    ln -svf "$(pwd)/linux/${d}" "$HOME/.${d}"
-  done
+function install_os() {
+  local os=$1
+  echo "- Installing dotfiles for OS: '${os}'"
+
+  install_homedir "$os"
 }
 
-function install_osx() {
-  echo "- Installing osx dotfiles"
-  for d in $(echo "${osx_dotfiles}"); do
-    ln -svf "$(pwd)/osx/${d}" "$HOME/.${d}"
-  done
-}
-
-function install_termux() {
-  echo "- Installing termux dotfiles"
-  for d in $(echo "${termux_dotfiles}"); do
-    ln -svf "$(pwd)/termux/${d}" "$HOME/.${d}"
-  done
-}
-
-
-function install_bin() {
-  echo "- Installing bin files"
-  mkdir -p $HOME/bin
-  for f in bin/*; do
-    ln -svf "$(pwd)/${f}" "$HOME/bin/"
-  done
-}
-
-install_general
-install_linux
-install_bin
-
+case ${1:-} in
+  linux|termux|osx ) install_general ; install_os "$1" ;;
+  wsl )              install_general ; install_os linux ; install_os "$1" ;;
+  * )                echo "must choose linux/osx/termux" ; exit 1;;
+esac
