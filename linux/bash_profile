@@ -40,4 +40,4 @@ fi
 
 eval "$(pyenv init -)"
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc
-source "$HOME/.cargo/env"
+. "$HOME/.cargo/env"
