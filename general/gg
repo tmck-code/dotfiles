@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -euo pipefail
+
+function set_upstream() {
+  local branch_name
+  branch_name=$(git branch --show-current)
+  echo "git branch --set-upstream-to=origin/${branch_name} ${branch_name}"
+  git branch --set-upstream-to=origin/"${branch_name}" "${branch_name}"
+}
+
+case ${1:-} in
+  "set_upstream" ) set_upstream ;;
+  *) echo "invalid operation '${1}'" && exit 1 ;;
+esac
