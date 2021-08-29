@@ -21,6 +21,7 @@ export VISUAL=vim
 PATH="$PATH:$HOME/bin/"
 # Set up go
 export GOPATH=$HOME/go
+export GOROOT=$PREFIX/lib/go
 PATH=$PATH:$GOPATH/bin
 
 export PATH
