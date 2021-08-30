@@ -34,6 +34,8 @@ if [ "$(uname -o)" == "Android" ]; then
 fi
 export BASH_PROFILE_SOURCED="true"
 
+set -o allexport; source $HOME/.termux/current; set +o allexport
+
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
 [ $TMUX ] || tmux
 echo "entered tmux in bash_profile"
