@@ -4,7 +4,8 @@ mon="${1:-bpytop}"
 
 case "${mon}" in
   gotop) mon_command='gotop -a -p --rate 0.5';;
-  bpytop) mon_command='~/.pyenv/shims/bpytop' ;;
+  # bpytop) mon_command='~/.pyenv/shims/bpytop' ;;
+  bpytop) mon_command='bpytop' ;;
   *) echo 'usage: tmon <monitor:gotop/bpytop>' ;;
 esac
 
@@ -12,6 +13,11 @@ esac
 tmux new-session -s "dev" -n "mon" -d
 
 tmux send-keys -t dev:mon "${mon_command}" C-j
+
+tmux split-window -h
+tmux select-pane 1
+
+tmux send-keys "nvtop -d 20" C-j
 
 # finally attach to the session
 tmux attach -t dev:mon
