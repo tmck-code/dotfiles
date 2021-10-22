@@ -77,6 +77,12 @@ bindsym $mod+a focus parent
 
 # Workspaces ------------------------------------
 
+# border colours
+# class                 border  backgr. text    indicator child_border
+client.focused_inactive #000000 #000000 #d9d9d9 #0d1010 #000000
+client.unfocused        #000000 #000000 #d9d9d9 #424242 #000000
+client.focused          #212121 #212121 #ffffff #d9d9d9 #212121
+
 # switch workspace
 bindsym $mod+1 workspace "1"
 bindsym $mod+2 workspace "2"
