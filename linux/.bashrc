@@ -5,6 +5,12 @@
 # [ -z "$PS1" ] && echo "No \$PS1" && return 0
 # [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - .bash_profile not sourced" && return 0
 
+# Enter tmux before entering .bashrc
+# Ensure that we're not already in tmux, and attach to existing session if possible
+if [ ! $TMUX ]; then
+  tmux -2
+  # tmux ls &> /dev/null && tmux a || tmux -2
+fi
 # My utils that need to set before using tmux
 for dirpath in $HOME/bin $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
@@ -131,8 +137,8 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
   # Present a pretty message, with a small chance to print a "shiny" version
   if [ $(( RANDOM % 10 )) == 0 ]; then
-    fortune | pokesay -v | lolcat
+    fortune | pokesay -width 40 | lolcat
   else
-    fortune | pokesay -v
+    fortune | pokesay -width 40
   fi
 fi
