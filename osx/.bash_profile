@@ -18,7 +18,7 @@ echo "~~ sourcing .bash_profile"
 # TODO: Re-enable if needed, have switched to alacritty for the moment
 # $HOME/bin/iterm_set_title_colour.sh $(hostname)
 
-export PYENV_ROOT="$HOME/.pyenv"
+# export PYENV_ROOT="$HOME/.pyenv"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 export CARGO_HOME=$HOME/.cargo
 export GOPATH=$HOME/go
@@ -42,7 +42,7 @@ export TERM=xterm-256color
 # affect the speed of opening any new bash session
 # Load Ruby Version Manager & pyenv
 # [[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm"
-command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
+# command -v pyenv 1>/dev/null 2>&1 && eval "$(pyenv init -)"
 
 # Silence OSX Catalina warning about using bash instead of zsh
 export BASH_SILENCE_DEPRECATION_WARNING=1
