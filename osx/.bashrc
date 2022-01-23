@@ -134,8 +134,8 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokesay -v -n | gsed 's/^/  /g' | lolcat
+  fortune | pokesay -nowrap | gsed 's/^/  /g' | lolcat
 else
-  fortune | pokesay -v -n | gsed 's/^/  /g'
+  fortune | pokesay -nowrap | gsed 's/^/  /g'
 fi
 
