@@ -6,8 +6,11 @@
 [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - profile not sourced" && return 0
 
 # My utils that need to set when using tmux and other tools
+[ -d /opt/homebrew/bin ] && PATH="$PATH:/opt/homebrew/bin"
 [ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
-[ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
+[ -d ~/bin ] && PATH="$HOME/bin:$PATH"
+
+export PATH
 
 shopt -s histappend                  # append to the history file, don't overwrite it
 export HISTFILESIZE=10000000000 # largest history written to file at one time
