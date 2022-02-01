@@ -131,8 +131,8 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
   # Present a pretty message, with a small chance to print a "shiny" version
   if [ $(( RANDOM % 10 )) == 0 ]; then
-    fortune | pokesay -v | lolcat
+    fortune | pokesay -nowrap | lolcat
   else
-    fortune | pokesay -v
+    fortune | pokesay -nowrap
   fi
 fi

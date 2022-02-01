@@ -16,8 +16,8 @@ echo "~~ sourcing .bash_profile"
 PATH="$PATH:$HOME/bin/:$HOME/.local/bin"
 
 # Go paths
-export GOPATH=$HOME/go
-export GOROOT=/usr/local/go
+# export GOPATH=$HOME/go
+#  export GOROOT=/usr/local/go
 PATH=$PATH:$GOPATH/bin:$GOROOT/bin
 # Pyenv paths
 export PYENV_ROOT="$HOME/.pyenv"
@@ -38,8 +38,10 @@ export BASH_PROFILE_SOURCED="true"
 # Program setup/sourcing ------------------------
 
 # Enable bash completion
-[[ -r /etc/bash_completion ]] && . /etc/bash_completion
-[[ -d /etc/bash_completion.d ]] && . /etc/bash_completion.d/*
+for f in "/etc/bash_completion" "/usr/share/bash-completion/bash_completion"; do
+  [[ -r "${f}" ]] && . "${f}"
+done
+# [[ -d /etc/bash_completion.d ]] && . /etc/bash_completion.d/*
 
 # Enable pyenv
 eval "$(pyenv init --path)"

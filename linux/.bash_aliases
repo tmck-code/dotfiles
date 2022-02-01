@@ -10,11 +10,14 @@ LS_COLORS_IMAGES="*.jpg=01;95:*.jpeg=01;95:*.mjpg=01;95:*.mjpeg=01;95:*.gif=01;9
 LS_COLORS_VIDEOS="*.mov=01;95:*.mpg=01;95:*.mpeg=01;95:*.m2v=01;95:*.mkv=01;95:*.webm=01;95:*.ogm=01;95:*.mp4=01;95:*.m4v=01;95:*.mp4v=01;95:*.vob=01;95:*.qt=01;95:*.nuv=01;95:*.wmv=01;95:*.asf=01;95:*.rm=01;95:*.rmvb=01;95:*.flc=01;95:*.avi=01;95:*.fli=01;95:*.flv=01;95:*.gl=01;95:*.dl=01;95:*.xcf=01;95:*.xwd=01;95:*.yuv=01;95:*.cgm=01;95:*.emf=01;95:*.ogv=01;35:*.ogx=01;35"
 LS_COLORS_AUDIO="*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36"
 export LS_COLORS="${LS_COLORS_MISC}:${LS_COLORS_ARCHIVES}:${LS_COLORS_IMAGES}:${LS_COLORS_VIDEOS}:${LS_COLORS_AUDIO}"
-alias ls="ls --color=auto"
+# alias ls="ls --color=auto"
 
 alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
 alias grep="grep --color"  # Enable grep colours
 alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
+
+alias dush="du -sh * | sort -h"
+alias emacs="emacs -nw"
 
 if [ -f ~/.aws/credentials ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
