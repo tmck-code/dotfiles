@@ -123,18 +123,11 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 [ -r /etc/bash_completion ]    && source /etc/bash_completion
 [ -r "$HOME/bin/z/z.sh" ]      && source "$HOME/bin/z/z.sh"
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
-[ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 [ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
 
-# Check if we're running an interactive shell, as printing the pokesay message
-# causes scp to fail
-if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
-  # Present a pretty message, with a small chance to print a "shiny" version
-  if [ $(( RANDOM % 10 )) == 0 ]; then
-    fortune | pokesay -v | lolcat
-  else
-    fortune | pokesay -v
-  fi
+# Present a pretty message, with a small chance to print a "shiny" version
+if [ $(( RANDOM % 10 )) == 0 ]; then
+  fortune | pokesay -width 60 | lolcat
+else
+  fortune | pokesay -width 60
 fi
-# source "$HOME/.cargo/env"
-# eval "$(pyenv init -)"
