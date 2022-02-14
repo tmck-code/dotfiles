@@ -1,13 +1,16 @@
+#!/bin/bash
+
+echo "~~ sourcing .bash_profile"
 # Exit if we are a login shell, and ~/.bash_profile has already been sourced.
 if ! $(shopt -q login_shell); then
   echo "~~ non-login shell, exiting"
   return 0
 else
-  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
-    source ~/.bashrc
-    return 0
-  fi
 fi
+  # if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
+  #   source ~/.bashrc
+  #   return 0
+  # fi
 echo "~~ sourcing .bash_profile"
 
 # PATH ------------------------------------------
