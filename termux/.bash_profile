@@ -26,7 +26,7 @@ PATH=$PATH:$GOPATH/bin
 
 export PATH
 
-source $HOME/bin/z.sh
+[ -f "$HOME/bin/z.sh" ] && source $HOME/bin/z.sh
 
 # Export some helper ENV vars
 if [ "$(uname -o)" == "Android" ]; then
@@ -34,10 +34,18 @@ if [ "$(uname -o)" == "Android" ]; then
 fi
 export BASH_PROFILE_SOURCED="true"
 
+[ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
+# Load previous theme
 set -o allexport; source $HOME/.termux/current; set +o allexport
+
+h="$(date +%H)"
+if [[ "$TERMUX_THEME" = "light" ]] && [[ "$h" > "19" ]]; then
+  set_theme dark
+elif [[ "$TERMUX_THEME" = "dark" ]] && [[ "$h" > "07" ]]; then
+  set_theme light
+fi
 
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
 [ $TMUX ] || tmux
-echo "entered tmux in bash_profile"
 
 [ -f "$HOME/.bashrc" ] && source ~/.bashrc

@@ -5,6 +5,12 @@
 # [ -z "$PS1" ] && echo "No \$PS1" && return 0
 # [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - .bash_profile not sourced" && return 0
 
+# Enter tmux before entering .bashrc
+# Ensure that we're not already in tmux, and attach to existing session if possible
+if [ ! $TMUX ]; then
+  tmux -2
+  # tmux ls &> /dev/null && tmux a || tmux -2
+fi
 # My utils that need to set before using tmux
 for dirpath in $HOME/bin $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
