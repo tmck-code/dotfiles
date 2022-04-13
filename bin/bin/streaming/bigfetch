@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -euo pipefail
+
+function render() {
+  figlet -l -f $HOME/bin/streaming/figlet/3d.flf -w 200 -- "${@}" | lolcat
+}
+
+clear
+render "\
+------------------------------
+twitch.tv/nimbus1r
+github.com/tmck-code
+mixcloud.com/nimbis
+"
+
+echo -e "\n\nhttps://twitch.tv/nimbus1r  ... https://github.com/tmck-code ... https://mixcloud.com/nimbis"
+
+echo -e "\n"
