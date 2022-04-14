@@ -3,7 +3,7 @@
 set -euo pipefail
 
 function render() {
-  figlet -l -f $HOME/bin/streaming/figlet/3d.flf -w 200 -- "${@}" | lolcat
+  figlet -l -f $HOME/bin/streaming/figlet/3d.flf -w 200 -- "${@}" | lolcat -F 0.01
 }
 
 clear
