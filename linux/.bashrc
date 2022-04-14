@@ -12,7 +12,7 @@ if [ ! $TMUX ]; then
   # tmux ls &> /dev/null && tmux a || tmux -2
 fi
 # My utils that need to set before using tmux
-for dirpath in $HOME/bin $HOME/.local/bin /usr/local/bin; do
+for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
 done
 export PATH
