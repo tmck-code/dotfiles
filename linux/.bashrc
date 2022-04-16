@@ -131,6 +131,9 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 [ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 [ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
 
+PATH=$PATH:/usr/local/go/bin
+export PATH
+
 # Check if we're running an interactive shell, as printing the pokesay message
 # causes scp to fail
 if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
