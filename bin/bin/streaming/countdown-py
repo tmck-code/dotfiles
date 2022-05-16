@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+
+
+import os
+from dataclasses import dataclass
+from datetime import timedelta
+import time
+from collections import namedtuple
+from argparse import ArgumentParser
+
+FigletFont = namedtuple('figlet_font', ['fpath'])
+FONTS = {
+    'ansi_shadow': FigletFont('/usr/share/figlet/fonts/ANSI\ Shadow.flf'),
+    '3d':          FigletFont('/usr/share/figlet/fonts/3d.flf'),
+}
+INTERVAL=3
+
+def print_figlet(msg: str, font: FigletFont):
+    os.system('clear && echo -e "\n\n\n\n\n"')
+    os.system(f'figlet "{msg}" -f {font.fpath} -w "$(tput cols)" -c | lolcat')
+
+def run(seconds: int, font: FigletFont):
+    print(seconds, font)
+
+    current = timedelta(seconds=seconds)
+    print_figlet(current, font)
+    for i in range(0, seconds, INTERVAL):
+        time.sleep(INTERVAL)
+        current = current - timedelta(seconds=INTERVAL)
+        print_figlet(current, font)
+
+
+
+
+def parse_args() -> dict:
+    parser = ArgumentParser(description="Counts down until twitch start/end")
+    parser.add_argument('seconds', type=int, help='seconds to count down')
+    parser.add_argument('--font', type=str, choices=list(FONTS.keys()), default='3d', required=False, help='figlet font to use')
+
+    args = parser.parse_args().__dict__
+    return {**args, **{'font': FONTS[args['font']]}}
+
+if __name__ == '__main__':
+    run(**parse_args())
