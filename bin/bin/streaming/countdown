@@ -7,19 +7,18 @@ set -euo pipefail
 
 # Choices
 CHOICES="\
-/usr/share/figlet/fonts/ANSI Shadow.flf"
-
-# /usr/share/figlet/fonts/3D-ASCII.flf
-# /usr/share/figlet/fonts/3d.flf
-# /usr/share/figlet/fonts/Colossal.flf
-# /usr/share/figlet/fonts/cosmike.flf
-# /usr/share/figlet/fonts/cricket.flf
-# /usr/share/figlet/fonts/Def Leppard.flf
-# /usr/share/figlet/fonts/Fraktur.flf
-# /usr/share/figlet/fonts/S Blood.flf
-# /usr/share/figlet/fonts/smpoison.flf
-# /usr/share/figlet/fonts/swampland.flf
-# /usr/share/figlet/fonts/Train.flf"
+/usr/share/figlet/fonts/ANSI Shadow.flf
+/usr/share/figlet/fonts/3D-ASCII.flf
+/usr/share/figlet/fonts/3d.flf
+/usr/share/figlet/fonts/Colossal.flf
+/usr/share/figlet/fonts/cosmike.flf
+/usr/share/figlet/fonts/cricket.flf
+/usr/share/figlet/fonts/Def Leppard.flf
+/usr/share/figlet/fonts/Fraktur.flf
+/usr/share/figlet/fonts/S Blood.flf
+/usr/share/figlet/fonts/smpoison.flf
+/usr/share/figlet/fonts/swampland.flf
+/usr/share/figlet/fonts/Train.flf"
 
 SECONDS="${1:-10}"
 INTERVAL="${2:-3}"

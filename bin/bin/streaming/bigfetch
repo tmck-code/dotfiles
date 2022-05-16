@@ -3,11 +3,29 @@
 set -euo pipefail
 
 function render() {
-  figlet -l -f $HOME/bin/streaming/figlet/3d.flf -w 200 -- "${@}" | lolcat -F 0.01
+  figlet -l -f "$1" -w 200 -- "${@:2}" | lolcat -F 0.01
 }
 
+# Choices
+CHOICES="\
+/usr/share/figlet/fonts/ANSI\ Shadow.flf
+/usr/share/figlet/fonts/3D-ASCII.flf
+/usr/share/figlet/fonts/3d.flf
+/usr/share/figlet/fonts/Colossal.flf
+/usr/share/figlet/fonts/cosmike.flf
+/usr/share/figlet/fonts/cricket.flf
+/usr/share/figlet/fonts/Def\ Leppard.flf
+/usr/share/figlet/fonts/Fraktur.flf
+/usr/share/figlet/fonts/S\ Blood.flf
+/usr/share/figlet/fonts/smpoison.flf
+/usr/share/figlet/fonts/swampland.flf
+/usr/share/figlet/fonts/Train.flf"
+
+CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
+
 clear
-render "\
+# render "$CHOICE" "\
+render "/usr/share/figlet/fonts/3d.flf" "\
 ------------------------------
 twitch.tv/nimbus1r
 github.com/tmck-code
