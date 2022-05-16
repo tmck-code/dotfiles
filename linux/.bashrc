@@ -134,9 +134,8 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 PATH=$PATH:/usr/local/go/bin
 export PATH
 
-# Check if we're running an interactive shell, as printing the pokesay message
-# causes scp to fail
-if [ -n "$PS1" ]; then # && $(shopt -q login_shell); then
+# Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
+if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
   if [ $(( RANDOM % 10 )) == 0 ]; then
     fortune | pokesay -nowrap | lolcat
