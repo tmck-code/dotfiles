@@ -2,7 +2,7 @@
 
 echo "~~ sourcing .bash_profile"
 # Exit if we are a login shell, and ~/.bash_profile has already been sourced.
-if ! $(shopt -q login_shell); then
+if ! shopt -q login_shell; then
   echo "~~ non-login shell, exiting"
   return 0
 else
@@ -48,17 +48,20 @@ sources=(
   "$HOME/.cargo/env" # cargo/rust
   "$HOME/dev/z/z.sh" # z - jump around
 )
-for f in ${sources[@]}; do
-  if test -f $f; then
-    echo "sourcing $f"
-    source "${f}"
 
-  elif test -d $f; then
+for f in "${sources[@]}"; do
+  if test -f "$f"; then
+    echo "sourcing $f"
+    source "$f"
+
+  elif test -d "$f"; then
 
     echo "souring files from $f"
     for i in "${f}/*"; do
-      test -f $i
-      source "${i}"
+      if test -f "$i"; then
+        echo "sourcing $i"
+        source "$i"
+      fi
     done
   fi
 done
@@ -73,10 +76,6 @@ done
 
 # Enter tmux before entering .bashrc
 # Ensure that we're not already in tmux, and attach to existing session if possible
-# TODO: improve this behaviour
-# tmux ls &> /dev/null && tmux a || tmux -2
-if [ ! $TMUX ]; then
+if [ ! "$TMUX" ]; then
   tmux -2
 fi
-
-# [ -f "$HOME/.bashrc" ] && source ~/.bashrc
