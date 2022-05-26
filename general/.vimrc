@@ -79,6 +79,9 @@ autocmd FileType psv setlocal csv_delim='|'
 let g:pymode_python = 'python3'
 let g:python_highlight_all = 1
 
+" Go settings
+" let g:go_fmt_autosave = 1
+
 syn region pythonInterpolation contained matchgroup=pythonQuotes start=/{/ end=/}/ extend contains=ALLBUT,pythonDecoratorName,pythonDecorator,pythonFunction,pythonDoctestValue,pythonDoctest
 
 syn region pythonfString matchgroup=pythonQuotes start=+[fF]\z(['"]\)+ end="\z1" skip="\\\\\|\\\z1" contains=@Spell,pythonInterpolation
