@@ -7,12 +7,12 @@ if ! $(shopt -q login_shell); then
   return 0
 else
   if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
-    echo "BASH_PROFILE_SOURCED=${BASH_PROFILE_SOURCED}"
-    source ~/.bashrc
+    echo "~~ .bash_profile already sourced"
+    # source ~/.bashrc
     return 0
   fi
 fi
-echo "~~ sourcing .bash_profile"
+# echo "~~ sourcing .bash_profile"
 
 # ENV configs -----------------------------------
 
@@ -79,4 +79,4 @@ if [ ! $TMUX ]; then
   tmux -2
 fi
 
-[ -f "$HOME/.bashrc" ] && source ~/.bashrc
+# [ -f "$HOME/.bashrc" ] && source ~/.bashrc
