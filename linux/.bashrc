@@ -3,14 +3,6 @@
 #
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 
-echo "~~ sourcing .bashrc"
-
-# TODO: clarify this statement
-[ -z "$PS1" ] && echo '$PS1: No' || echo '$PS1: Yes'
-# [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - .bash_profile not sourced" && return 0
-# echo "~~ Sourcing .bashrc"
-
-
 # My utils that need to set before using tmux
 for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
