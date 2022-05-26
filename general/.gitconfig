@@ -27,7 +27,8 @@
 
   # Longer commands -----------------------------
 
-  gpurge = !git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d
+  prg = !git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d
+  mrg = !git checkout master && git pull && git checkout - && git merge master
 
 [color]
   diff = auto
