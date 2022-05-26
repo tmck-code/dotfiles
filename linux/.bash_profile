@@ -30,8 +30,11 @@ export BASH_PROFILE_SOURCED="true"
 PATH="$PATH:$HOME/bin/:$HOME/.local/bin"
 # Language paths
 export GOPATH=$HOME/go
-PATH=$PATH:$GOPATH/bin:$GOROOT/bin
-PATH="$PYENV_ROOT/bin:$PATH"
+# export GOROOT=/usr/local/go
+PATH=$PATH:$GOPATH/bin
+# Pyenv paths
+# export PYENV_ROOT="$HOME/.pyenv"
+# PATH="$PYENV_ROOT/bin:$PATH"
 
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
@@ -61,6 +64,10 @@ for f in ${sources[@]}; do
 done
 
 
+# Enable pyenv
+# eval "$(pyenv init --path)"
+# Source cargo/rust
+# source "$HOME/.cargo/env"
 
 # Finish ----------------------------------------
 

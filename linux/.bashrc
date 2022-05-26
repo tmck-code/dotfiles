@@ -126,7 +126,8 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 [ -r /etc/bash_completion ]    && source /etc/bash_completion
-[ -r "$HOME/bin/z/z.sh" ]      && source "$HOME/bin/z/z.sh"
+[ -d /etc/bash_completion.d/ ] && source /etc/bash_completion.d/*
+[ -r "$HOME/dev/z/z.sh" ]      && source "$HOME/dev/z/z.sh"
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
 [ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 [ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
