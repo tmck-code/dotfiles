@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 import time
 from collections import namedtuple
+from itertools import count
 from argparse import ArgumentParser
 
 FigletFont = namedtuple('figlet_font', ['fpath'])
@@ -19,7 +20,13 @@ def print_figlet(msg: str, font: FigletFont):
     os.system('clear && echo -e "\n\n\n\n\n"')
     os.system(f'figlet "{msg}" -f {font.fpath} -w "$(tput cols)" -c | lolcat')
 
-def run(seconds: int, font: FigletFont):
+def run(seconds, font, timer_mode):
+    if timer_mode:
+        timer(font)
+    else:
+        countdown(seconds, font)
+
+def countdown(seconds: int, font: FigletFont):
     print(seconds, font)
 
     current = timedelta(seconds=seconds)
@@ -30,12 +37,22 @@ def run(seconds: int, font: FigletFont):
         print_figlet(current, font)
 
 
+def timer(font: FigletFont):
+    print(0, font)
+
+    current = timedelta(seconds=0)
+    print_figlet(current, font)
+    for i in count(0, INTERVAL):
+        time.sleep(INTERVAL)
+        current = current + timedelta(seconds=INTERVAL)
+        print_figlet(current, font)
 
 
 def parse_args() -> dict:
     parser = ArgumentParser(description="Counts down until twitch start/end")
     parser.add_argument('seconds', type=int, help='seconds to count down')
     parser.add_argument('--font', type=str, choices=list(FONTS.keys()), default='3d', required=False, help='figlet font to use')
+    parser.add_argument('--timer-mode', action='store_true', default=False, required=False)
 
     args = parser.parse_args().__dict__
     return {**args, **{'font': FONTS[args['font']]}}
