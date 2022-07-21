@@ -20,7 +20,10 @@ def print_figlet(msg: str, font: FigletFont):
     os.system('clear && echo -e "\n\n\n\n\n"')
     os.system(f'figlet "{msg}" -f {font.fpath} -w "$(tput cols)" -c | lolcat')
 
-def run(seconds, font, timer_mode):
+def run(seconds, font, delay, timer_mode):
+    os.system('clear')
+    time.sleep(delay)
+
     if timer_mode:
         timer(font)
     else:
@@ -52,6 +55,7 @@ def parse_args() -> dict:
     parser = ArgumentParser(description="Counts down until twitch start/end")
     parser.add_argument('seconds', type=int, help='seconds to count down')
     parser.add_argument('--font', type=str, choices=list(FONTS.keys()), default='3d', required=False, help='figlet font to use')
+    parser.add_argument('--delay', type=int, default=0, help='delay by showing a blank screen for N seconds')
     parser.add_argument('--timer-mode', action='store_true', default=False, required=False)
 
     args = parser.parse_args().__dict__
