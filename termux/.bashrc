@@ -120,14 +120,14 @@ export LESS_TERMCAP_so=$'\e[01;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
-[ -r /etc/bash_completion ]    && source /etc/bash_completion
+[ -r $PREFIX/etc/bash_completion.d/ ]    && source $PREFIX/etc/bash_completion.d/*
 [ -r "$HOME/bin/z/z.sh" ]      && source "$HOME/bin/z/z.sh"
 [ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
 [ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $(( RANDOM % 10 )) == 0 ]; then
-  fortune | pokesay -width 60 | lolcat
+  fortune | pokesay -category small -width 40 | lolcat
 else
-  fortune | pokesay -width 60
+  fortune | pokesay -category small -width 40
 fi
