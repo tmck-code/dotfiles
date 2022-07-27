@@ -39,10 +39,10 @@ export BASH_PROFILE_SOURCED="true"
 set -o allexport; source $HOME/.termux/current; set +o allexport
 
 h="$(date +%H)"
-if [[ "$TERMUX_THEME" = "light" ]] && [[ "$h" > "19" ]]; then
-  set_theme dark
-elif [[ "$TERMUX_THEME" = "dark" ]] && [[ "$h" > "07" ]]; then
-  set_theme light
+if [[ "$h" > "19" ]]; then
+  [[ "$TERMUX_THEME" = "light" ]] && set_theme dark
+elif [[ "$h" > "07" ]]; then
+  [[ "$TERMUX_THEME" = "dark" ]] && set_theme light
 fi
 
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
