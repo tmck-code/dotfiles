@@ -48,4 +48,4 @@ fi
 # Load tmux once before entering .bashrc, ensure that we're not already in tmux
 [ $TMUX ] || tmux
 
-[ -f "$HOME/.bashrc" ] && source ~/.bashrc
+# [ -f "$HOME/.bashrc" ] && source ~/.bashrc
