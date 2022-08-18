@@ -12,6 +12,10 @@ fi
 if [ -f "$PREFIX/etc/bash_completion.d/*" ]; then
   source $PREFIX/etc/bash_completion.d/*
 fi
+if [ -f "$PREFIX/etc/bash_completion.d/git-completion.bash" ]; then
+  source "$PREFIX/etc/bash_completion.d/git-completion.bash"
+fi
+
 # Set vim as default editor
 alias crontab="VIM_CRONTAB=true crontab"
 export EDITOR=vim
