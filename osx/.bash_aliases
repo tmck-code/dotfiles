@@ -8,6 +8,7 @@ alias g="git"
 alias v="vim"
 alias ls="gls --color"
 alias find="gfind"
+alias brew="arch -arm64 brew"
 
 function cb() {
   git checkout $(gb)
@@ -32,9 +33,9 @@ alias j="cat ${1} | jq ."
 
 if [ -f ~/.aws/credentials ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
-  export AWS_ACCESS_KEY_ID=$(sed '2q;d' ~/.aws/credentials | cut -d '=' -f 2)
-  export AWS_SECRET_ACCESS_KEY=$(sed '3q;d' ~/.aws/credentials | cut -d '=' -f 2)
+  export AWS_ACCESS_KEY_ID="$(sed '2q;d' ~/.aws/credentials | cut -d '=' -f 2)"
+  export AWS_SECRET_ACCESS_KEY="$(sed '3q;d' ~/.aws/credentials | cut -d '=' -f 2)"
+  export AWS_SESSION_TOKEN="$(sed '4q;d' ~/.aws/credentials | cut -d '=' -f 2)"
   export AWS_DEFAULT_REGION="ap-southeast-2"
-  export AWS_SESSION_TOKEN=$(sed '4q;d' ~/.aws/credentials | cut -d '=' -f 2)
 fi
 
