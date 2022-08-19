@@ -131,11 +131,15 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 [ -r /usr/local/etc/bash_completion.d/git-completion.bash ] && \
   source /usr/local/etc/bash_completion.d/git-completion.bash
+[ -r /opt/homebrew/etc/bash_completion.d/git-completion.bash ] && \
+  source /opt/homebrew/etc/bash_completion.d/git-completion.bash
+
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokesay -nowrap | gsed 's/^/  /g' | lolcat
+  fortune | pokesay -nowrap | lolcat
 else
-  fortune | pokesay -nowrap | gsed 's/^/  /g'
+  fortune | pokesay -nowrap
 fi
 
