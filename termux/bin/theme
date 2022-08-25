@@ -14,3 +14,8 @@ function get_theme() {
   . $HOME/.termux/current
   echo $TERMUX_THEME
 }
+
+case ${1} in
+  "set") set_theme ${2} ;;
+  "get") get_theme ;;
+esac
