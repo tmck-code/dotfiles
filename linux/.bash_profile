@@ -51,15 +51,10 @@ sources=(
 
 for f in "${sources[@]}"; do
   if test -f "$f"; then
-    echo "sourcing $f"
     source "$f"
-
   elif test -d "$f"; then
-
-    echo "souring files from $f"
     for i in "${f}/*"; do
       if test -f "$i"; then
-        echo "sourcing $i"
         source "$i"
       fi
     done
