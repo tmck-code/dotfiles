@@ -35,6 +35,7 @@ PATH=$PATH:$GOPATH/bin
 # Pyenv paths
 # export PYENV_ROOT="$HOME/.pyenv"
 # PATH="$PYENV_ROOT/bin:$PATH"
+# eval "$(pyenv init --path)"
 
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
@@ -61,16 +62,12 @@ for f in "${sources[@]}"; do
   fi
 done
 
-
-# Enable pyenv
-# eval "$(pyenv init --path)"
-# Source cargo/rust
-# source "$HOME/.cargo/env"
-
 # Finish ----------------------------------------
 
 # Enter tmux before entering .bashrc
 # Ensure that we're not already in tmux, and attach to existing session if possible
+
 if [ ! "$TMUX" ]; then
   tmux -2
 fi
+
