@@ -27,10 +27,10 @@ font pango:DejaVu Sans Mono 10
 bindsym $mod+t exec alacritty
 
 # - menu/launcher
+# j4-dmenu (desktop app launcher)
+bindsym $mod+space exec --no-startup-id j4-dmenu-desktop
 # dmenu (minimal launcher)
-bindsym $mod+space exec dmenu_run
-# desktop variant (desktop apps only)
-bindsym $mod+Shift+space exec --no-startup-id j4-dmenu-desktop
+bindsym $mod+Shift+space exec dmenu_run
 # extendo variant (fuzzy matching)
 bindsym $mod+Return exec dmenu_extended_run
 
