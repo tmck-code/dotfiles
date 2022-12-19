@@ -180,7 +180,8 @@ font:
 colors:
   # Default colors
   primary:
-    background: '#030303'
+    # background: '#030303'
+    background: '#000000'
     # background: '#e0e0e0'
     # foreground: '#c5c8c6'
 
@@ -422,10 +423,10 @@ live_config_reload: true
 #   - (Linux/BSD) user login shell
 #   - (Windows) powershell
 shell:
-  program: /opt/homebrew/bin/fish
-  # program: /bin/bash
-  # args:
-  #   - --login
+  # program: /opt/homebrew/bin/fish
+  program: /bin/bash
+  args:
+    - --login
 
 # Startup directory
 #
