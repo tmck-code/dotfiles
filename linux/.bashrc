@@ -13,11 +13,17 @@ export PATH
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
 
-shopt -s histappend             # append to the history file, don't overwrite it
-export HISTFILESIZE=10000000000 # largest history written to file at one time
-export HISTSIZE=100000000000000 # large history file
-export HISTCONTROL=ignoreboth   # don't put duplicate lines or lines starting with space in the history.
+shopt -s histappend            # append to the history file, don't overwrite it
+export HISTFILESIZE=           # largest history written to file at one time
+export HISTSIZE=               # large history file
+export HISTCONTROL=ignoreboth  # don't put duplicate lines or lines starting with space in the history.
 export PROMPT_DIRTRIM=2
+
+# Change the file location because certain bash sessions truncate .bash_history file upon close.
+# - http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
+export HISTFILE="$HOME/.bash_eternal_history"
+# Force prompt to write history after every command (http://superuser.com/questions/20900/bash-history-loss)
+PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
 # Function to shorten the current directory
 short_pwd() {
@@ -81,7 +87,7 @@ PS1_reset='\[\e[0m\]'
 PS1_yellow_bg='\[\e[1;33m\]'
 
 _mk_prompt() {
-  history -a # Update the ~/.bash_history every time
+  history -a # Update the a/.bash_history every time
 
   # Change the window title of X terminals
   if [[ "$TERM" =~ xterm* ]]; then
