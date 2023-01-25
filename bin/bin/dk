@@ -37,7 +37,8 @@ function cleanup () {
   purge_containers
   cleanup_images
   prune_networks
-  # prune_volumes
+  echo "$OPTS" [ "${OPTS:-}" == "--volumes" ]
+  [ "${OPTS:-}" == "--volumes" ] && prune_volumes
   dls
 }
 
@@ -46,7 +47,9 @@ function engine_status() {
   echo -e "\n> Docker Engine is up"
 }
 
-case ${1} in
+OPTS="${@:2}"
+
+case "$1" in
   "ls")      dls;;
   "cleanup") cleanup;;
   "st")      engine_status;;
