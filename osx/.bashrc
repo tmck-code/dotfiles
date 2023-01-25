@@ -2,8 +2,8 @@
 # github.com/tmck-code/dotfiles
 
 # TODO: clarify this statement
-[ -z "$PS1" ] && echo "No $PS1" && return 0
-[ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - profile not sourced" && return 0
+# [ -z "$PS1" ] && echo "No $PS1" && return 0
+# [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - profile not sourced" && return 0
 
 # My utils that need to set when using tmux and other tools
 [ -d /opt/homebrew/bin ] && PATH="$PATH:/opt/homebrew/bin"

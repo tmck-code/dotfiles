@@ -23,7 +23,6 @@ set convert-meta off
 
 # alt-arrow keys
 "\e\e[C": forward-word
-
 "\e\e[D": backward-word
 
 # tab
