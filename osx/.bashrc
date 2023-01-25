@@ -138,8 +138,8 @@ export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokesay -nowrap | lolcat
+  fortune | pokesay -nowrap -japanese-name | lolcat
 else
-  fortune | pokesay -nowrap
+  fortune | pokesay -nowrap -japanese-name
 fi
 
