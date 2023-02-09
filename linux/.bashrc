@@ -80,17 +80,20 @@ gitbranch() {
   # Read and export git branch from the HEAD file
   local head
   read -r head < "${gitdir}/HEAD"
+
   case "${head}" in
     ref:*) export GITBRANCH="${head##*/}" ;;
     "")  return 0 ;;
     *)   export GITBRANCH="d:${head:0:7}" ;;
   esac
 
-  if [ -f "${gitdir}/ORIG_HEAD" ]; then
-    local commit
+  local commit
+  if [ -f "${gitdir}/refs/heads/${GITBRANCH}" ]; then
+    read -r commit < "${gitdir}/refs/heads/${GITBRANCH}"
+  elif [ -f "${gitdir}/ORIG_HEAD" ]; then
     read -r commit < "${gitdir}/ORIG_HEAD"
-    export GITCOMMIT="${commit:0:9}"
   fi
+  export GITCOMMIT="${commit:0:9}"
 }
 
 PS1_green='\[\e[1;32m\]'
