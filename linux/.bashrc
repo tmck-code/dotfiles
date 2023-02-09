@@ -3,6 +3,11 @@
 #
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 
+# echo "~ Loading .bashrc"
+# if [ "${BASH_PROFILE_SOURCED:-}" != "true" ]; then
+#   source $HOME/.bash_profile
+# fi
+
 # My utils that need to set before using tmux
 for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
@@ -13,10 +18,17 @@ export PATH
 [ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
 
-shopt -s histappend            # append to the history file, don't overwrite it
-export HISTFILESIZE=           # largest history written to file at one time
-export HISTSIZE=               # large history file
-export HISTCONTROL=ignoreboth  # don't put duplicate lines or lines starting with space in the history.
+export HISTFILESIZE=          # largest history written to file at one time
+export HISTSIZE=              # large history file
+export HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
+shopt -s histappend           # append to the history file, don't overwrite it
+# Change the file location because certain bash sessions truncate .bash_history file upon close.
+# http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
+export HISTFILE=~/.bash_eternal_history
+# Force prompt to write history after every command.
+# http://superuser.com/questions/20900/bash-history-loss
+PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+
 export PROMPT_DIRTRIM=2
 
 # Change the file location because certain bash sessions truncate .bash_history file upon close.
@@ -115,6 +127,7 @@ _mk_prompt() {
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
 export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
+export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
 export LESS_TERMCAP_mb=$'\e[1;32m'
 export LESS_TERMCAP_md=$'\e[1;32m'
@@ -138,8 +151,8 @@ export PATH
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
   if [ $(( RANDOM % 10 )) == 0 ]; then
-    fortune | pokesay -nowrap | lolcat
+    fortune | pokesay -no-wrap -japanese-name | lolcat
   else
-    fortune | pokesay -nowrap
+    fortune | pokesay -no-wrap -japanese-name
   fi
 fi

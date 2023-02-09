@@ -47,9 +47,10 @@ function engine_status() {
   echo -e "\n> Docker Engine is up"
 }
 
-OPTS="${@:2}"
+# Grab the 2nd command-line arg (if supplied) and use it for options
+OPTS="${*:2}"
 
-case "$1" in
+case ${1} in
   "ls")      dls;;
   "cleanup") cleanup;;
   "st")      engine_status;;

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-echo "~~ sourcing .bash_profile"
-# Exit if we are a login shell, and ~/.bash_profile has already been sourced.
+# echo "~~ sourcing .bash_profile"
 if ! shopt -q login_shell; then
   echo "~~ non-login shell, exiting"
   return 0
@@ -12,7 +11,6 @@ else
     return 0
   fi
 fi
-# echo "~~ sourcing .bash_profile"
 
 # ENV configs -----------------------------------
 
@@ -29,13 +27,10 @@ export BASH_PROFILE_SOURCED="true"
 # Load personal scripts
 PATH="$PATH:$HOME/bin/:$HOME/.local/bin"
 # Language paths
-export GOPATH=$HOME/go
-# export GOROOT=/usr/local/go
-PATH=$PATH:$GOPATH/bin
-# Pyenv paths
-# export PYENV_ROOT="$HOME/.pyenv"
-# PATH="$PYENV_ROOT/bin:$PATH"
-# eval "$(pyenv init --path)"
+# - golang
+export GOPATH="$HOME/go"
+export GOROOT="/usr/lib/go-1.19/"
+PATH="$PATH:$GOPATH/bin"
 
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
@@ -64,10 +59,11 @@ done
 
 # Finish ----------------------------------------
 
-# Enter tmux before entering .bashrc
-# Ensure that we're not already in tmux, and attach to existing session if possible
-
+# Enter tmux, which has default command bash -i, which will load the bashrc
 if [ ! "$TMUX" ]; then
   tmux -2
+else
+  echo "loading bashrc!"
+  source "$HOME/.bashrc"
 fi
 
