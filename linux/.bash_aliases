@@ -19,12 +19,3 @@ alias gpurge="git fetch origin --prune && git branch --merged | grep -v 'master\
 alias dush="du -sh * | sort -h"
 alias emacs="emacs -nw"
 
-if [ -f ~/.aws/credentials ]; then
-  # This sed methods yields ~20x faster load times than using `aws configure`
-  AWS_ACCESS_KEY_ID="$(sed '2q;d' ~/.aws/credentials | cut -d '=' -f 1 --complement)"
-  AWS_SECRET_ACCESS_KEY="$(sed '3q;d' ~/.aws/credentials | cut -d '=' -f 1 --complement)"
-  AWS_SESSION_TOKEN="$(sed '4q;d' ~/.aws/credentials | cut -d '=' -f 1 --complement)"
-  AWS_DEFAULT_REGION="ap-southeast-2"
-  export AWS_SESSION_TOKEN AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-fi
-
