@@ -3,6 +3,7 @@
 execute pathogen#infect()
 " Global variables to enable plugins
 filetype plugin indent on
+filetype plugin on
 
 " Basic editor behaviour
 set number    " line numbers
@@ -74,6 +75,9 @@ autocmd FileType py  setlocal autoindent expandtab   tabstop=4 shiftwidth=4 text
 autocmd FileType rb  setlocal autoindent expandtab   tabstop=2 shiftwidth=2
 autocmd FileType sh  setlocal autoindent expandtab   tabstop=2 shiftwidth=2
 autocmd FileType psv setlocal csv_delim='|'
+" autocmd FileType ruby,eruby let g:rubycomplete_buffer_loading = 1
+" autocmd FileType ruby,eruby let g:rubycomplete_classes_in_global = 1
+" autocmd FileType ruby,eruby let g:rubycomplete_rails = 1
 
 " Python settings
 let g:pymode_python = 'python3'
@@ -83,8 +87,8 @@ let g:python_highlight_all = 1
 " let g:go_fmt_autosave = 1
 
 syn region pythonInterpolation contained matchgroup=pythonQuotes start=/{/ end=/}/ extend contains=ALLBUT,pythonDecoratorName,pythonDecorator,pythonFunction,pythonDoctestValue,pythonDoctest
-
 syn region pythonfString matchgroup=pythonQuotes start=+[fF]\z(['"]\)+ end="\z1" skip="\\\\\|\\\z1" contains=@Spell,pythonInterpolation
+syn keyword Keyword self
 
 hi pythonInterpolation ctermfg=12
 hi def link pythonfString String
@@ -166,10 +170,11 @@ set t_ZR=[23m
 
 " Plugin settings -------------------------------
 
-if has('nvim') " set better click/drag etc, only for neovim
-  let g:deoplete#enable_at_startup = 1
-endif
+" if has('nvim') " set better click/drag etc, only for neovim
+"   let g:deoplete#enable_at_startup = 1
+" endif
 
+let g:jedi#auto_initialization = 0
 " Syntastic Python version
 let g:syntastic_python_python_exec = 'python3'
 let g:syntastic_python_checkers = ['pylint']
