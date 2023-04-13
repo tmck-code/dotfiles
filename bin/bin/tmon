@@ -1,7 +1,13 @@
 #!/bin/bash
 
-mon="${1:-bpytop}"
+set -euo pipefail
 
+# This script creates a tmux session with 5 panes:
+# bpytop | nvtop
+# -----  | bmon
+# htop   | tty-clock
+
+mon="${1:-bpytop}"
 case "${mon}" in
   gotop) mon_command='gotop -a -p --rate 0.5';;
   # bpytop) mon_command='~/.pyenv/shims/bpytop' ;;
@@ -9,15 +15,36 @@ case "${mon}" in
   *) echo 'usage: tmon <monitor:gotop/bpytop>' ;;
 esac
 
-# create a new session. Note the -d flag, we do not want to attach just yet!
+# 1. create a new session
+# (Note the -d flag, we do not want to attach just yet!)
 tmux new-session -s "dev" -n "mon" -d
 
+
+# 2. Create the top-left pane
 tmux send-keys -t dev:mon "${mon_command}" C-j
-
+# split into right/left panes
 tmux split-window -h
-tmux select-pane 1
+# now select the left pane, and split it into top/bottom panes
+tmux select-pane -t 0
+tmux split-window -v
 
+# 3. Create the bottom-left pane
+tmux select-pane -t 1
+tmux send-keys "htop -d 20" C-j
+
+# 4. Create the top-right pane
+tmux select-pane -t 2
 tmux send-keys "nvtop -d 20" C-j
+
+# 5. Create the middle-right pane
+tmux split-window -v
+tmux select-pane -t 3
+tmux send-keys "bmon -p wlp4s0 -R 2.0" C-j
+
+# 6. Create the bottom-right pane
+tmux split-window -v
+tmux select-pane -t 4
+tmux send-keys "tty-clock -xc" C-j
 
 # finally attach to the session
 tmux attach -t dev:mon
