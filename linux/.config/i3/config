@@ -149,12 +149,20 @@ bar {
 }
 
 # Ensure that mate services are started
-exec --no-startup-id mate-settings-daemon
-exec --no-startup-id mate-power-manager
+
+# fedora compatible
 exec --no-startup-id nm-applet
 exec --no-startup-id blueman-applet
-exec --no-startup-id /usr/lib/policykit-1/polkit-agent-helper-1
+exec --no-startup-id pasystray
+
+# debian mate compatible
+# exec --no-startup-id mate-settings-daemon
+# exec --no-startup-id mate-power-manager
+
+# ??
+# exec --no-startup-id /usr/lib/policykit-1/polkit-agent-helper-1
 # exec --no-startup-id xrandr --output HDMI-0 --scale 1.8x1.8
 
 # launch with an internet browser & a terminal
+exec --no-startup-id google-chrome
 exec --no-startup-id alacritty -e /home/freman/bin/tmon
