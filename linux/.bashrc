@@ -2,6 +2,7 @@
 # github.com/tmck-code/dotfiles
 #
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
+test -v TMUX || tmux -2
 
 # echo "~ Loading .bashrc"
 # if [ "${BASH_PROFILE_SOURCED:-}" != "true" ]; then
@@ -153,9 +154,5 @@ export PATH
 # Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
-  if [ $(( RANDOM % 10 )) == 0 ]; then
-    fortune | pokesay -no-wrap -japanese-name | lolcat
-  else
-    fortune | pokesay -no-wrap -japanese-name
-  fi
+  fortune | pokesay -no-wrap -japanese-name
 fi
