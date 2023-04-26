@@ -432,6 +432,7 @@ shell:
   program: /bin/bash
   args:
     - --login
+  # program: /usr/bin/tmux
 
 # Startup directory
 #

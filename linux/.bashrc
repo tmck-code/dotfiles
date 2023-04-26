@@ -2,21 +2,10 @@
 # github.com/tmck-code/dotfiles
 #
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
-test -v TMUX || tmux -2
 
 # echo "~ Loading .bashrc"
-# if [ "${BASH_PROFILE_SOURCED:-}" != "true" ]; then
-#   source $HOME/.bash_profile
-# fi
-
-# My utils that need to set before using tmux
-for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
-  [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
-done
-export PATH
 
 # My utils that need to set when using tmux and other tools
-[ -d ~/bin ] && export PATH="$HOME/bin:$PATH"
 [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
 
 export HISTFILESIZE=          # largest history written to file at one time
@@ -141,18 +130,9 @@ export LESS_TERMCAP_so=$'\e[01;33m'
 export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
-[ -r /etc/bash_completion ]    && source /etc/bash_completion
-[ -d /etc/bash_completion.d/ ] && source /etc/bash_completion.d/*
-[ -r "$HOME/dev/z/z.sh" ]      && source "$HOME/dev/z/z.sh"
-[ -r "$HOME/bin/uptime_tmux" ] && source "$HOME/bin/uptime_tmux"
-[ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
-[ -r "$HOME/.secrets" ] && source "$HOME/.secrets"
-
-PATH=$PATH:/usr/local/go/bin
-export PATH
-
 # Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
   fortune | pokesay -no-wrap -japanese-name
 fi
+
