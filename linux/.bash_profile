@@ -2,14 +2,8 @@
 
 # echo "~~ sourcing .bash_profile"
 if ! shopt -q login_shell; then
-  echo "~~ non-login shell, exiting"
-  return 0
-else
-  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
-    echo "~~ .bash_profile already sourced"
-    # source ~/.bashrc
-    return 0
-  fi
+  echo "~~ non-login shell"
+  # return 0
 fi
 
 # ENV configs -----------------------------------
@@ -20,50 +14,43 @@ export EDITOR=vim
 export VISUAL=vim
 
 export TERM=xterm-256color
-export BASH_PROFILE_SOURCED="true"
 
 # PATH ------------------------------------------
 
 # Load personal scripts
-PATH="$PATH:$HOME/bin/:$HOME/.local/bin"
+PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 # Language paths
 # - golang
 export GOPATH="$HOME/go"
 export GOROOT="/usr/lib/go-1.19/"
 PATH="$PATH:$GOPATH/bin"
-
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
-
 export PATH
 
 # Bash completion -------------------------------
-sources=(
-  "/etc/bash_completion" # bash/shell completions dir
+sources_dirs=(
   "/usr/share/bash-completion/bash_completion" # bash/shell completions dir
+)
+sources_files=(
+  "/usr/share/doc/git/contrib/completion/git-completion.bash" # git completions
   "$HOME/.cargo/env" # cargo/rust
   "$HOME/dev/z/z.sh" # z - jump around
+  "$HOME/.secrets" # my api keys
 )
 
-for f in "${sources[@]}"; do
-  if test -f "$f"; then
-    source "$f"
-  elif test -d "$f"; then
-    for i in "${f}/*"; do
-      if test -f "$i"; then
-        source "$i"
-      fi
-    done
-  fi
+for f in "${sources_dirs[@]}"; do
+  for i in "$f"/*; do
+    test -f "$i" && source "$i"
+  done
+done
+
+for f in "${sources_files[@]}"; do
+  test -f "$f" && source "$f"
 done
 
 # Finish ----------------------------------------
 
-# Enter tmux, which has default command bash -i, which will load the bashrc
-if [ ! "$TMUX" ]; then
-  tmux -2
-else
-  echo "loading bashrc!"
-  source "$HOME/.bashrc"
-fi
+# echo "loading bashrc!"
+source "$HOME/.bashrc"
 
