@@ -1,8 +1,8 @@
 #
 # /home/freman/.nvidia-settings-rc
 #
-# Configuration file for nvidia-settings - the NVIDIA X Server Settings utility
-# Generated on Mon Feb 13 10:25:23 2023
+# Configuration file for nvidia-settings - the NVIDIA Settings utility
+# Generated on Mon May  8 23:38:26 2023
 #
 
 # ConfigProperties:
@@ -11,11 +11,10 @@ RcFileLocale = C
 DisplayStatusBar = Yes
 SliderTextEntries = Yes
 IncludeDisplayNameInConfigFile = No
-ShowQuitDialog = Yes
 UpdateRulesOnProfileNameChange = Yes
-Timer = Memory_Used_(GPU_0),Yes,3000
-Timer = Thermal_Monitor_(GPU_0),Yes,1000
 Timer = PowerMizer_Monitor_(GPU_0),Yes,1000
+Timer = Thermal_Monitor_(GPU_0),Yes,1000
+Timer = Memory_Used_(GPU_0),Yes,3000
 
 # Attributes:
 
@@ -92,3 +91,4 @@ Timer = PowerMizer_Monitor_(GPU_0),Yes,1000
 [DPY:DP-5]/ColorSpace=0
 [DPY:DP-5]/ColorRange=0
 [DPY:DP-5]/SynchronousPaletteUpdates=0
+[GPU:0]/GPUPowerMizerMode=0

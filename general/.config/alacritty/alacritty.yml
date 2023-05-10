@@ -429,7 +429,8 @@ live_config_reload: true
 #   - (Windows) powershell
 shell:
   # program: /opt/homebrew/bin/fish
-  program: /bin/bash
+  # program: /bin/bash
+  program: /usr/bin/fish
   args:
     - --login
   # program: /usr/bin/tmux

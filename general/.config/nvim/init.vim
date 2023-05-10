@@ -2,6 +2,7 @@
 
 " set runtimepath^=~/.vim runtimepath+=~/.vim/after
 set runtimepath^=~/.vim runtimepath+=~/.config/nvim
+" set runtimepath+=~/.config/nvim
 let &packpath = &runtimepath
 
 execute pathogen#infect()
