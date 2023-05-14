@@ -15,6 +15,8 @@ alias ls="ls --color=auto"
 alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
 alias grep="grep --color"  # Enable grep colours
 alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
+alias dush="du -sh * | sort -h"
 
 alias typeperf="typeperf.exe"
 
+alias cpv="cpv -g"
