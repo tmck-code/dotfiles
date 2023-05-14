@@ -131,7 +131,10 @@ export LESS_TERMCAP_ue=$'\e[0m'
 export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
-if [ -z "${SSH_CONNECTION:-}" ]; then
+# Only print the pokemon fortune if:
+# - there isn't an SSH session detected (scp/ssh etc)
+# - OR, there is an SSH session, and tmux is being used
+if [ -z "${SSH_CONNECTION:-}" ] || [ -n $TMUX ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
   fortune | pokesay -no-wrap -japanese-name
 fi
