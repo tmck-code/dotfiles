@@ -109,7 +109,7 @@ _mk_prompt() {
       prefix+=("✭")
     fi
   fi
-  export PS1="${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
+  export PS1="${prefix[@]} ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
@@ -138,8 +138,8 @@ export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokesay -nowrap -japanese-name | lolcat
+  fortune | pokesay -no-wrap -japanese-name | lolcat
 else
-  fortune | pokesay -nowrap -japanese-name
+  fortune | pokesay -no-wrap -japanese-name
 fi
 
