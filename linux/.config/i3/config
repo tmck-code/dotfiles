@@ -166,4 +166,4 @@ exec --no-startup-id pasystray
 
 # launch with an internet browser & a terminal
 exec --no-startup-id google-chrome
-exec --no-startup-id alacritty -e /home/freman/bin/tmon --config-file $HOME/.config/alacritty/alacritty_tmon.yml
+exec --no-startup-id alacritty --config-file $HOME/.config/alacritty/alacritty_tmon.yml -e /home/freman/bin/tmon
