@@ -1,15 +1,7 @@
-" github.com/tmck-code/dotfiles
-
-" set runtimepath^=~/.vim runtimepath+=~/.vim/after
-set runtimepath^=~/.vim runtimepath+=~/.config/nvim
-" set runtimepath+=~/.config/nvim
+set runtimepath^=~/.nvim
 let &packpath = &runtimepath
 
 execute pathogen#infect()
-
-" Basic editor behaviour -------------------------
-
-set number
 
 " Shorctuts & key bindings -----------------------
 
@@ -19,29 +11,20 @@ map <C-S-right> <C-W><right>
 map <C-S-up>    <C-W><up>
 map <C-S-down>  <C-W><down>
 
-" map Cntrl+N to toggle file tree on & off
+" map Cntrl+N to toggle NERDTree on & off
 map <C-N> :CHADopen<CR>
 map ;; :CHADopen<CR>
 
-" map Cntrl+S to :w
-vmap <C-s> :w<CR>
+if v:vim_did_enter
+  call CHADopen
+else
+  au VimEnter * CHADopen
+endif
 
 " Colours ----------------------------------------
-
 set termguicolors
-highlight Comment cterm=italic
-" colorscheme
 colorscheme aurora
 set background=dark
 
-" enable sexy status line
 let g:airline_powerline_fonts = 1
 
-" Set comments to appear in italics for all colorschemes
-highlight Comment cterm=italic gui=italic
-
-" Plugin settings -------------------------------
-
-" vim-better-whitespace settings -----------------
-let g:better_whitespace_enabled=1
-let g:strip_whitespace_on_save=1
