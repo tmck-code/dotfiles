@@ -23,8 +23,10 @@ CHOICES="\
 SECONDS="${1:-10}"
 INTERVAL="${2:-3}"
 
+CHOICE="${3:-}"
+
 SEQ=$(seq "$SECONDS" -"$INTERVAL" 0)
-CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
+[ -z "${CHOICE}" ] && CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
 
 echo "$CHOICE"
 
