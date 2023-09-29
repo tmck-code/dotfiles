@@ -1,10 +1,18 @@
 #!/bin/bash
 
-# echo "~~ sourcing .bash_profile"
-if ! shopt -q login_shell; then
-  echo "~~ non-login shell"
-  # return 0
+echo "~~ $HOME/.bash_profile"
+# Exit if we are a login shell, and ~/.bash_profile has already been sourced.
+
+if ! $(shopt -q login_shell); then
+  echo "~~ non-login shell, exiting"
+  return 0
+else
+  if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
+    echo "BASH_PROFILE_SOURCED=${BASH_PROFILE_SOURCED}"
+    source ~/.bashrc
+  fi
 fi
+echo "~~ sourcing $HOME/.bash_profile"
 
 # ENV configs -----------------------------------
 
@@ -51,6 +59,16 @@ done
 
 # Finish ----------------------------------------
 
-# echo "loading bashrc!"
-source "$HOME/.bashrc"
+# Enter tmux before entering .bashrc
+# Ensure that we're not already in tmux, and attach to existing session if possible
+# TODO: improve this behaviour
+# tmux ls &> /dev/null && tmux a || tmux -2
+if [ ! $TMUX ]; then
+  echo "~~ \$TMUX is unset, launching tmux"
+  tmux -2
+fi
 
+if [ -f "$HOME/.bashrc" ]; then
+  echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
+  source ~/.bashrc
+fi
