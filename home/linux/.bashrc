@@ -3,10 +3,29 @@
 #
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 
-# echo "~ Loading .bashrc"
+# If not running interactively (i.e. using scp),
+# don't do anything and return early
+[[ $- == *i* ]] || return
 
+[ -n "${DEBUG_SHELL:-}" ] && echo "~ Loading .bashrc"
 # My utils that need to set when using tmux and other tools
 [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
+
+if shopt -q login_shell; then
+  echo "~~ .BASHRC: login shell"
+  if [ -z "${TMUX:-}" ]; then
+    tmux
+  fi
+else
+  [ -n "${DEBUG_SHELL:-}" ] && echo "~~ .BASHRC: non-login shell"
+
+  [ -n "${DEBUG_SHELL:-}" ] && echo "$BASHPROFILE_LOADED"
+
+  if ! test -v "$BASHPROFILE_LOADED"; then
+    [ -n "${DEBUG_SHELL:-}" ] && echo "~~ .BASHRC: bash_profile not loaded!"
+    source "$HOME/.bash_profile"
+  fi
+fi
 
 export HISTFILESIZE=          # largest history written to file at one time
 export HISTSIZE=              # large history file
@@ -136,6 +155,6 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # - OR, there is an SSH session, and tmux is being used
 if [ -z "${SSH_CONNECTION:-}" ] || [ -n $TMUX ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
-  fortune | pokesay -no-wrap -japanese-name
+  fortune | pokesay -no-wrap -japanese-name -unicode-box
 fi
 
