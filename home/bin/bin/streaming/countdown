@@ -1,0 +1,40 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# "good but not great"
+# /usr/share/figlet/fonts/Banner3.flf
+
+# Choices
+CHOICES="\
+/usr/share/figlet/fonts/ANSI Shadow.flf
+/usr/share/figlet/fonts/3D-ASCII.flf
+/usr/share/figlet/fonts/3d.flf
+/usr/share/figlet/fonts/Colossal.flf
+/usr/share/figlet/fonts/cosmike.flf
+/usr/share/figlet/fonts/cricket.flf
+/usr/share/figlet/fonts/Def Leppard.flf
+/usr/share/figlet/fonts/Fraktur.flf
+/usr/share/figlet/fonts/S Blood.flf
+/usr/share/figlet/fonts/smpoison.flf
+/usr/share/figlet/fonts/swampland.flf
+/usr/share/figlet/fonts/Train.flf"
+
+SECONDS="${1:-10}"
+INTERVAL="${2:-3}"
+
+CHOICE="${3:-}"
+
+SEQ=$(seq "$SECONDS" -"$INTERVAL" 0)
+[ -z "${CHOICE}" ] && CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
+
+echo "$CHOICE"
+
+# Print all of the countdown frames
+for i in $SEQ; do
+  clear
+  for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
+  figlet "$i" -f "$CHOICE" -w "$(tput cols)" -c | lolcat
+  sleep "$INTERVAL"
+done
+

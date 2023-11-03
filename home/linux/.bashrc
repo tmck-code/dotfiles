@@ -1,9 +1,21 @@
 #!/bin/bash
-# github.com/tmck-code/dotfiles
 #
-# NOTE: Enter tmux in your .bash_profile, before entering .bashrc
+# github.com/tmck-code/dotfiles
 
-# echo "~ Loading .bashrc"
+# NOTE: Enter tmux in your .bash_profile, before entering .bashrc
+if [ -n "${DEBUG:-}" ]; then
+  echo '{"sourcing": ".bashrc"}'
+  echo -n '{"$PS1": '
+  [ -z "$PS1" ] && echo 'false}' || echo 'true}'
+  echo -n '{".bash_profile sourced": '
+  [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo 'false}' || echo 'true}'
+fi
+
+# My utils that need to set before using tmux
+for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
+  [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
+done
+export PATH
 
 # My utils that need to set when using tmux and other tools
 [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"

@@ -4,7 +4,7 @@ set -euo pipefail
 
 function install_homedir() {
   local os=$1
-  cd "${os}"
+  cd "home/${os}"
   echo "- Installing ${os} dotfiles"
 
   for i in $(find ./ -maxdepth 1 -type f | cut -c3-); do

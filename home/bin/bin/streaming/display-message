@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-# "good but not great"
-# /usr/share/figlet/fonts/Banner3.flf
-
 # Choices
 CHOICES="\
 /usr/share/figlet/fonts/ANSI Shadow.flf
@@ -20,19 +17,11 @@ CHOICES="\
 /usr/share/figlet/fonts/swampland.flf
 /usr/share/figlet/fonts/Train.flf"
 
-SECONDS="${1:-10}"
-INTERVAL="${2:-3}"
+MESSAGE="$(echo -e $1)"
+CHOICE="${2:-$(echo "$CHOICES" | shuf -n 1 -)}"
 
-SEQ=$(seq "$SECONDS" -"$INTERVAL" 0)
-CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
+clear
 
-echo "$CHOICE"
-
-# Print all of the countdown frames
-for i in $SEQ; do
-  clear
-  for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
-  figlet "$i" -f "$CHOICE" -w "$(tput cols)" -c | lolcat
-  sleep "$INTERVAL"
-done
-
+for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
+figlet "$(echo -e $MESSAGE)" -f "$CHOICE" -w "$(tput cols)" -c | lolcat -F 0.2
+for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
