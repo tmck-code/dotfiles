@@ -148,6 +148,6 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # - OR, there is an SSH session, and tmux is being used
 if [ -z "${SSH_CONNECTION:-}" ] || [ -n $TMUX ]; then
   # Present a pretty message, with a small chance to print a "shiny" version
-  fortune | pokesay -no-wrap -japanese-name
+  fortune | pokesay -no-wrap -japanese-name -unicode-borders -info-border
 fi
 
