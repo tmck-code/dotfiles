@@ -115,7 +115,7 @@ bindsym $mod+Shift+0 move container to workspace "10"
 # Restarting & Reloading ------------------------
 
 # reload the configuration file
-bindsym $mod+Shift+c reload
+bindsym $mod+Shift+y reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
 bindsym $mod+Shift+r restart
 # exit i3 (logs you out of your X session)
@@ -146,7 +146,7 @@ bindsym $mod+r mode "resize"
 
 # display a workspace bar & available system information
 bar {
-  status_command i3status
+  status_command i3status --config $HOME/.config/i3status/i3status.conf
 }
 
 # Ensure that mate services are started
@@ -166,4 +166,5 @@ exec --no-startup-id pasystray
 
 # launch with an internet browser & a terminal
 exec --no-startup-id google-chrome
-exec --no-startup-id alacritty --config-file $HOME/.config/alacritty/alacritty_tmon.yml -e /home/freman/bin/tmon
+# exec --no-startup-id alacritty --config-file $HOME/.config/alacritty/alacritty_tmon.yml -e /home/freman/bin/tmon
+exec --no-startup-id kitty '/home/freman/bin/tmon'
