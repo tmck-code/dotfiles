@@ -2,6 +2,7 @@ set runtimepath^=~/.nvim
 let &packpath = &runtimepath
 
 execute pathogen#infect()
+source ~/.vimrc
 
 " Shorctuts & key bindings -----------------------
 
