@@ -63,12 +63,12 @@ done
 # Ensure that we're not already in tmux, and attach to existing session if possible
 # TODO: improve this behaviour
 # tmux ls &> /dev/null && tmux a || tmux -2
-if [ ! $TMUX ]; then
-  echo "~~ \$TMUX is unset, launching tmux"
-  tmux -2
-fi
+# if [ ! $TMUX ]; then
+#   [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
+#   tmux -2
+# fi
 
 if [ -f "$HOME/.bashrc" ]; then
-  echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
+  [ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
   source ~/.bashrc
 fi
