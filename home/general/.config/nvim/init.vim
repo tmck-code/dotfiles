@@ -21,8 +21,12 @@ set termguicolors
 colorscheme aurora
 set background=dark
 
+" make comments italic
+highlight Comment cterm=italic gui=italic
+
 let g:airline_powerline_fonts = 1
 
+" enter chadtree _after_ setting colours
 if v:vim_did_enter
   call CHADopen
 else
