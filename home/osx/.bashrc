@@ -109,7 +109,7 @@ _mk_prompt() {
       prefix+=("✭")
     fi
   fi
-  export PS1="${prefix[@]} ☯ $_MK_PROMPT_ORIG_PS1"
+  export PS1="${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1

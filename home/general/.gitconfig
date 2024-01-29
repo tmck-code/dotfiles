@@ -4,6 +4,7 @@
 
 [push]
   default = current                   # Never have to set upstream when pushing a new branch
+  autoSetupRemote = true
 
 [pull]
   rebase = false
