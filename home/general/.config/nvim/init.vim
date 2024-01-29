@@ -16,16 +16,16 @@ map <C-S-down>  <C-W><down>
 map <C-N> :CHADopen<CR>
 map ;; :CHADopen<CR>
 
-if v:vim_did_enter
-  call CHADopen
-else
-  au VimEnter * CHADopen
-endif
-
 " Colours ----------------------------------------
 set termguicolors
 colorscheme aurora
 set background=dark
 
 let g:airline_powerline_fonts = 1
+
+if v:vim_did_enter
+  call CHADopen
+else
+  au VimEnter * CHADopen
+endif
 
