@@ -106,7 +106,7 @@ _mk_prompt() {
       prefix+=("✭")
     fi
   fi
-  export PS1=" ${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
+  export PS1=" ${prefix[@]} $_MK_PROMPT_ORIG_PS1\n☯ "
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
@@ -127,7 +127,8 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $(( RANDOM % 10 )) == 0 ]; then
-  fortune | pokesay -category small -width 40 | lolcat
+  fortune | pokesay -width 40 -japanese-name -unicode-box | lolcat
 else
-  fortune | pokesay -category small -width 40
+  fortune | pokesay -width 40 -japanese-name -unicode-box
 fi
+. "$HOME/.cargo/env"
