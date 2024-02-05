@@ -4,6 +4,12 @@ let &packpath = &runtimepath
 execute pathogen#infect()
 source ~/.vimrc
 
+" PATHs and such ---------------------------------
+" set python3 path
+let g:python3_host_prog="/usr/local/bin/python3"
+" disable perl
+let g:loaded_perl_provider = 0
+
 " Shorctuts & key bindings -----------------------
 
 " move across panes with Cntrl+Shift+<arrow key>
