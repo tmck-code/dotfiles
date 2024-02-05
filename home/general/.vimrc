@@ -162,11 +162,12 @@ if &term =~ '256color'
     set termguicolors
   endif
 endif
-set t_ZH=[3m
-set t_ZR=[23m
 
-" set t_ZH="\e[3m"
-" set t_ZR="\e[23m"
+" Fix italics in Vim
+if !has('nvim')
+  let &t_ZH="\e[3m"
+  let &t_ZR="\e[23m"
+endif
 
 " Plugin settings -------------------------------
 
