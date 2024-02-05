@@ -12,16 +12,6 @@ map <C-S-right> <C-W><right>
 map <C-S-up>    <C-W><up>
 map <C-S-down>  <C-W><down>
 
-" map Cntrl+N to toggle NERDTree on & off
-" map <C-N> :CHADopen<CR>
-" map ;; :CHADopen<CR>
-
-" if v:vim_did_enter
-"   call CHADopen
-" else
-"   au VimEnter * CHADopen
-" endif
-
 " Colours ----------------------------------------
 
 " make comments italic
@@ -47,4 +37,3 @@ let g:airline_theme = 'material'
 
 let g:airline_powerline_fonts = 1
 let g:markdown_fenced_languages = ['html', 'python', 'lua', 'vim', 'typescript', 'javascript', 'json']
-
