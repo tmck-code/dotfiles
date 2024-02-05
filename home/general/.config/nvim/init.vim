@@ -27,6 +27,7 @@ map <C-S-down>  <C-W><down>
 " make comments italic
 highlight Comment cterm=italic gui=italic
 
+" TrueColor config
 " For Neovim 0.1.3 and 0.1.4 - https://github.com/neovim/neovim/pull/2198
 if (has('nvim'))
   let $NVIM_TUI_ENABLE_TRUE_COLOR = 1
