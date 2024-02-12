@@ -124,6 +124,8 @@ bindsym $mod+Shift+r restart
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
 # lock screen
 bindsym $mod+Shift+l exec i3lock -c 000000
+# wake up screen
+bindsym $mod+Shift+j exec xset dpms force on
 
 bindsym --release $mod+Shift+x exec xkill
 
