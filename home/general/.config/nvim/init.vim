@@ -36,10 +36,10 @@ endif
 
 set background=dark
 let g:material_terminal_italics = 1
-let g:material_theme_style = 'darker-community'
+let g:material_style = 'deep ocean'
 colorscheme material
 
-let g:airline_theme = 'material'
+let g:airline_theme = 'google_dark'
 
 let g:airline_powerline_fonts = 1
 let g:markdown_fenced_languages = ['html', 'python', 'lua', 'vim', 'typescript', 'javascript', 'json']
