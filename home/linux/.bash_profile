@@ -21,7 +21,7 @@ alias crontab="VIM_CRONTAB=true crontab"
 export EDITOR=vim
 export VISUAL=vim
 
-export TERM=xterm-256color
+# export TERM=xterm-256color
 
 # PATH ------------------------------------------
 
