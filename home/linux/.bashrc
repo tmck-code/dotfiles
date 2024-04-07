@@ -146,7 +146,6 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # Only print the pokemon fortune if:
 # - there isn't an SSH session detected (scp/ssh etc)
 if [ -z "${SSH_CONNECTION:-}" ]; then
-  # Present a pretty message, with a small chance to print a "shiny" version
+  # Present a pretty message
   fortune | pokesay -jCub -w 40
 fi
-
