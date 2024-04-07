@@ -126,6 +126,8 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 bindsym $mod+Shift+l exec i3lock -c 000000
 # wake up screen
 bindsym $mod+Shift+j exec xset dpms force on
+# restart pulseaudio
+bindsym $mod+Shift+a exec systemctl --user restart pulseaudio
 
 bindsym --release $mod+Shift+x exec xkill
 
@@ -167,7 +169,7 @@ exec --no-startup-id pasystray
 # exec --no-startup-id mate-power-manager
 
 # ??
-# exec --no-startup-id /usr/lib/policykit-1/polkit-agent-helper-1
+exec --no-startup-id /usr/lib/policykit-1/polkit-agent-helper-1
 # exec --no-startup-id xrandr --output HDMI-0 --scale 1.8x1.8
 
 # launch with an internet browser & a terminal
