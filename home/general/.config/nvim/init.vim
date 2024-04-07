@@ -20,9 +20,6 @@ map <C-S-down>  <C-W><down>
 
 " Colours ----------------------------------------
 
-" make comments italic
-highlight Comment cterm=italic gui=italic
-
 " TrueColor config
 " from https://github.com/neovim/neovim/pull/2198
 if (has('nvim'))
@@ -43,3 +40,6 @@ let g:airline_theme = 'google_dark'
 
 let g:airline_powerline_fonts = 1
 let g:markdown_fenced_languages = ['html', 'python', 'lua', 'vim', 'typescript', 'javascript', 'json']
+
+" make comments italic (note: this must be set AFTER the colorscheme)
+highlight Comment cterm=italic gui=italic
