@@ -1,10 +1,10 @@
 #!/bin/bash
 
-echo "~~ $HOME/.bash_profile"
+[ -n "${DEBUG:-}" ] && echo "~~ $HOME/.bash_profile"
 # Exit if we are a login shell, and ~/.bash_profile has already been sourced.
 
-if ! $(shopt -q login_shell); then
-  echo "~~ non-login shell, exiting"
+if ! shopt -q login_shell; then
+  [ -n "${DEBUG:-}" ] && echo "~~ non-login shell, exiting"
   return 0
 else
   if [ "${BASH_PROFILE_SOURCED:-}" == "true" ] && [ -n "$PS1" ]; then
@@ -12,16 +12,14 @@ else
     source ~/.bashrc
   fi
 fi
-echo "~~ sourcing $HOME/.bash_profile"
+[ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bash_profile"
 
 # ENV configs -----------------------------------
 
 # Use vim as editor instead of the default 'nano'
 alias crontab="VIM_CRONTAB=true crontab"
-export EDITOR=vim
-export VISUAL=vim
-
-# export TERM=xterm-256color
+export EDITOR=nvim
+export VISUAL=nvim
 
 # PATH ------------------------------------------
 
