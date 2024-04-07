@@ -80,6 +80,12 @@ bindsym $mod+a focus parent
 
 # Workspaces ------------------------------------
 
+# workspace names
+i3-msg 'rename workspace 1 "1: main"'
+i3-msg 'rename workspace 2 "2: CLI"'
+i3-msg 'rename workspace 6 "6: monitor"'
+
+
 # border colours
 # class                 border  backgr. text    indicator child_border
 client.focused_inactive #000000 #000000 #d9d9d9 #0d1010 #000000
@@ -164,15 +170,11 @@ exec --no-startup-id nm-applet
 exec --no-startup-id blueman-applet
 exec --no-startup-id pasystray
 
-# debian mate compatible
-# exec --no-startup-id mate-settings-daemon
-# exec --no-startup-id mate-power-manager
-
-# ??
+# needed for balena etcher (?)
 exec --no-startup-id /usr/lib/policykit-1/polkit-agent-helper-1
-# exec --no-startup-id xrandr --output HDMI-0 --scale 1.8x1.8
 
 # launch with an internet browser & a terminal
 exec --no-startup-id google-chrome
-# exec --no-startup-id alacritty --config-file $HOME/.config/alacritty/alacritty_tmon.yml -e /home/freman/bin/tmon
+bindsym $mod+Shift+1 move container to workspace "main"
 exec --no-startup-id kitty '/home/freman/bin/tmon'
+bindsym $mod+Shift+1 move container to workspace "monitor"
