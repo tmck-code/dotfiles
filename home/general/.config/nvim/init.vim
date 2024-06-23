@@ -1,8 +1,8 @@
-set runtimepath^=~/.nvim
+set runtimepath^=~/.vim runtimepath+=~/.vim/after
 let &packpath = &runtimepath
+source ~/.vimrc
 
 execute pathogen#infect()
-source ~/.vimrc
 
 " PATHs and such ---------------------------------
 " set python3 path
