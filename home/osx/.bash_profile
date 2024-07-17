@@ -22,7 +22,7 @@ echo "~~ sourcing .bash_profile"
 export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 export CARGO_HOME=$HOME/.cargo
 export GOPATH=$HOME/go
-export GOROOT=/usr/local/go
+# export GOROOT=/usr/local/go
 
 PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"       # Add python bins & shims under PYENV_ROOT
 PATH="$HOME/.rvm/bin:$PATH"                          # Add rvm binaries

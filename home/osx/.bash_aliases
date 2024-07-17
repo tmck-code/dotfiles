@@ -18,6 +18,12 @@ function gb() {
   git branch | fzf-tmux -d 15 | sed -e 's/^[[:space:]]*//'
 }
 
+function s3ls_integrations() {
+  client=$1
+  pattern=$2
+  aws s3 ls s3://lexer-client-$client/integrations/$pattern --rec 2>&1 | sed -E "s/integrations/s3:\/\/lexer-client-$client\/integrations/g" | sed -E 's/ +/ /g' # | cut -d ' ' -f 4
+}
+
 # Just alias gnu variants over BSD default utilities
 alias shuf="gshuf"
 alias readlink="greadlink"
@@ -26,7 +32,7 @@ alias tr="gtr"
 alias sort="LC_ALL=C gsort" # Makes GNU sort much faster
 # alias bmon="bmon -p en0 -o 'curses:bgchar= '"
 
-alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | xargs git branch -d"
+alias gpurge="git fetch origin --prune && git branch --merged | grep -v master | grep -v main | xargs git branch -d"
 
 # Some nice helpers & shortcuts
 alias j="cat ${1} | jq ."
