@@ -43,6 +43,7 @@ sources_files=(
   "$HOME/.cargo/env" # cargo/rust
   "$HOME/dev/z/z.sh" # z - jump around
   "$HOME/.secrets" # my api keys
+  "$HOME/.venv/bin/activate" # python virtualenv
 )
 
 for f in "${sources_dirs[@]}"; do
@@ -65,6 +66,14 @@ done
 #   [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
 #   tmux -2
 # fi
+
+# TODO: improve this behaviour (?)
+if test -v TMUX; then
+  [ -n "${DEBUG:-}" ] && echo "~~ \$Already in a TMUX session, skipping session launch"
+else
+  [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
+  tmux -2
+fi
 
 if [ -f "$HOME/.bashrc" ]; then
   [ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
