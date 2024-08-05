@@ -56,16 +56,18 @@ for f in "${sources_files[@]}"; do
   test -f "$f" && source "$f"
 done
 
+. $HOME/.venv/bin/activate
+
 # Finish ----------------------------------------
 
 # Enter tmux before entering .bashrc
-# Ensure that we're not already in tmux, and attach to existing session if possible
-# TODO: improve this behaviour
-# tmux ls &> /dev/null && tmux a || tmux -2
-# if [ ! $TMUX ]; then
-#   [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
-#   tmux -2
-# fi
+# TODO: improve this behaviour (?)
+if test -v TMUX; then
+  [ -n "${DEBUG:-}" ] && echo "~~ \$Already in a TMUX session, skipping session launch"
+else
+  [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
+  tmux -2
+fi
 
 # TODO: improve this behaviour (?)
 if test -v TMUX; then

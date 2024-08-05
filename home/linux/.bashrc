@@ -4,7 +4,7 @@
 
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 if [ -n "${DEBUG:-}" ]; then
-  echo '{"sourcing": ".bashrc"}'
+  echo '{"sourcing": ".bashrc", "DEBUG": "'${DEBUG:-}'"}'
   echo -n '{"$PS1": '
   [ -z "$PS1" ] && echo 'false}' || echo 'true}'
   echo -n '{".bash_profile sourced": '
@@ -127,7 +127,12 @@ _mk_prompt() {
       prefix+=("✭")
     fi
   fi
-  export PS1=" ${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
+
+  if test -v HIDE; then
+    export PS1=""
+  else
+    export PS1=" ${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
+  fi
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
