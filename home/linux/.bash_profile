@@ -29,10 +29,12 @@ PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 # - golang
 export GOPATH="$HOME/go"
 export GOROOT="/usr/lib/go-1.19/"
-PATH="$PATH:$GOPATH/bin"
+export NVM_DIR="$HOME/.nvm" # node version manager
+PATH="$PATH:$GOPATH/bin:$NVM_DIR"
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
 export PATH
+
 
 # Bash completion -------------------------------
 sources_dirs=(
@@ -44,6 +46,8 @@ sources_files=(
   "$HOME/dev/z/z.sh" # z - jump around
   "$HOME/.secrets" # my api keys
   "$HOME/.venv/bin/activate" # python virtualenv
+  "$NVM_DIR/nvm.sh" # this loads nvm
+  "$NVM_DIR/bash_completion" # this loads nvim bash completion
 )
 
 for f in "${sources_dirs[@]}"; do
@@ -61,14 +65,6 @@ done
 # Finish ----------------------------------------
 
 # Enter tmux before entering .bashrc
-# TODO: improve this behaviour (?)
-if test -v TMUX; then
-  [ -n "${DEBUG:-}" ] && echo "~~ \$Already in a TMUX session, skipping session launch"
-else
-  [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
-  tmux -2
-fi
-
 # TODO: improve this behaviour (?)
 if test -v TMUX; then
   [ -n "${DEBUG:-}" ] && echo "~~ \$Already in a TMUX session, skipping session launch"
