@@ -162,3 +162,7 @@ exec --no-startup-id nm-applet
 # launch with an internet browser & a terminal
 exec --no-startup-id google-chrome
 exec --no-startup-id kitty '/home/freman/bin/tmon'
+# ensure that gnome settings/dark mode works
+exec --no-startup-id /usr/lib/gsd-xsettings
+
+# default_border pixel 0
