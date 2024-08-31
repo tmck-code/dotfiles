@@ -125,6 +125,8 @@ _mk_prompt() {
       _GITBRANCH_PREFIX+=("✭")
     fi
     export _GITBRANCH_PREFIX
+  else
+    _GITBRANCH_PREFIX=()
   fi
   export PS1="${_PROMPT_PREFIX[@]}${_GITBRANCH_PREFIX:-}\n ☯ $_MK_PROMPT_ORIG_PS1"
 }
