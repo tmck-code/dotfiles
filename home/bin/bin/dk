@@ -47,6 +47,12 @@ function engine_status() {
   echo -e "\n> Docker Engine is up"
 }
 
+function arch() {
+  docker images -q \
+    | parallel -n1 -P12 docker image inspect ::: | jq -rc '.[] | [.Os, .Architecture, .RepoTags[]] | join(" | ")' \
+    | sort -t'|' -k3
+}
+
 # Grab the 2nd command-line arg (if supplied) and use it for options
 OPTS="${*:2}"
 
@@ -54,5 +60,6 @@ case ${1} in
   "ls")      dls;;
   "cleanup") cleanup;;
   "st")      engine_status;;
+  "arch")    arch;;
 esac
 
