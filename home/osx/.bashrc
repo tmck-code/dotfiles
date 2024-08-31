@@ -12,10 +12,17 @@
 
 export PATH
 
-shopt -s histappend                  # append to the history file, don't overwrite it
-export HISTFILESIZE=10000000000 # largest history written to file at one time
-export HISTSIZE=100000000000000 # large history file
-export HISTCONTROL=ignoreboth        # don't put duplicate lines or lines starting with space in the history.
+export HISTFILESIZE=          # largest history written to file at one time
+export HISTSIZE=              # large history file
+export HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
+shopt -s histappend           # append to the history file, don't overwrite it
+# Change the file location because certain bash sessions truncate .bash_history file upon close.
+# http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
+export HISTFILE=~/.bash_eternal_history
+# Force prompt to write history after every command.
+# http://superuser.com/questions/20900/bash-history-loss
+PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+
 export PROMPT_DIRTRIM=2
 
 # Enable bash completion
@@ -36,9 +43,7 @@ fi
 
 # 100% pure Bash (no forking) function to determine the name of the current git branch
 gitbranch() {
-  export GITBRANCH=""
-
-  local repo="${_GITBRANCH_LAST_REPO-}"
+  local repo="${_GITBRANCH_LAST_REPO:-}"
   local gitdir=""
 
   # If repo is set, and we are in that repo
@@ -58,10 +63,20 @@ gitbranch() {
 
   if [[ -z "${gitdir:-}" ]]; then    # if we aren't in a git repo, just return
     unset _GITBRANCH_LAST_REPO
+    unset GITBRANCH
     return 0
   fi
 
-  export _GITBRANCH_LAST_REPO="${repo}"
+  local last_modified="$(stat -c %Y "$gitdir/HEAD")"
+  # if we are in the same repo, check if the repo has been modified since the last check
+  if [[ "${_GITBRANCH_LAST_REPO:-}" == "$repo" && "$last_modified" == "${_GITBRANCH_LAST_MODIFIED:-}" ]]; then
+    unset _GITBRANCH_MODIFIED
+    return 0
+  fi
+
+  export _GITBRANCH_LAST_REPO="$repo"
+  export _GITBRANCH_LAST_MODIFIED="$last_modified"
+  export _GITBRANCH_MODIFIED=1
 
   # Read and export git branch from the HEAD file
   local head=""
@@ -83,6 +98,7 @@ PS1_green='\[\e[1;32m\]'
 PS1_purple='\[\e[3;35m\]'
 PS1_reset='\[\e[0m\]'
 PS1_yellow_bg='\[\e[1;33m\]'
+export _PROMPT_PREFIX=(" \D{%T}")
 
 _mk_prompt() {
   history -a # Update the ~/.bash_history every time
@@ -96,20 +112,21 @@ _mk_prompt() {
   gitbranch
 
   sep="∈"
-  local prefix=(" \D{%T}")
-  if [[ ! -z "${GITBRANCH:-}" ]]; then
-    prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GITBRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
+  local prefix=$_PROMPT_PREFIX
+  if [[ ! -z "${GITBRANCH:-}" && ! -z "${_GITBRANCH_MODIFIED:-}" ]]; then
+    _GITBRANCH_PREFIX=(" ${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GITBRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
 
     # Modified files
     if [ ! -z "$(git ls-files -m)" ]; then
-      prefix+=("✹")
+      _GITBRANCH_PREFIX+=("✹")
     fi
     # New, untracked files
     if [ ! -z "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
-      prefix+=("✭")
+      _GITBRANCH_PREFIX+=("✭")
     fi
+    export _GITBRANCH_PREFIX
   fi
-  export PS1="${prefix[@]}\n ☯ $_MK_PROMPT_ORIG_PS1"
+  export PS1="${_PROMPT_PREFIX[@]}${_GITBRANCH_PREFIX:-}\n ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
@@ -129,10 +146,10 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 # [ -r /usr/local/etc/profile.d/bash_completion.sh ] && \
 #   source /usr/local/etc/profile.d/bash_completion.sh
 
-[ -r /usr/local/etc/bash_completion.d/git-completion.bash ] && \
-  source /usr/local/etc/bash_completion.d/git-completion.bash
-[ -r /opt/homebrew/etc/bash_completion.d/git-completion.bash ] && \
-  source /opt/homebrew/etc/bash_completion.d/git-completion.bash
+# [ -r /usr/local/etc/bash_completion.d/git-completion.bash ] && \
+#   source /usr/local/etc/bash_completion.d/git-completion.bash
+# [ -r /opt/homebrew/etc/bash_completion.d/git-completion.bash ] && \
+#   source /opt/homebrew/etc/bash_completion.d/git-completion.bash
 
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 
@@ -143,5 +160,5 @@ else
   fortune | pokesay -Wujb
 fi
 
-. "$HOME/.cargo/env"
+# . "$HOME/.cargo/env"
 . "$HOME/.secrets"

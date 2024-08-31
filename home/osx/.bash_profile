@@ -11,9 +11,12 @@ else
 fi
 echo "~~ sourcing .bash_profile"
 
+export HOMEBREW_PREFIX="/opt/homebrew"
+
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
+[ -d "$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin" ] && PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
 
 # TODO: Re-enable if needed, have switched to alacritty for the moment
 # $HOME/bin/iterm_set_title_colour.sh $(hostname)
