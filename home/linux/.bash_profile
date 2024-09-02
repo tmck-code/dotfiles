@@ -79,3 +79,4 @@ if [ -f "$HOME/.bashrc" ]; then
   [ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
   source ~/.bashrc
 fi
+. "$HOME/.cargo/env"
