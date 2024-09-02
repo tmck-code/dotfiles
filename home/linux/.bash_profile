@@ -39,9 +39,11 @@ export PATH
 # Bash completion -------------------------------
 sources_dirs=(
   "/usr/share/bash-completion/bash_completion" # bash/shell completions dir
+  "/etc/bash_completion.d" # bash completions
 )
 sources_files=(
   "/usr/share/doc/git/contrib/completion/git-completion.bash" # git completions
+  "/etc/bash_completion" # bash completions
   "$HOME/.cargo/env" # cargo/rust
   "$HOME/dev/z/z.sh" # z - jump around
   "$HOME/.secrets" # my api keys
