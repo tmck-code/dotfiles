@@ -44,6 +44,7 @@ sources_files=(
   "$HOME/dev/z/z.sh" # z - jump around
   "$HOME/.secrets" # my api keys
   "$HOME/.venv/bin/activate" # python virtualenv
+. "$HOME/.cargo/env" # cargo/rust
 )
 
 for f in "${sources_dirs[@]}"; do
@@ -53,19 +54,15 @@ for f in "${sources_dirs[@]}"; do
 done
 
 for f in "${sources_files[@]}"; do
-  test -f "$f" && source "$f"
+  test -f "$f" && source "$f" && [ -n "${DEBUG:-}" ] && echo "source $f"
 done
 
 # Finish ----------------------------------------
 
-# Enter tmux before entering .bashrc
-# Ensure that we're not already in tmux, and attach to existing session if possible
-# TODO: improve this behaviour
-# tmux ls &> /dev/null && tmux a || tmux -2
-# if [ ! $TMUX ]; then
-#   [ -n "${DEBUG:-}" ] && echo "~~ \$TMUX is unset, launching tmux"
-#   tmux -2
-# fi
+if [ -f "$HOME/.bashrc" ]; then
+  [ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
+  source ~/.bashrc
+fi
 
 # TODO: improve this behaviour (?)
 if test -v TMUX; then
@@ -75,7 +72,3 @@ else
   tmux -2
 fi
 
-if [ -f "$HOME/.bashrc" ]; then
-  [ -n "${DEBUG:-}" ] && echo "~~ sourcing $HOME/.bashrc from $HOME/.bash_profile"
-  source ~/.bashrc
-fi

@@ -32,9 +32,9 @@ if (has('termguicolors'))
 endif
 
 set background=dark
-let g:material_terminal_italics = 1
-let g:material_style = 'deep ocean'
-colorscheme material
+" let g:material_terminal_italics = 1
+" let g:material_style = 'deep ocean'
+colorscheme aurora
 
 let g:airline_theme = 'google_dark'
 
