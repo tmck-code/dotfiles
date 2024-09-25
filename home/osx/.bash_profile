@@ -11,15 +11,18 @@ else
 fi
 echo "~~ sourcing .bash_profile"
 
+export HOMEBREW_PREFIX="/opt/homebrew"
+
 # Link Homebrew installs in $HOME/bin
 [ -d /usr/local/bin ] && PATH="/usr/local/bin:$PATH"
 [ -d "$HOME/bin" ] && PATH="$HOME/bin:$PATH"
+[ -d "$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin" ] && PATH="$HOMEBREW_PREFIX/opt/coreutils/libexec/gnubin:$PATH"
 
 # TODO: Re-enable if needed, have switched to alacritty for the moment
 # $HOME/bin/iterm_set_title_colour.sh $(hostname)
 
-# export PYENV_ROOT="$HOME/.pyenv"
-export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
+export PYENV_ROOT="$HOME/.pyenv"
+# export PYTHONPATH="$PYENV_ROOT:$HOME/python-pkgs/lib/python/"
 export CARGO_HOME=$HOME/.cargo
 export GOPATH=$HOME/go
 # export GOROOT=/usr/local/go
@@ -28,11 +31,12 @@ PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"       # Add python bins & shims u
 PATH="$HOME/.rvm/bin:$PATH"                          # Add rvm binaries
 PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Ensure that GNU utils are used over BSD
 PATH="$PATH:/opt/homebrew/bin"                       # Add homebrew bins
-PATH="/Library/Frameworks/Python.framework/Versions/3.11/bin:${PATH}"
-PATH="/Users/tomm/Library/Python/3.11/:${PATH}"
+# PATH="/Library/Frameworks/Python.framework/Versions/3.11/bin:${PATH}"
+# PATH="/Users/tomm/Library/Python/3.11/:${PATH}"
 PATH="$PATH:$HOME/Personal/dev/nvim-osx64/bin"       # Neovim
 PATH="$CARGO_HOME:$CARGO_HOME/bin:$PATH"
-PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+PATH="$HOME/.venv/bin:$GOPATH/bin:$GOROOT/bin:$PATH"
+PATH="$HOME/.docker/bin:$PATH"                       # Docker
 
 export PATH
 export TERM=xterm-256color

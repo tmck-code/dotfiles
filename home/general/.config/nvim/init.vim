@@ -31,10 +31,14 @@ if (has('termguicolors'))
   set termguicolors
 endif
 
+set colorcolumn=120
+set textwidth=120
+
 set background=dark
 let g:material_terminal_italics = 1
 let g:material_style = 'deep ocean'
-colorscheme material
+"" colorscheme material
+colorscheme aurora
 
 let g:airline_theme = 'google_dark'
 
