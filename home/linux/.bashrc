@@ -1,6 +1,9 @@
 #!/bin/bash
 #
 # github.com/tmck-code/dotfiles
+#
+# - use DEBUG=true before sourcing to enable debug print statements
+# - use HIDE=true before sourcing to _not_ print the PS1
 
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 if [ -n "${DEBUG:-}" ]; then
@@ -50,11 +53,13 @@ else
   export PS1="\[\e[1;33m\]\$(short_pwd)\[\e[0m\] "
 fi
 
+export _GIT_LAST_REPO=""
+
 # 100% pure Bash (no forking) function to determine the name of the current git branch
 gitbranch() {
-  export GITBRANCH=""
+  export GIT_BRANCH=""
 
-  local repo="${_GITBRANCH_LAST_REPO-}"
+  local repo="${_GIT_REPO-}"
   local gitdir=""
 
   # If repo is set, and we are in that repo
@@ -73,25 +78,25 @@ gitbranch() {
   fi
 
   if [[ -z "${gitdir:-}" ]]; then    # if we aren't in a git repo, just return
-    unset _GITBRANCH_LAST_REPO
+    unset _GIT_REPO
     return 0
   fi
 
-  export _GITBRANCH_LAST_REPO="${repo}"
+  export _GIT_REPO="${repo}"
 
   # Read and export git branch from the HEAD file
   local head
   read -r head < "${gitdir}/HEAD"
 
   case "${head}" in
-    ref:*) export GITBRANCH="${head##*/}" ;;
+    ref:*) export GIT_BRANCH="${head##*/}" ;;
     "")  return 0 ;;
-    *)   export GITBRANCH="d:${head:0:7}" ;;
+    *)   export GIT_BRANCH="d:${head:0:7}" ;;
   esac
 
   local commit
-  if [ -f "${gitdir}/refs/heads/${GITBRANCH}" ]; then
-    read -r commit < "${gitdir}/refs/heads/${GITBRANCH}"
+  if [ -f "${gitdir}/refs/heads/${GIT_BRANCH}" ]; then
+    read -r commit < "${gitdir}/refs/heads/${GIT_BRANCH}"
   elif [ -f "${gitdir}/ORIG_HEAD" ]; then
     read -r commit < "${gitdir}/ORIG_HEAD"
   fi
@@ -111,12 +116,13 @@ _mk_prompt() {
     echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007"
   fi
 
+  # get the current git branch
   gitbranch
 
   sep="∈"
   local prefix=("\D{%T}")
-  if [ -n "${GITBRANCH:-}" ]; then
-    prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GITBRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
+  if [ -n "${GIT_BRANCH:-}" ]; then
+    prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GIT_BRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
 
     # Modified files
     if [ -n "$(git ls-files -m)" ]; then
@@ -139,13 +145,14 @@ export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
 export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
 export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
-export LESS_TERMCAP_mb=$'\e[1;32m'
-export LESS_TERMCAP_md=$'\e[1;32m'
-export LESS_TERMCAP_me=$'\e[0m'
-export LESS_TERMCAP_se=$'\e[0m'
-export LESS_TERMCAP_so=$'\e[01;33m'
-export LESS_TERMCAP_ue=$'\e[0m'
-export LESS_TERMCAP_us=$'\e[1;4;31m'
+# enable colours in less & man pages
+export LESS_TERMCAP_mb=$'\e[1;32m'   # start blink
+export LESS_TERMCAP_md=$'\e[1;32m'   # start bold mode
+export LESS_TERMCAP_me=$'\e[0m'      # turn off bold, blink & underline
+export LESS_TERMCAP_se=$'\e[0m'      # stop standout
+export LESS_TERMCAP_so=$'\e[01;33m'  # start standout (reverse video)
+export LESS_TERMCAP_ue=$'\e[0m'      # stop underline
+export LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
 
 # Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
 # Only print the pokemon fortune if:
