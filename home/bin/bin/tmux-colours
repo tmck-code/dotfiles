@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# tmux colour pallette from grey -> yellow
+colours=("237" "240" "100" "148" "214" "220" "226" "190" "154" "118" "214")
+# tmux grey pallette (10 colours)
+grey=("232" "232" "233" "233" "234" "234" "235" "235" "236" "236")
+
+function print_in_colour() {
+  local c=$1
+  local s=$2
+  printf '\x1b[38;5;%d%s\x1b[0m \n' "$c" "$s"
+}
+
+function colour_demo() {
+  for i in "${numbers[@]}"; do
+    echo -n "$i | "
+  done
+  echo
+
+  echo -e "\n--------------------------------------------------"
+  for i in {0..31}; do for j in {0..7}; do c=$[$[32*j]+i] && printf '\x1b[38;5;%dmcolour%-3s\x1b[0m ' $c $c; done ; echo ; done
+  echo -e "\n--------------------------------------------------"
+  for i in {0..15}; do for j in {0..15}; do c=$[$[16*j]+i] && printf '\x1b[38;5;%dmcolour%-3s\x1b[0m ' $c $c; done ; echo ; done
+  echo -e "\n--------------------------------------------------"
+  for i in {0..35}; do for j in {0..4}; do c=$[$[36*j]+i+52] && printf '\x1b[38;5;%dmcolour%-3s\x1b[0m ' $c $c; done ; echo ; done
+  echo -e "\n--------------------------------------------------"
+
+  for n in "${!numbers[@]}"; do
+    print_in_colour "${colours[$n]}" "${numbers[$n]}"
+  done
+  echo
+}
+
+
