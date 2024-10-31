@@ -6,7 +6,7 @@
 # [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo "in .bashrc - .bash_profile not sourced" && return 0
 
 # My utils that need to set before using tmux
-for dirpath in $HOME/bin $HOME/.local/bin /usr/local/bin; do
+for dirpath in $HOME/.cargo/bin $HOME/bin $HOME/.local/bin /usr/local/bin; do
   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
 done
 export PATH
@@ -106,7 +106,7 @@ _mk_prompt() {
       prefix+=("✭")
     fi
   fi
-  export PS1=" ${prefix[@]} $_MK_PROMPT_ORIG_PS1\n☯ "
+  export PS1=" ${prefix[@]}\n $_MK_PROMPT_ORIG_PS1\n☯ "
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
@@ -127,8 +127,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $(( RANDOM % 10 )) == 0 ]; then
-  fortune | pokesay -width 40 -japanese-name -unicode-box | lolcat
+  fortune | pokesay -jubC -w 40 | lolcat
 else
-  fortune | pokesay -width 40 -japanese-name -unicode-box
+  fortune | pokesay -jubC -w 40
 fi
-. "$HOME/.cargo/env"

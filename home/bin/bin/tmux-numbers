@@ -1,0 +1,30 @@
+#!/bin/bash
+
+multibox_filled=("󰼎 " "󰼏 " "󰼐 " "󰼑 " "󰼒 " "󰼓 " "󰼔 " "󰼕 " "󰼖 " "󰼗 ")
+multibox_empty=("󰎢 " "󰎥 " "󰎨 " "󰎫 " "󰎲 " "󰎯 " "󰎴 " "󰎷 " "󰎺 " "󰎽 ")
+more_filled=("󰎡 " "󰎤 " "󰎧 " "󰎪 " "󰎱 " "󰎳 " "󰎳 " "󰎶 " "󰎹 " "󰎼 ")
+more_empty=("󰎣 " "󰎦 " "󰎩 " "󰎬 " "󰎮 " "󰎰 " "󰎵 " "󰎸 " "󰎻 " "󰎾 ")
+circular_filled=("󰲠 " "󰲢 " "󰲤 " "󰲦 " "󰲨 " "󰲪 " "󰲬 " "󰲮 " "󰲰 ")
+circular_empty=("󰲡 " "󰲣 " "󰲥 " "󰲧 " "󰲩 " "󰲫 " "󰲭 " "󰲯 " "󰲱 ")
+numeric=("󰬺" "󰬻" "󰬼" "󰬽" "󰬾" "󰬿" "󰭀" "󰭁" "󰭂")
+double_circle=("⓵" "⓶" "⓷" "⓸" "⓹" "⓺" "⓻" "⓼" "⓽" "⓾")
+single_circle=(
+  "⓪" "①" "②" "③" "④" "⑤" "⑥" "⑦" "⑧" "⑨"
+  "⑩" "⑪" "⑫" "⑬" "⑭" "⑮" "⑯" "⑰" "⑱" "⑲"
+  "⑳" "㉑" "㉒" "㉓" "㉔" "㉕" "㉖" "㉗" "㉘" "㉙"
+  "㉚" "㉛" "㉜" "㉝" "㉞" "㉟" "㊱" "㊲" "㊳" "㊴"
+  "㊵" "㊶" "㊷" "㊸" "㊹" "㊺" "㊻" "㊼" "㊽" "㊾"
+  "㊿"
+)
+
+case "${2:-multibox_filled}" in
+  "multibox_filled")  echo "${multibox_filled[${1:-0}]}" ;;
+  "multibox_empty")   echo "${multibox_empty[${1:-0}]}" ;;
+  "more_filled")      echo "${more_filled[${1:-0}]}" ;;
+  "more_empty")       echo "${more_empty[${1:-0}]}" ;;
+  "circular_filled")  echo "${circular_filled[${1:-0}]}" ;;
+  "circular_empty")   echo "${circular_empty[${1:-0}]}" ;;
+  "numeric")          echo "${numeric[${1:-0}]}" ;;
+  "double_circle")    echo "${double_circle[${1:-0}]}" ;;
+  "single_circle")    echo "${single_circle[${1:-0}]}" ;;
+esac

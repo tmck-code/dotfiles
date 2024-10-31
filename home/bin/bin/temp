@@ -43,7 +43,7 @@ $(report_core_temp 1)
 EOF
 }
 
-if [ "${TERMUX:-}" == 1 ]; then
+if [ -n "${TERMUX_VERSION:-}" ]; then
   report_termux
 else
   report_inline
