@@ -2,7 +2,7 @@
 
 function set_theme() {
   local theme="${1:-}"
-  cp $HOME/dev/dotfiles/termux/gruvbox-${theme}.properties $HOME/.termux/colors.properties
+  cp $HOME/storage/dev/dotfiles/home/termux/gruvbox-${theme}.properties $HOME/.termux/colors.properties
   echo "Reloading Settings..."
   am broadcast --user 0 -a com.termux.app.reload_style com.termux > /dev/null
   echo TERMUX_THEME=${theme} > $HOME/.termux/current
@@ -15,7 +15,17 @@ function get_theme() {
   echo $TERMUX_THEME
 }
 
+function switch_theme() {
+  current=$(get_theme)
+  echo TERMUX_THEME=${current}
+  case $current in
+    "dark")  set_theme light ;;
+    "light") set_theme dark ;;
+  esac
+}
+
 case ${1} in
-  "set") set_theme ${2} ;;
-  "get") get_theme ;;
+  "set")    set_theme ${2} ;;
+  "switch") switch_theme ;;
+  "get")    get_theme ;;
 esac
