@@ -36,6 +36,7 @@ function install_os() {
 
 case ${1:-} in
   linux|termux|osx ) install_general ; install_os "$1" ;;
+  bin )              install_homedir bin ;;
   wsl )              install_general ; install_os linux ; install_os "$1" ;;
-  * )                echo "must choose linux/osx/termux" ; exit 1;;
+  * )                echo "must choose linux/osx/termux/wsl/bin" ; exit 1;;
 esac

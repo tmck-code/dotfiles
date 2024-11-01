@@ -43,6 +43,11 @@ export TERM=xterm-256color
 
 [ -r "$HOME/.fzf.bash" ] && source "$HOME/.fzf.bash"
 
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
+# [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+
+
 # TODO: Should probably just remove these. They're really slow to load and
 # affect the speed of opening any new bash session
 # Load Ruby Version Manager & pyenv
