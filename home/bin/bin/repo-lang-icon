@@ -1,10 +1,10 @@
 #!/bin/bash
 
-if   test -f "${1:-$PWD}/requirements.txt"; then echo "#[fg=colour226]󰌠 #[fg=default]"
-elif test -f "${1:-$PWD}/Gemfile";          then echo "#[fg=colour196]${2:-}󰴭 #[fg=default]"
-elif test -f "${1:-$PWD}/tsconfig.json";    then echo "#[fg=colour81]󰛦 #[fg=default]"
-elif test -f "${1:-$PWD}/package.json";     then echo "#[fg=colour220] #[fg=default]"
-elif test -f "${1:-$PWD}/go.mod";           then echo "#[fg=colour46]󰟓 #[fg=default]"
+if   test -f "${1:-$PWD}/requirements.txt"; then echo "${2:-#[fg=colour226}󰌠 "
+elif test -f "${1:-$PWD}/Gemfile";          then echo "${2:-#[fg=colour196}${2:-}󰴭 "
+elif test -f "${1:-$PWD}/tsconfig.json";    then echo "${2:-#[fg=colour81}󰛦 "
+elif test -f "${1:-$PWD}/package.json";     then echo "${2:-#[fg=colour220} "
+elif test -f "${1:-$PWD}/go.mod";           then echo "${2:-#[fg=colour46}󰟓 "
 else
-  echo "#[fg=colour226] #[fg=default]"
+  echo "${2:-#[fg=colour226]} "
 fi
