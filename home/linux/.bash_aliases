@@ -19,3 +19,4 @@ alias gpurge="git fetch origin --prune && git branch --merged | grep -v 'master\
 alias dush="du -sh * | sort -h"
 alias emacs="emacs -nw"
 
+alias code="/usr/share/code/bin/code"
