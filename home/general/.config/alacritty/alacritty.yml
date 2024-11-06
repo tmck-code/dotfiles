@@ -113,7 +113,7 @@ font:
     #   - (Windows) Consolas
     # family: unscii
     # family: Iosevka Nerd Font
-    family: FiraCode Nerd Font
+    family: IosevkaTerm NF
 
     # The `style` can be specified to pick a specific face.
     style: Regular
@@ -126,7 +126,7 @@ font:
     # value specified for the normal font.
     # family: Iosevka Nerd Font
     # family: Iosevka Term
-    family: FiraCode Nerd Font
+    family: IosevkaTerm NF
 
     # The `style` can be specified to pick a specific face.
     style: Bold
@@ -138,7 +138,7 @@ font:
     # If the italic family is not specified, it will fall back to the
     # value specified for the normal font.
     # family: Iosevka Nerd Font
-    family: Iosevka Nerd Font
+    family: IosevkaTerm NF
 
     # The `style` can be specified to pick a specific face.
     style: Light Italic
@@ -150,13 +150,13 @@ font:
     # If the bold italic family is not specified, it will fall back to the
     # value specified for the normal font.
     # family: Iosevka Nerd Font
-    family: Iosevka
+    family: IosevkaTerm NF
 
     # The `style` can be specified to pick a specific face.
     style: Bold Italic
 
   # Point size
-  size: 10.0
+  size: 18.0
 
   # Offset is the extra space around each character. `offset.y` can be thought
   # of as modifying the line spacing, and `offset.x` as modifying the letter
@@ -429,8 +429,8 @@ live_config_reload: true
 #   - (Windows) powershell
 shell:
   # program: /opt/homebrew/bin/fish
-  # program: /bin/bash
-  program: /usr/bin/fish
+  # program: /usr/bin/fish
+  program: /bin/bash
   args:
     - --login
   # program: /usr/bin/tmux
