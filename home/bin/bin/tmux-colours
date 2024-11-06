@@ -5,6 +5,8 @@ colours=("237" "240" "100" "148" "214" "220" "226" "190" "154" "118" "214")
 # tmux grey pallette (10 colours)
 grey=("232" "232" "233" "233" "234" "234" "235" "235" "236" "236")
 
+pallete=("160" "161" "125" "126" "90" "91" "55" "56" "20" "21" "20" "56" "55" "91" "90" "126" "125" "161" "160")
+
 function print_in_colour() {
   local c=$1
   local s=$2
@@ -31,4 +33,6 @@ function colour_demo() {
   echo
 }
 
+idx="${pallette[*]}"
+echo "#[${2:-bg}=colour${pallete[$1]}]"
 
