@@ -1,5 +1,11 @@
 #!/bin/bash
 
+idx="$1"
+if [ "$idx" -gt 9 ]; then
+  echo $1
+  exit 0
+fi
+
 multibox_filled=("󰼎 " "󰼏 " "󰼐 " "󰼑 " "󰼒 " "󰼓 " "󰼔 " "󰼕 " "󰼖 " "󰼗 ")
 multibox_empty=("󰎢 " "󰎥 " "󰎨 " "󰎫 " "󰎲 " "󰎯 " "󰎴 " "󰎷 " "󰎺 " "󰎽 ")
 more_filled=("󰎡 " "󰎤 " "󰎧 " "󰎪 " "󰎱 " "󰎳 " "󰎳 " "󰎶 " "󰎹 " "󰎼 ")
