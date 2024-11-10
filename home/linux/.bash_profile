@@ -28,9 +28,9 @@ PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 # Language paths
 # - golang
 export GOPATH="$HOME/go"
-export GOROOT="/usr/lib/go-1.19/"
+# export GOROOT="/usr/lib/go-1.18/"
 export NVM_DIR="$HOME/.nvm" # node version manager
-PATH="$PATH:$GOPATH/bin:$NVM_DIR"
+PATH="/usr/local/go/bin:$PATH:$NVM_DIR"
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
 export PATH
@@ -38,18 +38,18 @@ export PATH
 
 # Bash completion -------------------------------
 sources_dirs=(
-  "/usr/share/bash-completion/bash_completion" # bash/shell completions dir
   "/etc/bash_completion.d" # bash completions
 )
 sources_files=(
-  "/usr/share/doc/git/contrib/completion/git-completion.bash" # git completions
-  "/etc/bash_completion" # bash completions
-  "$HOME/.cargo/env" # cargo/rust
-  "$HOME/dev/z/z.sh" # z - jump around
-  "$HOME/.secrets" # my api keys
-  "$HOME/.venv/bin/activate" # python virtualenv
-  "$NVM_DIR/nvm.sh" # this loads nvm
-  "$NVM_DIR/bash_completion" # this loads nvim bash completion
+  # personal vars -------------------------------
+  "$HOME/.secrets"           # my api keys/secrets
+  # terminal experience -------------------------
+  "/usr/share/bash-completion/bash_completion" # this is sourced by /etc/bash_completion, so just source it directly
+  "$HOME/dev/z/z.sh"         # z - jump around e.g. `z lang` == `cd $HOME/dev/lang_tests/`
+  # language version managers -------------------
+  "$HOME/.cargo/env"         # cargo/rust
+  "$HOME/.venv/bin/activate" # pyhon virtual env
+  "$NVM_DIR/nvm.sh"          # nvm (node version manager)
 )
 
 for f in "${sources_dirs[@]}"; do
