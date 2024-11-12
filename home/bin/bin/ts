@@ -1,0 +1,25 @@
+#!/opt/homebrew/bin/bash
+
+set -euxo pipefail
+
+declare -A theme_style_switch
+theme_style_switch=([light]="dark" [dark]="light")
+
+declare -A themes
+themes=([light]="gruvbox_light" [dark]="gruvbox_dark")
+
+# get the current theme from the ~/.config/alacritty/.current-theme file
+read current < "$HOME/.config/alacritty/.current-theme"
+
+if command -v gsed &> /dev/null; then
+  gsed \
+    "s/themes\/${themes[$current]}.toml/themes\/${themes[${theme_style_switch[$current]}]}.toml/" \
+    -i "$HOME/.config/alacritty/alacritty.toml"
+else
+  sed \
+    -i "" \
+    "s/themes\/${themes[$current]}.toml/themes\/${themes[${theme_style_switch[$current]}]}.toml/" \
+    "$HOME/.config/alacritty/alacritty.toml" 2>&1 >> "$HOME/log.txt"
+fi
+
+echo "${theme_style_switch[$current]}" > "$HOME/.config/alacritty/.current-theme" &
