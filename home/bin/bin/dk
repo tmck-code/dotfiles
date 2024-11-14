@@ -25,7 +25,7 @@ EOF
 }
 
 function purge_containers () { echo -e "\n> Purging all containers"; docker ps -aq | xargs docker rm -f; }
-function prune_volumes()     { echo -e "\n> Pruning volumes"; docker volume ls -q | xargs docker volume prune -f; }
+function prune_volumes()     { echo -e "\n> Pruning volumes"; docker volume ls -q | xargs docker volume rm -f; }
 function prune_networks()    { echo -e "\n> Pruning networks"; docker network prune -f; }
 
 function cleanup_images () {

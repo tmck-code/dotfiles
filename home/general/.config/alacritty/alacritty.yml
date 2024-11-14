@@ -428,9 +428,9 @@ live_config_reload: true
 #   - (Linux/BSD) user login shell
 #   - (Windows) powershell
 shell:
-  # program: /opt/homebrew/bin/fish
   # program: /usr/bin/fish
-  program: /bin/bash
+  # program: /bin/bash
+  program: /opt/homebrew/bin/fish
   args:
     - --login
   # program: /usr/bin/tmux

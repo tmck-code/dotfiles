@@ -5,21 +5,37 @@ set -euxo pipefail
 declare -A theme_style_switch
 theme_style_switch=([light]="dark" [dark]="light")
 
-declare -A themes
-themes=([light]="gruvbox_light" [dark]="gruvbox_dark")
+declare -A theme_styles
+theme_styles=([light]=".light-theme" [dark]=".dark-theme")
 
-# get the current theme from the ~/.config/alacritty/.current-theme file
-read current < "$HOME/.config/alacritty/.current-theme"
+CONFIG_DIR="$HOME/.config/alacritty"
+THEME_DIR='~/.config/alacritty/themes/themes'
 
-if command -v gsed &> /dev/null; then
-  gsed \
-    "s/themes\/${themes[$current]}.toml/themes\/${themes[${theme_style_switch[$current]}]}.toml/" \
-    -i "$HOME/.config/alacritty/alacritty.toml"
-else
-  sed \
-    -i "" \
-    "s/themes\/${themes[$current]}.toml/themes\/${themes[${theme_style_switch[$current]}]}.toml/" \
-    "$HOME/.config/alacritty/alacritty.toml" 2>&1 >> "$HOME/log.txt"
-fi
+function switchStyle() {
+  local current_style new_style new_theme
 
-echo "${theme_style_switch[$current]}" > "$HOME/.config/alacritty/.current-theme" &
+  # get the current theme style from ~/.config/alacritty/.current-theme-style file
+  read current_style < "$CONFIG_DIR/.current-theme-style"
+  echo "current style: $current_style"
+  new_style=${theme_style_switch[$current_style]}
+  echo "new style: $new_style"
+  read new_theme < "$CONFIG_DIR/${theme_styles[${new_style}]}"
+  echo "new theme: $new_theme"
+
+
+  local sed_expr="s|^ \+\"$THEME_DIR/.*.toml\"|    \"$THEME_DIR/${new_theme}.toml\"|g"
+  echo "sed expression: $sed_expr"
+  if command -v /opt/homebrew/bin/gsed &> /dev/null; then
+    echo "using gsed"
+    /opt/homebrew/bin/gsed  "$sed_expr" -i "$CONFIG_DIR/alacritty.toml"
+  else
+    echo "using sed"
+    sed -i "" "$sed_expr" "$CONFIG_DIR/alacritty.toml"
+  fi
+  echo "$new_style" > $CONFIG_DIR/.current-theme-style
+}
+
+case ${1:-switch} in
+  switch) switchStyle ;;
+  *)      echo "Usage: $0 switch" ; exit 1 ;;
+esac
