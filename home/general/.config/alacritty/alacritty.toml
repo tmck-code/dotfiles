@@ -1,37 +1,54 @@
 [general]
 live_config_reload = true
 import = [
-    "~/.config/alacritty/themes/themes/gruvbox_light.toml"
+    # "~/.config/alacritty/themes/themes/gruvbox_dark.toml"
+    "~/.config/alacritty/themes/themes/cyber_punk_neon.toml"
 ]
 
 # [colors.primary]
 # background = "#000000"
 
 [font]
-size = 10.0
+size = 16.0
 # offset = { y = 50 }
 
 [font.bold]
-family = "Iosevka Nerd Font"
+# family = "Iosevka Nerd Font"
+# family = "OperatorMono Nerd Font"
+# family = "FantasqueSansM Nerd Font Mono"
+# family = "Monofur Nerd Font Mono"
+# family = "HeavyData Nerd Font"
+# family = "OpenDyslexicM Nerd Font Mono"
+# family = "Hurmit Nerd Font Mono"
+family = "CaskaydiaCove Nerd Font Mono"
 style = "Bold"
 
 [font.bold_italic]
-family = "Iosevka Nerd Font"
+# family = "Iosevka Nerd Font"
+# family = "OperatorMono Nerd Font"
+family = "CaskaydiaCove Nerd Font Mono"
 style = "Bold Italic"
 
 [font.italic]
-family = "Iosevka Nerd Font"
-style = "Light Italic"
+# family = "Iosevka Nerd Font"
+# family = "OperatorMono Nerd Font"
+family = "CaskaydiaCove Nerd Font Mono"
+style = "ExtraLight Italic"
 
 [font.normal]
-family = "Iosevka Nerd Font"
-style = "Regular"
+# family = "Iosevka Nerd Font"
+# family = "OperatorMono Nerd Font"
+# family = "Monofur Nerd Font Mono"
+# family = "HeavyData Nerd Font"
+# family = "FantasqueSansM Nerd Font Mono"
+family = "CaskaydiaCove Nerd Font Mono"
+style = "ExtraLight"
 
 [keyboard]
 bindings = [
   { key = "N", mods = "Control", action = "SpawnNewInstance" },
   { key = "T", mods = "Command|Shift", chars = "RAILS_ENV=test bundle exec rake spec SPEC=spec/" },
-  { key = "Y", mods = "Control|Shift", command = { program = "/opt/homebrew/bin/bash", args = ["-c", "/Users/tomm/bin/ts"] } },
+  { key = "Y", mods = "Control|Shift", command = { program = "/opt/homebrew/bin/bash", args = ["-c", "/Users/tomm/bin/ts 2>&1 > /Users/tomm/bin/ts.log"] } },
 ]
 
 [terminal.shell]
