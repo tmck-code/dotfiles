@@ -4,22 +4,22 @@ set -euo pipefail
 
 [ -n "${DEBUG:-}" ] && set -x
 
-FIGLET_FONTS_DIR="$(figlet -I2)"
+FIGLET_FONTS_DIR="$(find $(figlet -I2) -type d -name fonts)"
+if [ -z "${FIGLET_FONTS_DIR:-}" ]; then
+  echo "No figlet fonts found!" >&2 && exit 1
+fi
 
 function usage() {
-  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--demo]" >&2
+  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--display] [-p|--print] [-D|--demo]" >&2
 }
 
 CHOICES=(
-  "3D Diagonal.flf" "3d.flf" "3d_diagonal.flf" "AMC AAA01.flf" "ANSI Regular.flf"
-  "ANSI Shadow.flf" "Big Money-ne.flf" "Bloody.flf" "Bolger.flf"
-  "Calvin S.flf" "DOS Rebel.flf" "Delta Corps Priest 1.flf" "Elite.flf"
-  "Filter.flf" "Georgia11.flf" "NScript.flf" "The Edge.flf" "amcaaa01.flf"
-  "basic.flf" "broadway.flf" "Colossal.flf" "Doh.flf" "Fraktur.flf"
-  "kompaktblk.flf" "larry3d.flf" "maxiwi.flf" "miniwi.flf" "nancyj-fancy.flf"
-  "nancyj-underlined.flf" "NV Script.flf" "o8.flf" "poison.flf" "roman.flf"
-  "rowancap.flf" "Rozzo.flf" "sblood.flf" "stencil.flf" "stencil.flf"
-  "thick.flf" "univers.flf" "whimsy.flf"
+  "3d_diagonal.flf" "3d.flf" "3d_diagonal.flf" "amc_aaa01.flf" "ansi_regular.flf" "ansi_shadow.flf"
+  "big_money-ne.flf" "bloody.flf" "bolger.flf" "calvin_s.flf" "dos_rebel.flf" "delta_corps_priest_1.flf"
+  "elite.flf" "filter.flf" "georgia11.flf" "nscript.flf" "the_edge.flf" "amcaaa01.flf" "basic.flf"
+  "broadway.flf" "colossal.flf" "doh.flf" "fraktur.flf" "kompaktblk.flf" "larry3d.flf" "maxiwi.flf"
+  "miniwi.flf" "nancyj-fancy.flf" "nancyj-underlined.flf" "nv_script.flf" "o8.flf" "poison.flf"
+  "roman.flf" "rowancap.flf" "rozzo.flf" "sblood.flf" "stencil.flf" "thick.flf" "univers.flf" "whimsy.flf"
 )
 
 # prints a message with a figlet font
@@ -28,15 +28,14 @@ function print_message() {
   local choice="${2:-}"
 
   if [[ -z "$choice" ]]; then
-    choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
+    choice="${CHOICES[ $RANDOM % ${#CHOICES[@] }]}"
   fi
 
-  if ! test -f "$FIGLET_FONTS_DIR/$choice"; then
-    choice=$(find "$FIGLET_FONTS_DIR" -iname "${choice}.???" | head -n1)
-  fi
-
-  echo -e "$message" \
-    | figlet -f "$choice" -w "$(tput cols)" -c \
+  # figlet - use specific font file, set width to terminal and center the text
+  # lolcat - randomize the horizontal freq, and force colour always
+    # -w "$(tput cols)" -c \
+  printf "%s" "$message" \
+    | figlet -f "$choice" \
     | lolcat -h "0.$[ $RANDOM % 10 ]" -f
 }
 
@@ -48,23 +47,26 @@ function display_message() {
   local msg=$(print_message "$message" "$choice")
   local n_lines=$(echo "$msg" | wc -l)
 
+  local padding=$[ $[ $(tput lines) - $n_lines ] / 2 ]
+
+  # display the figlet message, with padding above/below
   clear
-  # pad the top/above the figlet message
-  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
-  # display the figlet message
-  echo -e "$msg"
-  # pad the bottom/below the figlet message
-  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
+  for _ in $(seq 0 $padding); do echo ; done
+  printf "%s" "$msg"
+  for _ in $(seq 0 $padding); do echo ; done
 }
 
 # cycles through each chosen figlet font displaying the message. press any key to continue
 function demo_message() {
   local message="$1"
+  local idx=1
   for f in "${CHOICES[@]}"; do
-    echo "$f"
     display_message "$message" "$f"
-    echo "$f"
-    read -n1 -s -r -p "Press any key to continue"
+    printf \
+      "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
+      [$idx/${#CHOICES[@]}] $f "press any key to continue..."
+    read -n1 -s -r
+    idx=$((idx+1))
   done
 }
 
