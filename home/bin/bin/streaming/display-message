@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+[ -n "${DEBUG:-}" ] && set -x
+
+FIGLET_FONTS_DIR="$(figlet -I2)"
+
 function usage() {
   echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--demo]" >&2
 }
@@ -18,9 +22,8 @@ CHOICES=(
   "thick.flf" "univers.flf" "whimsy.flf"
 )
 
-function display_message() {
-  # prints a message with a figlet font, padding above/below the message
-  # so that it appears in the center of the screen
+# prints a message with a figlet font
+function print_message() {
   local message="$1"
   local choice="${2:-}"
 
@@ -28,28 +31,33 @@ function display_message() {
     choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
   fi
 
-  if ! test -f $PREFIX/share/figlet/$choice; then
-    choice=$(find $PREFIX/share/figlet -iname "$choice" | head -n1)
+  if ! test -f "$FIGLET_FONTS_DIR/$choice"; then
+    choice=$(find "$FIGLET_FONTS_DIR" -iname "${choice}.???" | head -n1)
   fi
 
-  clear
-
-  msg="$(echo -e "$message" \
+  echo -e "$message" \
     | figlet -f "$choice" -w "$(tput cols)" -c \
-    | lolcat -h "0.$[ $RANDOM % 10 ]" -f)"
-  n_lines=$(echo "$msg" | wc -l)
+    | lolcat -h "0.$[ $RANDOM % 10 ]" -f
+}
 
+# prints a message with a figlet font, centered using padding above/below the message
+function display_message() {
+  local message="$1"
+  local choice="${2:-}"
+
+  local msg=$(print_message "$message" "$choice")
+  local n_lines=$(echo "$msg" | wc -l)
+
+  clear
   # pad the top/above the figlet message
   for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
-  # for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
-
+  # display the figlet message
   echo -e "$msg"
-
   # pad the bottom/below the figlet message
-  # for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
   for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
 }
 
+# cycles through each chosen figlet font displaying the message. press any key to continue
 function demo_message() {
   local message="$1"
   for f in "${CHOICES[@]}"; do
@@ -60,19 +68,21 @@ function demo_message() {
   done
 }
 
-display= demo= msg= font=
+display= print= demo= msg= font=
 while test $# -gt 0; do
   case "$1" in
-    -h|--help) usage; exit 0 ;;
-    -m|--message) display=1; shift; msg="$1"; shift ;;
-    -f|--font) shift; font="$1"; shift ;;
-    -d|--demo) demo=1; shift; msg="${1:-Hello World!}"; shift;;
-    *) echo "Wrong arg: $1" >&2; usage; exit 1 ;;
+    -h|--help)    usage; exit 0 ;;
+    -d|--display) display=1; shift; msg="$1"; shift ;;
+    -p|--print)   print=1;   shift; msg="$1"; shift ;;
+    -f|--font)               shift; font="$1"; shift ;;
+    -D|--demo)    demo=1;    shift; msg="${1:-Hello World!}"; shift;;
+    *)
+      echo "Wrong arg: $1" >&2; usage; exit 1 ;;
   esac
 done
 
-if [[ -n "$demo" ]]; then
-  demo_message "$msg"
-elif [[ -n "$display" ]]; then
-  display_message "$msg" true
+if   [[ -n "$demo" ]];    then demo_message "$msg"
+elif [[ -n "$display" ]]; then display_message "$msg" "$font"
+elif [[ -n "$print" ]];   then print_message "$msg" "$font"
+else echo "No action specified" >&2; usage; exit 1
 fi
