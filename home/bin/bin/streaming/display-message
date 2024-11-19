@@ -2,26 +2,77 @@
 
 set -euo pipefail
 
-# Choices
-CHOICES="\
-/usr/share/figlet/ANSI Shadow.flf
-/usr/share/figlet/3D-ASCII.flf
-/usr/share/figlet/3d.flf
-/usr/share/figlet/Colossal.flf
-/usr/share/figlet/cosmike.flf
-/usr/share/figlet/cricket.flf
-/usr/share/figlet/Def Leppard.flf
-/usr/share/figlet/Fraktur.flf
-/usr/share/figlet/S Blood.flf
-/usr/share/figlet/smpoison.flf
-/usr/share/figlet/swampland.flf
-/usr/share/figlet/Train.flf"
+function usage() {
+  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--demo]" >&2
+}
 
-MESSAGE="$(echo -e $1)"
-CHOICE="${2:-$(echo "$CHOICES" | shuf -n 1 -)}"
+CHOICES=(
+  "3D Diagonal.flf" "3d.flf" "3d_diagonal.flf" "AMC AAA01.flf" "ANSI Regular.flf"
+  "ANSI Shadow.flf" "Big Money-ne.flf" "Bloody.flf" "Bolger.flf"
+  "Calvin S.flf" "DOS Rebel.flf" "Delta Corps Priest 1.flf" "Elite.flf"
+  "Filter.flf" "Georgia11.flf" "NScript.flf" "The Edge.flf" "amcaaa01.flf"
+  "basic.flf" "broadway.flf" "colossal.flf" "doh.flf" "fraktur.flf"
+  "kompaktblk.flf" "larry3d.flf" "maxiwi.flf" "miniwi.flf" "nancyj-fancy.flf"
+  "nancyj-underlined.flf" "nvscript.flf" "o8.flf" "poison.flf" "roman.flf"
+  "rowancap.flf" "rozzo.flf" "sblood.flf" "stencil.flf" "stencil.flf"
+  "thick.flf" "univers.flf" "whimsy.flf"
+)
 
-clear
+function display_message() {
+  # prints a message with a figlet font, padding above/below the message
+  # so that it appears in the center of the screen
+  local message="$1"
+  local font_header="${2:-}"
+  local choice="${3:-}"
 
-for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
-figlet "$(echo -e $MESSAGE)" -f "$CHOICE" -w "$(tput cols)" -c | lolcat -F 0.2
-for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
+  if [[ -z "$choice" ]]; then
+    choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
+  fi
+
+  clear
+
+  msg="$(echo -e "$message" \
+    | figlet -f "$choice" -w "$(tput cols)" -c \
+    | lolcat -h 2 -f)"
+  n_lines=$(echo "$msg" | wc -l)
+
+  if [[ -n "$font_header" ]]; then
+    echo -e "$font_header"
+  fi
+
+  # pad the top/above the figlet message
+  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
+  # for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
+
+  echo -e "$msg"
+
+  # pad the bottom/below the figlet message
+  # for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
+  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
+}
+
+function demo_message() {
+  local message="$1"
+  for f in "${CHOICES[@]}"; do
+    echo "$f"
+    display_message "$message" "$f"
+    read -n1 -s -r -p "Press any key to continue"
+  done
+}
+
+display= demo= msg= font=
+while test $# -gt 0; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    -m|--message) display=1; shift; msg="$1"; shift ;;
+    -f|--font) shift; font="$1"; shift ;;
+    -d|--demo) demo=1; shift; msg="${1:-Hello World!}"; shift;;
+    *) echo "Wrong arg: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+if [[ -n "$demo" ]]; then
+  demo_message "$msg"
+elif [[ -n "$display" ]]; then
+  display_message "$msg" true
+fi
