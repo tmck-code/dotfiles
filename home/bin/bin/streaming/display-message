@@ -11,21 +11,22 @@ function usage() {
 }
 
 CHOICES=(
-  "3D Diagonal.flf" "3d.flf" "3d_diagonal.flf" "AMC AAA01.flf" "ANSI Regular.flf"
-  "ANSI Shadow.flf" "Big Money-ne.flf" "Bloody.flf" "Bolger.flf"
-  "Calvin S.flf" "DOS Rebel.flf" "Delta Corps Priest 1.flf" "Elite.flf"
-  "Filter.flf" "Georgia11.flf" "NScript.flf" "The Edge.flf" "amcaaa01.flf"
-  "basic.flf" "broadway.flf" "Colossal.flf" "Doh.flf" "Fraktur.flf"
-  "kompaktblk.flf" "larry3d.flf" "maxiwi.flf" "miniwi.flf" "nancyj-fancy.flf"
-  "nancyj-underlined.flf" "NV Script.flf" "o8.flf" "poison.flf" "roman.flf"
-  "rowancap.flf" "Rozzo.flf" "sblood.flf" "stencil.flf" "stencil.flf"
-  "thick.flf" "univers.flf" "whimsy.flf"
+  "3d_diagonal" "3d" "3d_diagonal" "amc_aaa01" "ansi_regular"
+  "ansi_shadow" "big_money-ne" "bloody" "bolger"
+  "calvin_s" "dos_rebel" "delta_corps_priest_1" "elite"
+  "filter" "georgia11" "nscript" "the_edge" "amcaaa01"
+  "basic" "broadway" "colossal" "doh" "fraktur"
+  "kompaktblk" "larry3d" "maxiwi" "miniwi" "nancyj-fancy"
+  "nancyj-underlined" "nv_script" "o8" "poison" "roman"
+  "rowancap" "rozzo" "sblood" "stencil" "stencil"
+  "thick" "univers" "whimsy"
 )
 
 # prints a message with a figlet font
 function print_message() {
   local message="$1"
-  local choice="${2:-}"
+  local colour="${2:-1}"
+  local choice="${3:-}"
 
   if [[ -z "$choice" ]]; then
     choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
@@ -35,17 +36,23 @@ function print_message() {
     choice=$(find "$FIGLET_FONTS_DIR" -iname "${choice}.???" | head -n1)
   fi
 
-  echo -e "$message" \
-    | figlet -f "$choice" -w "$(tput cols)" -c \
-    | lolcat -h "0.$[ $RANDOM % 10 ]" -f
+  msg=$(echo -e "$message" \
+    | figlet -f "$choice" -w "$(tput cols)")
+  if [ "$colour" -eq 1 ]; then
+    echo -e "$msg" | lolcat -h "0.$[ $RANDOM % 10 ]" -f
+  else
+    echo -e "$msg"
+  fi
+    # | lolcat -h "0.$[ $RANDOM % 10 ]" -f
 }
 
 # prints a message with a figlet font, centered using padding above/below the message
 function display_message() {
   local message="$1"
-  local choice="${2:-}"
+  local colour="${2:-1}"
+  local choice="${3:-}"
 
-  local msg=$(print_message "$message" "$choice")
+  local msg=$(print_message "$message" "$colour" "$choice")
   local n_lines=$(echo "$msg" | wc -l)
 
   clear
@@ -60,15 +67,16 @@ function display_message() {
 # cycles through each chosen figlet font displaying the message. press any key to continue
 function demo_message() {
   local message="$1"
+  local colour="${2:-}"
   for f in "${CHOICES[@]}"; do
     echo "$f"
-    display_message "$message" "$f"
+    display_message "$message" "$f" "$colour"
     echo "$f"
     read -n1 -s -r -p "Press any key to continue"
   done
 }
 
-display= print= demo= msg= font=
+display= print= demo= msg= font= colour=1
 while test $# -gt 0; do
   case "$1" in
     -h|--help)    usage; exit 0 ;;
@@ -76,13 +84,14 @@ while test $# -gt 0; do
     -p|--print)   print=1;   shift; msg="$1"; shift ;;
     -f|--font)               shift; font="$1"; shift ;;
     -D|--demo)    demo=1;    shift; msg="${1:-Hello World!}"; shift;;
+    -n|--no-colour) colour=0; shift ;;
     *)
       echo "Wrong arg: $1" >&2; usage; exit 1 ;;
   esac
 done
 
-if   [[ -n "$demo" ]];    then demo_message "$msg"
-elif [[ -n "$display" ]]; then display_message "$msg" "$font"
-elif [[ -n "$print" ]];   then print_message "$msg" "$font"
+if   [[ -n "$demo" ]];    then demo_message "$msg" "$colour"
+elif [[ -n "$display" ]]; then display_message "$msg" "$colour" "$font"
+elif [[ -n "$print" ]];   then print_message "$msg" "$colour" "$font"
 else echo "No action specified" >&2; usage; exit 1
 fi
