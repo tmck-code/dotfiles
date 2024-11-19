@@ -4,10 +4,13 @@ set -euo pipefail
 
 [ -n "${DEBUG:-}" ] && set -x
 
-FIGLET_FONTS_DIR="$(figlet -I2)"
+FIGLET_FONTS_DIR="$(find $(figlet -I2) -type d -name fonts)"
+if [ -z "${FIGLET_FONTS_DIR:-}" ]; then
+  echo "No figlet fonts found!" >&2 && exit 1
+fi
 
 function usage() {
-  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--demo]" >&2
+  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--display] [-p|--print] [-D|--demo]" >&2
 }
 
 CHOICES=(
@@ -29,13 +32,15 @@ function print_message() {
   local choice="${3:-}"
 
   if [[ -z "$choice" ]]; then
-    choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
+    choice="${CHOICES[ $RANDOM % ${#CHOICES[@] }]}"
   fi
 
   if ! test -f "$FIGLET_FONTS_DIR/$choice"; then
     choice=$(find "$FIGLET_FONTS_DIR" -iname "${choice}.???" | head -n1)
   fi
 
+  # figlet - use specific font file, set width to terminal and center the text
+  # lolcat - randomize the horizontal freq, and force colour always
   msg=$(echo -e "$message" \
     | figlet -f "$choice" -w "$(tput cols)")
   if [ "$colour" -eq 1 ]; then
@@ -43,7 +48,6 @@ function print_message() {
   else
     echo -e "$msg"
   fi
-    # | lolcat -h "0.$[ $RANDOM % 10 ]" -f
 }
 
 # prints a message with a figlet font, centered using padding above/below the message
@@ -55,24 +59,26 @@ function display_message() {
   local msg=$(print_message "$message" "$colour" "$choice")
   local n_lines=$(echo "$msg" | wc -l)
 
+  local padding=$[ $[ $(tput lines) - $n_lines ] / 2 ]
+
+  # display the figlet message, with padding above/below
   clear
-  # pad the top/above the figlet message
-  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
-  # display the figlet message
-  echo -e "$msg"
-  # pad the bottom/below the figlet message
-  for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
+  for _ in $(seq 0 $padding); do echo ; done
+  printf "%s" "$msg"
+  for _ in $(seq 0 $padding); do echo ; done
 }
 
 # cycles through each chosen figlet font displaying the message. press any key to continue
 function demo_message() {
   local message="$1"
-  local colour="${2:-}"
+  local idx=1
   for f in "${CHOICES[@]}"; do
-    echo "$f"
-    display_message "$message" "$f" "$colour"
-    echo "$f"
-    read -n1 -s -r -p "Press any key to continue"
+    display_message "$message" "$f"
+    printf \
+      "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
+      [$idx/${#CHOICES[@]}] $f "press any key to continue..."
+    read -n1 -s -r
+    idx=$((idx+1))
   done
 }
 
