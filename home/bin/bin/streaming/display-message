@@ -11,10 +11,10 @@ CHOICES=(
   "ANSI Shadow.flf" "Big Money-ne.flf" "Bloody.flf" "Bolger.flf"
   "Calvin S.flf" "DOS Rebel.flf" "Delta Corps Priest 1.flf" "Elite.flf"
   "Filter.flf" "Georgia11.flf" "NScript.flf" "The Edge.flf" "amcaaa01.flf"
-  "basic.flf" "broadway.flf" "colossal.flf" "doh.flf" "fraktur.flf"
+  "basic.flf" "broadway.flf" "Colossal.flf" "Doh.flf" "Fraktur.flf"
   "kompaktblk.flf" "larry3d.flf" "maxiwi.flf" "miniwi.flf" "nancyj-fancy.flf"
-  "nancyj-underlined.flf" "nvscript.flf" "o8.flf" "poison.flf" "roman.flf"
-  "rowancap.flf" "rozzo.flf" "sblood.flf" "stencil.flf" "stencil.flf"
+  "nancyj-underlined.flf" "NV Script.flf" "o8.flf" "poison.flf" "roman.flf"
+  "rowancap.flf" "Rozzo.flf" "sblood.flf" "stencil.flf" "stencil.flf"
   "thick.flf" "univers.flf" "whimsy.flf"
 )
 
@@ -22,23 +22,22 @@ function display_message() {
   # prints a message with a figlet font, padding above/below the message
   # so that it appears in the center of the screen
   local message="$1"
-  local font_header="${2:-}"
-  local choice="${3:-}"
+  local choice="${2:-}"
 
   if [[ -z "$choice" ]]; then
     choice="${CHOICES[$RANDOM % ${#CHOICES[@]}]}"
+  fi
+
+  if ! test -f $PREFIX/share/figlet/$choice; then
+    choice=$(find $PREFIX/share/figlet -iname "$choice" | head -n1)
   fi
 
   clear
 
   msg="$(echo -e "$message" \
     | figlet -f "$choice" -w "$(tput cols)" -c \
-    | lolcat -h 2 -f)"
+    | lolcat -h "0.$[ $RANDOM % 10 ]" -f)"
   n_lines=$(echo "$msg" | wc -l)
-
-  if [[ -n "$font_header" ]]; then
-    echo -e "$font_header"
-  fi
 
   # pad the top/above the figlet message
   for _ in $(seq 0 $(( $(( $(tput lines) - $n_lines )) / 2 ))); do echo ; done
@@ -56,6 +55,7 @@ function demo_message() {
   for f in "${CHOICES[@]}"; do
     echo "$f"
     display_message "$message" "$f"
+    echo "$f"
     read -n1 -s -r -p "Press any key to continue"
   done
 }
