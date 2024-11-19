@@ -29,7 +29,8 @@ CHOICES=(
 function print_message() {
   local message="$1"
   local colour="${2:-1}"
-  local choice="${3:-}"
+  local figlet_opts="${3:-}"
+  local choice="${4:-}"
 
   if [[ -z "$choice" ]]; then
     choice="${CHOICES[ $RANDOM % ${#CHOICES[@] }]}"
@@ -41,8 +42,7 @@ function print_message() {
 
   # figlet - use specific font file, set width to terminal and center the text
   # lolcat - randomize the horizontal freq, and force colour always
-  msg=$(echo -e "$message" \
-    | figlet -f "$choice" -w "$(tput cols)")
+  msg="$(echo -e "$message" | figlet -f "$choice" -w "$(tput cols)" $figlet_opts)"
   if [ "$colour" -eq 1 ]; then
     echo -e "$msg" | lolcat -h "0.$[ $RANDOM % 10 ]" -f
   else
@@ -54,9 +54,10 @@ function print_message() {
 function display_message() {
   local message="$1"
   local colour="${2:-1}"
-  local choice="${3:-}"
+  local figlet_opts="${3:-}"
+  local choice="${4:-}"
 
-  local msg=$(print_message "$message" "$colour" "$choice")
+  local msg="$(print_message "$message" "$colour" "$figlet_opts" "$choice")"
   local n_lines=$(echo "$msg" | wc -l)
 
   local padding=$[ $[ $(tput lines) - $n_lines ] / 2 ]
@@ -71,9 +72,11 @@ function display_message() {
 # cycles through each chosen figlet font displaying the message. press any key to continue
 function demo_message() {
   local message="$1"
+  local colour="${2:-1}"
+  local figlet_opts="${3:-}"
   local idx=1
   for f in "${CHOICES[@]}"; do
-    display_message "$message" "$f"
+    display_message "$message" "$colour" "$figlet_opts" "$f"
     printf \
       "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
       [$idx/${#CHOICES[@]}] $f "press any key to continue..."
@@ -82,22 +85,23 @@ function demo_message() {
   done
 }
 
-display= print= demo= msg= font= colour=1
+display= print= demo= msg='Hello World!' font= colour=1 figlet_opts="-c"
 while test $# -gt 0; do
   case "$1" in
-    -h|--help)    usage; exit 0 ;;
-    -d|--display) display=1; shift; msg="$1"; shift ;;
-    -p|--print)   print=1;   shift; msg="$1"; shift ;;
-    -f|--font)               shift; font="$1"; shift ;;
-    -D|--demo)    demo=1;    shift; msg="${1:-Hello World!}"; shift;;
-    -n|--no-colour) colour=0; shift ;;
+    -h|--help)      usage; exit 0 ;;
+    -d|--display)   display=1; shift; msg="$1"; shift ;;
+    -p|--print)     print=1;   shift; msg="$1"; shift ;;
+    -f|--font)                 shift; font="$1"; shift ;;
+    -D|--demo)      demo=1;    shift; [ -n "${1:-}" ] && msg="$1" && shift ;;
+    -n|--no-colour) colour=0;  shift ;;
+    -o|--figlet-opts)          shift; figlet_opts="$1"; shift ;;
     *)
       echo "Wrong arg: $1" >&2; usage; exit 1 ;;
   esac
 done
 
-if   [[ -n "$demo" ]];    then demo_message "$msg" "$colour"
-elif [[ -n "$display" ]]; then display_message "$msg" "$colour" "$font"
-elif [[ -n "$print" ]];   then print_message "$msg" "$colour" "$font"
+if   [[ -n "$demo" ]];    then demo_message "$msg" "$colour" "$figlet_opts"
+elif [[ -n "$display" ]]; then display_message "$msg" "$colour" "$figlet_opts" "$font"
+elif [[ -n "$print" ]];   then print_message "$msg" "$colour" "$figlet_opts" "$font"
 else echo "No action specified" >&2; usage; exit 1
 fi
