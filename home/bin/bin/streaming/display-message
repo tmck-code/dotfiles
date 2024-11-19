@@ -4,8 +4,10 @@ set -euo pipefail
 
 [ -n "${DEBUG:-}" ] && set -x
 
-FIGLET_FONTS_DIR="$(find $(figlet -I2) -type d -name fonts)"
-if [ -z "${FIGLET_FONTS_DIR:-}" ]; then
+FONTS_DIR="$(figlet -I2)"
+test -d "$FONTS_DIR/fonts" && FONTS_DIR="$FONTS_DIR/fonts"
+
+if [ -z "${FONTS_DIR:-}" ]; then
   echo "No figlet fonts found!" >&2 && exit 1
 fi
 
@@ -36,8 +38,8 @@ function print_message() {
     choice="${CHOICES[ $RANDOM % ${#CHOICES[@] }]}"
   fi
 
-  if ! test -f "$FIGLET_FONTS_DIR/$choice"; then
-    choice=$(find "$FIGLET_FONTS_DIR" -iname "${choice}.???" | head -n1)
+  if ! test -f "$FONTS_DIR/$choice"; then
+    choice=$(find "$FONTS_DIR" -iname "${choice}.???" | head -n1)
   fi
 
   # figlet - use specific font file, set width to terminal and center the text
