@@ -33,7 +33,7 @@ function print_message() {
 
   # figlet - use specific font file, set width to terminal and center the text
   # lolcat - randomize the horizontal freq, and force colour always
-    # -w "$(tput cols)" -c \
+  # -w "$(tput cols)" -c \
   printf "%s" "$message" \
     | figlet -f "$choice" \
     | lolcat -h "0.$[ $RANDOM % 10 ]" -f
