@@ -35,7 +35,7 @@ function print_message() {
   local choice="${4:-}"
 
   if [[ -z "$choice" ]]; then
-    choice="${CHOICES[ $RANDOM % ${#CHOICES[@] }]}"
+    choice="${CHOICES[ $RANDOM % ${#CHOICES[@]} ]}"
   fi
 
   if ! test -f "$FONTS_DIR/$choice"; then
@@ -46,7 +46,7 @@ function print_message() {
   # lolcat - randomize the horizontal freq, and force colour always
   msg="$(echo -e "$message" | figlet -f "$choice" -w "$(tput cols)" $figlet_opts)"
   if [ "$colour" -eq 1 ]; then
-    echo -e "$msg" | lolcat -h "0.$[ $RANDOM % 10 ]" -f
+    echo -e "$msg" | lolcat -F "0.$[ $RANDOM % 10 ]" -f
   else
     echo -e "$msg"
   fi
