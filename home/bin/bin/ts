@@ -22,16 +22,11 @@ function switchStyle() {
   read new_theme < "$CONFIG_DIR/${theme_styles[${new_style}]}"
   echo "new theme: $new_theme"
 
-
   local sed_expr="s|^ \+\"$THEME_DIR/.*.toml\"|    \"$THEME_DIR/${new_theme}.toml\"|g"
+
   echo "sed expression: $sed_expr"
-  if command -v /opt/homebrew/bin/gsed &> /dev/null; then
-    echo "using gsed"
-    /opt/homebrew/bin/gsed  "$sed_expr" -i "$CONFIG_DIR/alacritty.toml"
-  else
-    echo "using sed"
-    sed -i "" "$sed_expr" "$CONFIG_DIR/alacritty.toml"
-  fi
+  sed  "$sed_expr" -i "$CONFIG_DIR/alacritty.toml"
+
   echo "$new_style" > $CONFIG_DIR/.current-theme-style
 }
 

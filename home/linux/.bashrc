@@ -159,5 +159,9 @@ export LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
 # - there isn't an SSH session detected (scp/ssh etc)
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message
-  fortune | pokesay -jCub -w 40
+  if test $[ $RANDOM % 20 ] -eq 1; then
+    display-message -p "$(date)" -f pagga | pokesay -BuWbCj -w 70
+  else
+    fortune | pokesay -jCub -w 40
+  fi
 fi

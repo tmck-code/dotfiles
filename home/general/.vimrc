@@ -135,7 +135,7 @@ endif
 
 " let g:airline_theme='shades_of_purple'
 " let g:shades_of_purple_airline = 1
-let g:airline_powerline_fonts = 1
+" let g:airline_powerline_fonts = 1
 
 if ($TERMUX_THEME == "light")
   set background=light " Light style for theme
@@ -198,6 +198,8 @@ nmap ga <Plug>(EasyAlign)
 
 " FZF (FuZzy Finder)
 set rtp+=~/.fzf
+
+" let g:Hexokinase_highlighters = ['background']
 
 " let b:RainbowDelim = '|'
 " Rainbow parenthesis
@@ -278,8 +280,8 @@ let g:strip_whitespace_on_save=1
 " Disable editor mode in default bar (as this is displayed by airline)
 set noshowmode
 
-let g:webdevicons_enable_airline_statusline = 1
-let g:webdevicons_enable_airline_tabline = 1
+" let g:webdevicons_enable_airline_statusline = 1
+" let g:webdevicons_enable_airline_tabline = 1
 
 " Searching options
 let g:ctrlsf_position = 'bottom'
