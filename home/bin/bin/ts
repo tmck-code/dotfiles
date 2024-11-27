@@ -1,6 +1,11 @@
 #!/bin/bash
 
-set -euxo pipefail
+set -euo pipefail
+[ -n "${DEBUG:-}" ] && set -x
+
+function usage() {
+  echo "Usage: $0 [switch|demo|random] [-n|--no-light]" >&2
+}
 
 declare -A theme_style_switch
 theme_style_switch=([light]="dark" [dark]="light")
@@ -9,28 +14,97 @@ declare -A theme_styles
 theme_styles=([light]=".light-theme" [dark]=".dark-theme")
 
 CONFIG_DIR="$HOME/.config/alacritty"
-THEME_DIR='~/.config/alacritty/themes/themes'
+THEME_DIR="$CONFIG_DIR/themes/themes"
+CONFIG="$CONFIG_DIR/alacritty.toml"
 
+THEME_DIR_PORTABLE="~/.config/alacritty/themes/themes"
+
+function setTheme() {
+  local theme_name="$1"
+
+  local sed_expr="s|^  *\"$THEME_DIR_PORTABLE/.*.toml\"|    \"$THEME_DIR_PORTABLE/${theme_name}.toml\"|g"
+
+  sed "$sed_expr" "$CONFIG" > /tmp/alacritty.toml
+  mv /tmp/alacritty.toml "$CONFIG"
+}
+
+# switch between predefined light and dark themes
 function switchStyle() {
   local current_style new_style new_theme
 
   # get the current theme style from ~/.config/alacritty/.current-theme-style file
-  read current_style < "$CONFIG_DIR/.current-theme-style"
-  echo "current style: $current_style"
-  new_style=${theme_style_switch[$current_style]}
-  echo "new style: $new_style"
-  read new_theme < "$CONFIG_DIR/${theme_styles[${new_style}]}"
-  echo "new theme: $new_theme"
+  read -r current_style < "$CONFIG_DIR/.current-theme-style"
+  new_style="${theme_style_switch[$current_style]}"
+  read -r new_theme < "$CONFIG_DIR/${theme_styles[${new_style}]}"
 
-  local sed_expr="s|^ \+\"$THEME_DIR/.*.toml\"|    \"$THEME_DIR/${new_theme}.toml\"|g"
+  setTheme "$new_theme"
 
-  echo "sed expression: $sed_expr"
-  sed  "$sed_expr" -i "$CONFIG_DIR/alacritty.toml"
-
-  echo "$new_style" > $CONFIG_DIR/.current-theme-style
+  echo "$new_style" > "$CONFIG_DIR/.current-theme-style"
 }
 
-case ${1:-switch} in
-  switch) switchStyle ;;
-  *)      echo "Usage: $0 switch" ; exit 1 ;;
+function getAllThemes() {
+  local include_light="$1"
+
+  if [ "$include_light" -eq 1 ]; then
+    ls -1 "$THEME_DIR"
+  else
+    ls -1 "$THEME_DIR" | grep -vE 'light|lux|latte|alabaster'
+  fi
+}
+
+# cycle through all alacritty themes
+function demo() {
+  local idx=0
+  local include_light="${1:-0}"
+  local themes=( $(getAllThemes "$include_light") )
+
+  if which pokesay > /dev/null; then
+    clear
+    display-message -p "hello world" -o '' | pokesay -WBujCb -c small
+    echo '{"aasdf": "blkasdjfo", "ca;lksdjf": [3038274,52934,5.23894], "zzndkjshdf": null}' | jq
+    echo
+  fi
+
+  local theme_name
+  for theme in "${themes[@]}"; do
+    theme_name=$(basename $theme .toml)
+    setTheme "$theme_name"
+
+    printf "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
+      "[${idx}/${#themes[@]}]" "$theme_name" "press any key to continue..."
+
+    read -n1 -s -r     # wait for a key press
+    printf '\e[G\e[0K' # clear the line
+
+    idx=$((idx + 1))
+  done
+}
+
+# switch to a random theme
+function random() {
+  local include_light="${1:-0}"
+  local themes=( $(getAllThemes "$include_light") )
+  local random_theme=${themes[$RANDOM % ${#themes[@]}]}
+
+  echo "Switching to random theme: $random_theme"
+  setTheme "$(basename $random_theme .toml)"
+}
+
+include_light=1 op=switchStyle
+while test $# -gt 0; do
+  case "${1}" in
+    switch)        op=switchStyle;  shift ;;
+    demo)          op=demo;         shift ;;
+    random)        op=random;       shift ;;
+    -n|--no-light) include_light=0; shift ;;
+    *)
+      echo "Wrong arg: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+case "${op}" in
+  switchStyle) switchStyle ;;
+  demo)        demo "$include_light" ;;
+  random)      random "$include_light" ;;
+  *)           usage; exit 1 ;;
 esac
