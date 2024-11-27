@@ -25,6 +25,9 @@ CHOICES=(
   "nancyj-underlined" "nv_script" "o8" "poison" "roman"
   "rowancap" "rozzo" "sblood" "stencil" "stencil"
   "thick" "univers" "whimsy"
+  "bigmono9"
+  "cosmike"
+  "pagga"
 )
 
 # prints a message with a figlet font
