@@ -48,3 +48,5 @@ let g:markdown_fenced_languages = ['html', 'python', 'lua', 'vim', 'typescript',
 
 " make comments italic (note: this must be set AFTER the colorscheme)
 highlight Comment cterm=italic gui=italic
+
+let g:copilot_filetypes = {'*': v:true}
