@@ -35,7 +35,7 @@ style = "Bold Italic"
 # family = "OperatorMono Nerd Font"
 # family = "CaskaydiaCove Nerd Font Mono"
 family = "IosevkaTerm NFP"
-style = "ExtraLight Italic"
+style = "Light Italic"
 
 [font.normal]
 # family = "OperatorMono Nerd Font"
@@ -44,7 +44,7 @@ style = "ExtraLight Italic"
 # family = "FantasqueSansM Nerd Font Mono"
 # family = "CaskaydiaCove Nerd Font Mono"
 family = "IosevkaTerm NFP"
-style = "Light"
+style = "Regular"
 
 [keyboard]
 bindings = [
