@@ -27,9 +27,9 @@ set $mod Mod4
 
 # - terminal
 # kitty with tmux
-bindsym $mod+t exec kitty 'tmux'
+bindsym $mod+t exec alacritty -e 'tmux'
 # kitty without tmux
-bindsym $mod+Shift+t exec kitty
+bindsym $mod+Shift+t exec alacritty
 
 # - menu/launcher
 # j4-dmenu (desktop app launcher)
