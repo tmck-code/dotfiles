@@ -38,7 +38,8 @@ function print_message() {
   local choice="${4:-}"
 
   if [[ -z "$choice" ]]; then
-    choice="${CHOICES[ $RANDOM % ${#CHOICES[@]} ]}"
+    # choice="${CHOICES[ $RANDOM % ${#CHOICES[@]} ]}"
+    choice="${CHOICES[ $[ $RANDOM % ${#CHOICES[@]} ] ]}"
   fi
 
   if ! test -f "$FONTS_DIR/$choice"; then
