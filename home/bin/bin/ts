@@ -43,24 +43,32 @@ function switchStyle() {
 }
 
 function getAllThemes() {
-  local include_light="$1"
+  local style="${1:-all}"
+  local grep_expr
 
-  if [ "$include_light" -eq 1 ]; then
-    ls -1 "$THEME_DIR"
-  else
-    ls -1 "$THEME_DIR" | grep -vE 'light|lux|latte|alabaster'
-  fi
+  case "$style" in
+    all)   grep_expr=".*" ;;
+    dark)  grep_expr="-Ev '#[FEfe]'" ;;
+    light) grep_expr="-E '#[FEfe]'" ;;
+    *) echo "style not supported: '$1'" && exit 1 ;;
+  esac
+
+  for f in "$THEME_DIR"/*toml; do
+    if grep -H -m1 background "$f" | grep "$grep_expr" > /dev/null 2>&1; then
+      echo "$f"
+    fi
+  done
 }
 
 # cycle through all alacritty themes
 function demo() {
   local idx=0
-  local include_light="${1:-0}"
-  local themes=( $(getAllThemes "$include_light") )
+  local style="${1:-all}"
+  local themes=( $(getAllThemes "$style") )
 
   if which pokesay > /dev/null; then
-    clear
-    display-message -p "hello world" -o '' | pokesay -WBujCb -c small
+    clear -x
+    display-message -p "hello world" -o '' | pokesay -WujCb -c small
     echo '{"aasdf": "blkasdjfo", "ca;lksdjf": [3038274,52934,5.23894], "zzndkjshdf": null}' | jq
     echo
   fi
@@ -82,21 +90,21 @@ function demo() {
 
 # switch to a random theme
 function random() {
-  local include_light="${1:-0}"
-  local themes=( $(getAllThemes "$include_light") )
+  local style="${1:-all}"
+  local themes=( $(getAllThemes "$style") )
   local random_theme=${themes[$RANDOM % ${#themes[@]}]}
 
   echo "Switching to random theme: $random_theme"
   setTheme "$(basename $random_theme .toml)"
 }
 
-include_light=1 op=switchStyle
+op=switchStyle style=all
 while test $# -gt 0; do
   case "${1}" in
     switch)        op=switchStyle;  shift ;;
     demo)          op=demo;         shift ;;
     random)        op=random;       shift ;;
-    -n|--no-light) include_light=0; shift ;;
+    -s|--style)    shift; style="$1"; shift ;;
     *)
       echo "Wrong arg: $1" >&2; usage; exit 1 ;;
   esac
@@ -104,7 +112,7 @@ done
 
 case "${op}" in
   switchStyle) switchStyle ;;
-  demo)        demo "$include_light" ;;
-  random)      random "$include_light" ;;
+  demo)        demo "$style" ;;
+  random)      random "$style" ;;
   *)           usage; exit 1 ;;
 esac
