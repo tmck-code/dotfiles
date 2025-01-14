@@ -67,7 +67,7 @@ gitbranch() {
     return 0
   fi
 
-  local last_modified="$(stat -c %Y "$gitdir/HEAD")"
+  local last_modified="$(gstat -c %Y "$gitdir/HEAD")"
   # if we are in the same repo, check if the repo has been modified since the last check
   if [[ "${_GITBRANCH_LAST_REPO:-}" == "$repo" && "$last_modified" == "${_GITBRANCH_LAST_MODIFIED:-}" ]]; then
     unset _GITBRANCH_MODIFIED
@@ -125,10 +125,8 @@ _mk_prompt() {
       _GITBRANCH_PREFIX+=("✭")
     fi
     export _GITBRANCH_PREFIX
-  else
-    _GITBRANCH_PREFIX=()
   fi
-  export PS1="${_PROMPT_PREFIX[@]}${_GITBRANCH_PREFIX:-}\n ☯ $_MK_PROMPT_ORIG_PS1"
+  export PS1="${_PROMPT_PREFIX[@]}${_GITBRANCH_PREFIX[@]:-}\n ☯ $_MK_PROMPT_ORIG_PS1"
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
