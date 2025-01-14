@@ -8,30 +8,41 @@ function usage() {
 }
 
 function scroll() {
-  local fpath="$1"
-  local delay="${2:-0.5}"
+  local delay="${1:-0.5}"
+  local fpath="$2"
   clear -x
 
   head -n $(tput lines) "$fpath"
 
   local i=0
   while read -r; do
-    echo "$REPLY" # TODO: look into this ENV var and why it works
-    sleep ${2:-0.5}
+    echo "$REPLY" || echo # TODO: look into this ENV var and why it works
+    sleep ${delay:-0.5}
     i=$((i+1))
   done < <(tail -n +$(tput lines) "$fpath")
+
+  [[ $i -lt $(tput lines) ]] && sleep 20 || sleep 5
 }
 
-fpath= delay=0.15
-while test $# -gt 1; do
-  case "$1" in
-    -s|--delay) shift; delay="$1"; shift ;;
-    -h|--help)  usage; exit 0 ;;
-    *)          echo "Wrong arg: '$1'" >&2; usage; exit 1 ;;
-  esac
-done
-fpath="${1:-}"
+function scroll_all() {
+  local delay="${1:-0.5}"
+  local fpaths="${@:2}"
 
-if [[ -n "$fpath" ]]; then scroll "$fpath" "$delay"
+  while true; do
+    for fpath in ${fpaths[@]}; do
+      scroll "$delay" "$fpath"
+    done
+  done
+}
+
+
+fpaths=() delay=0.15
+case "$1" in
+  -s|--delay) shift; delay="$1"; shift ;;
+  -h|--help)  usage; exit 0 ;;
+esac
+fpaths="${@:2}"
+
+if [[ "${#fpaths[@]}" -gt 0 ]]; then scroll_all "$delay" "$fpaths"
 else echo "No file specified" >&2; usage; exit 1
 fi
