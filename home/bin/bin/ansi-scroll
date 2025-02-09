@@ -16,7 +16,7 @@ function scroll() {
 
   local i=0
   while read -r; do
-    echo "$REPLY" || echo # TODO: look into this ENV var and why it works
+    echo -e "$REPLY\x1b[0m" || echo # TODO: look into this ENV var and why it works
     sleep ${delay:-0.5}
     i=$((i+1))
   done < <(tail -n +$(tput lines) "$fpath")
@@ -32,6 +32,7 @@ function scroll_all() {
     for fpath in ${fpaths[@]}; do
       scroll "$delay" "$fpath"
     done
+    sleep 5
   done
 }
 
@@ -41,8 +42,8 @@ case "$1" in
   -s|--delay) shift; delay="$1"; shift ;;
   -h|--help)  usage; exit 0 ;;
 esac
-fpaths="${@:2}"
+fpaths="${@:1}"
 
-if [[ "${#fpaths[@]}" -gt 0 ]]; then scroll_all "$delay" "$fpaths"
+if [[ "${#fpaths[@]}" -gt 0 ]]; then scroll_all "$delay" "${fpaths}"
 else echo "No file specified" >&2; usage; exit 1
 fi
