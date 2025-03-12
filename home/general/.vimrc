@@ -175,6 +175,8 @@ highlight Comment cterm=italic
 
 " Plugin settings -------------------------------
 
+let g:ansiNone="hi gui=NONE cterm=NONE fg=white bg=black ctermfg=7"
+
 " if has('nvim') " set better click/drag etc, only for neovim
 "   let g:deoplete#enable_at_startup = 1
 " endif
