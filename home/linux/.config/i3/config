@@ -127,6 +127,8 @@ bindsym $mod+Shift+l exec i3lock -c 000000
 bindsym $mod+Shift+j exec xset dpms force on
 # kill a program with mouse cursor
 bindsym --release $mod+Shift+x exec xkill
+# start running Stone Story RPG
+bindsym --release $mod+Shift+s exec xdg-open steam://rungameid/603390
 
 # Custom functions ++++++++++++++++++++++++++++++
 
@@ -156,13 +158,19 @@ bar {
 
 # Ensure that services are started ++++++++++++++
 
+# ensure that gnome settings/dark mode works
+exec --no-startup-id '/usr/libexec/gsd-xsettings'
+exec --no-startup-id 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark'
+exec --no-startup-id 'gsettings set org.gnome.desktop.interface gtk-theme Pop-dark'
+
 # network manager applet
 exec --no-startup-id nm-applet
+# bluetooth tray applet
+exec --no-startup-id blueman-applet
 
 # launch with an internet browser & a terminal
+exec --no-startup-id alacritty -e '/home/freman/bin/tmon'
 exec --no-startup-id google-chrome
-exec --no-startup-id kitty '/home/freman/bin/tmon'
-# ensure that gnome settings/dark mode works
-exec --no-startup-id /usr/lib/gsd-xsettings
+exec --no-startup-id '/home/freman/bin/ts-os set dark'
 
 # default_border pixel 0

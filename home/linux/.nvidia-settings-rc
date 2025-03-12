@@ -2,7 +2,7 @@
 # /home/freman/.nvidia-settings-rc
 #
 # Configuration file for nvidia-settings - the NVIDIA Settings utility
-# Generated on Mon May  8 23:38:26 2023
+# Generated on Wed Jan 15 23:43:12 2025
 #
 
 # ConfigProperties:
@@ -11,6 +11,7 @@ RcFileLocale = C
 DisplayStatusBar = Yes
 SliderTextEntries = Yes
 IncludeDisplayNameInConfigFile = No
+ShowQuitDialog = Yes
 UpdateRulesOnProfileNameChange = Yes
 Timer = PowerMizer_Monitor_(GPU_0),Yes,1000
 Timer = Thermal_Monitor_(GPU_0),Yes,1000
@@ -26,22 +27,12 @@ Timer = Memory_Used_(GPU_0),Yes,3000
 0/AllowFlipping=1
 0/FSAAAppControlled=1
 0/LogAnisoAppControlled=1
-0/OpenGLImageSettings=1
+0/OpenGLImageSettings=2
 0/FSAAAppEnhanced=0
 0/ShowGraphicsVisualIndicator=0
-[DPY:HDMI-0]/RedBrightness=0.000000
-[DPY:HDMI-0]/GreenBrightness=0.000000
-[DPY:HDMI-0]/BlueBrightness=0.000000
-[DPY:HDMI-0]/RedContrast=0.000000
-[DPY:HDMI-0]/GreenContrast=0.000000
-[DPY:HDMI-0]/BlueContrast=0.000000
-[DPY:HDMI-0]/RedGamma=1.000000
-[DPY:HDMI-0]/GreenGamma=1.000000
-[DPY:HDMI-0]/BlueGamma=1.000000
 [DPY:HDMI-0]/Dithering=0
 [DPY:HDMI-0]/DitheringMode=0
 [DPY:HDMI-0]/DitheringDepth=0
-[DPY:HDMI-0]/DigitalVibrance=0
 [DPY:HDMI-0]/ColorSpace=0
 [DPY:HDMI-0]/ColorRange=0
 [DPY:HDMI-0]/SynchronousPaletteUpdates=0
@@ -91,4 +82,3 @@ Timer = Memory_Used_(GPU_0),Yes,3000
 [DPY:DP-5]/ColorSpace=0
 [DPY:DP-5]/ColorRange=0
 [DPY:DP-5]/SynchronousPaletteUpdates=0
-[GPU:0]/GPUPowerMizerMode=0

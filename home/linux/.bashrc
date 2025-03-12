@@ -121,6 +121,7 @@ _mk_prompt() {
 
   sep="∈"
   local prefix=("\D{%T}")
+  # local prefix=("")
   if [ -n "${GIT_BRANCH:-}" ]; then
     prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GIT_BRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
 
