@@ -1,0 +1,58 @@
+#!/bin/bash
+# tmck-code.github.com
+# ts-os switches between light and dark mode on a GNOME desktop
+#
+# ts-os switch    // switches the theme style (light/dark) of a GNOME desktop
+# ts-os set light // sets the OS to light mode
+# ts-os set dark  // sets the OS to dark mode
+
+set -euo pipefail
+[ -n "${DEBUG:-}" ] && set -x
+
+function usage() {
+  echo "Usage: $0 [switch|set <light|dark>]" >&2
+}
+
+# sets the GTK theme and color scheme of a GNOME desktop, essentially a private function
+function setOSTheme() {
+  gsettings set org.gnome.desktop.interface gtk-theme "$1"
+  gsettings set org.gnome.desktop.interface color-scheme "$2"
+}
+
+# gets the current theme style (light/dark) of a GNOME desktop
+function getOSThemeStyle() {
+  currentTheme="$(gsettings get org.gnome.desktop.interface gtk-theme)"
+  case "$currentTheme" in
+    "'Pop'")      echo light ;;
+    "'Pop-dark'") echo dark ;;
+    *)            echo "Invalid theme: $currentTheme" >&2 ; exit 1 ;;
+  esac
+}
+
+# sets the theme style (light/dark) of a GNOME desktop
+function setOSThemeStyle() {
+  case "$1" in
+    light) setOSTheme 'Pop'      'prefer-light' ;;
+    dark)  setOSTheme 'Pop-dark' 'prefer-dark' ;;
+    *)     echo "Invalid theme style: $1" >&2 ; exit 1 ;;
+  esac
+}
+
+# switches the theme style (light/dark) of a GNOME desktop
+function switchOSThemeStyle() {
+  themeStyle="$(getOSThemeStyle)"
+  case "$themeStyle" in
+    light) setOSThemeStyle 'dark' ;;
+    dark)  setOSThemeStyle 'light' ;;
+    *)     echo "Invalid theme style: $themeStyle" >&2 ; exit 1 ;;
+  esac
+}
+
+while test $# -gt 0; do
+  case "$1" in
+    switch) switchOSThemeStyle ;;
+    set)    setOSThemeStyle "$2" ; shift ;;
+    *)      usage ; exit 1 ;;
+  esac
+  shift
+done
