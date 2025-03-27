@@ -25,13 +25,21 @@ set $mod Mod4
 
 # Program launchers -----------------------------
 
-# - terminal
+# kill a program with mouse cursor
+bindsym --release $mod+Shift+x exec xkill
+# kill focused window
+bindsym $mod+Shift+q kill
+
 # kitty with tmux
 bindsym $mod+t exec alacritty -e 'tmux'
 # kitty without tmux
 bindsym $mod+Shift+t exec alacritty
+# start running Stone Story RPG
+bindsym --release $mod+Shift+s exec xdg-open steam://rungameid/603390
+# night-mode
+bindsym $mod+Shift+u exec redshift -PO 3200K
 
-# - menu/launcher
+# - menu/launcher -------------------------------
 # j4-dmenu (desktop app launcher)
 bindsym $mod+space exec --no-startup-id j4-dmenu-desktop
 # dmenu (minimal launcher)
@@ -72,13 +80,12 @@ bindsym $mod+w layout tabbed
 bindsym $mod+e layout toggle split
 
 # change focus between tiling / floating windows
-# bindsym $mod+space focus mode_toggle
+bindsym $mod+g focus mode_toggle
 
 # focus the parent container
 bindsym $mod+a focus parent
-
 # focus the child container
-#bindsym $mod+d focus child
+bindsym $mod+d focus child
 
 # Workspaces ------------------------------------
 
@@ -112,9 +119,6 @@ bindsym $mod+Shift+0 move container to workspace "10"
 
 # Restarting & Reloading ------------------------
 
-# kill focused window
-bindsym $mod+Shift+q kill
-
 # reload the configuration file
 bindsym $mod+Shift+y reload
 # restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
@@ -125,10 +129,6 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcu
 bindsym $mod+Shift+l exec i3lock -c 000000
 # wake up screen
 bindsym $mod+Shift+j exec xset dpms force on
-# kill a program with mouse cursor
-bindsym --release $mod+Shift+x exec xkill
-# start running Stone Story RPG
-bindsym --release $mod+Shift+s exec xdg-open steam://rungameid/603390
 
 # Custom functions ++++++++++++++++++++++++++++++
 
