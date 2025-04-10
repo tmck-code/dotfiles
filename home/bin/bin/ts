@@ -48,8 +48,8 @@ function getAllThemes() {
 
   case "$style" in
     all)   grep_expr=".*" ;;
-    dark)  grep_expr="-Ev '#[FEfe]'" ;;
-    light) grep_expr="-E '#[FEfe]'" ;;
+    dark)  grep_expr="-Ev #[FEfe]" ;;
+    light) grep_expr="-E #[FEfe]" ;;
     *) echo "style not supported: '$1'" && exit 1 ;;
   esac
 
