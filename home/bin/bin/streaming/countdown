@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+[ -n "${DEBUG:-}" ] && set -x
 
 # "good but not great"
 # /usr/share/figlet/fonts/Banner3.flf

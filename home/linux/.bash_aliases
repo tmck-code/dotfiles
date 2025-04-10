@@ -1,3 +1,5 @@
+#!/bin/bash
+
 alias g="git"
 alias v="vim"
 

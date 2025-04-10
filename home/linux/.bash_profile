@@ -31,11 +31,7 @@ export VISUAL=nvim
 PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 # Language paths
 # - golang
-export GOPATH="$HOME/go"
-# export GOROOT="/usr/lib/go-1.18/"
-export NVM_DIR="$HOME/.nvm" # node version manager
-PATH="/usr/local/go/bin:$PATH:$NVM_DIR"
-# PATH="$HOME/.uvenv/bin/:$PATH"
+PATH="$PATH:/usr/local/go/bin:$NVM_DIR"
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
 export PATH
