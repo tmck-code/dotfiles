@@ -54,7 +54,7 @@ function getAllThemes() {
   esac
 
   for f in "$THEME_DIR"/*toml; do
-    if grep -H -m1 background "$f" | grep "$grep_expr" > /dev/null 2>&1; then
+    if grep -H -m1 background "$f" | grep $grep_expr > /dev/null 2>&1; then
       echo "$f"
     fi
   done
@@ -65,6 +65,8 @@ function demo() {
   local idx=0
   local style="${1:-all}"
   local themes=( $(getAllThemes "$style") )
+
+  [ -z "${themes:-}" ] && echo "no themes found!" && exit 1
 
   if which pokesay > /dev/null; then
     clear -x

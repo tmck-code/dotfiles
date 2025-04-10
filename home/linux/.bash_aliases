@@ -21,6 +21,10 @@ alias emacs="emacs -nw"
 
 alias code="/usr/share/code/bin/code"
 
+function ppj-clipboard() {
+  echo "$(xclip -o -selection clipboard)" | jq | xclip -i -selection clipboard
+}
+
 _JQ_REGULAR=0
 _JQ_BRIGHT=1
 _JQ_DIM=2
