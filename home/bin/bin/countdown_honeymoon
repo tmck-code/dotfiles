@@ -1,6 +1,3 @@
-# coding: utf-8
+#!/usr/bin/env python3
 import datetime, time
-while True:
-     print(datetime.datetime(2025, 7, 26, 15, 15).astimezone() - datetime.datetime.now().astimezone())
-     time.sleep(1)
-     
+print(datetime.datetime(2025, 7, 26, 15, 15).astimezone().replace(microsecond=0) - datetime.datetime.now().astimezone().replace(microsecond=0))
