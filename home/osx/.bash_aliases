@@ -20,13 +20,6 @@ function gb() {
   git branch | fzf-tmux -d 15 | sed -e 's/^[[:space:]]*//'
 }
 
-function s3ls_integrations() {
-  # List all integrations in a client's S3 bucket
-  client=$1
-  pattern=$2
-  aws s3 ls s3://lexer-client-$client/integrations/$pattern --rec 2>&1 | sed -E "s/integrations/s3:\/\/lexer-client-$client\/integrations/g" | sed -E 's/ +/ /g' # | cut -d ' ' -f 4
-}
-
 # Just alias gnu variants over BSD default utilities
 alias shuf="gshuf"
 alias readlink="greadlink"
@@ -39,6 +32,18 @@ alias gpurge="git fetch origin --prune && git branch --merged | grep -v master |
 
 # Some nice helpers & shortcuts
 alias j="cat ${1} | jq ."
+# add ANSI colour reset codes to the end of each line in a file (to STDOUT)
+function cat-with-ansi-reset() { cat "$1" | sed 's/$/\[0m/g'; }
+
+# -----------------------------------------------
+# AWS commands
+
+function s3ls_integrations() {
+  # List all integrations in a client's S3 bucket
+  client=$1
+  pattern=$2
+  aws s3 ls s3://lexer-client-$client/integrations/$pattern --rec 2>&1 | sed -E "s/integrations/s3:\/\/lexer-client-$client\/integrations/g" | sed -E 's/ +/ /g' # | cut -d ' ' -f 4
+}
 
 if [ -f ~/.aws/credentials ]; then
   # This sed methods yields ~20x faster load times than using `aws configure`
@@ -48,9 +53,13 @@ if [ -f ~/.aws/credentials ]; then
   export AWS_DEFAULT_REGION="ap-southeast-2"
 fi
 
+function s3ls() {
+  aws s3api list-objects-v2 --bucket $1 --prefix $2 | jq -r '.Contents[].Key' | parallel -n1 -I{} echo s3://${1}{}
+}
 
-# JQ colours ------------------------------------
-#
+# -----------------------------------------------
+# JQ colours
+
 _JQ_REGULAR=0
 _JQ_BRIGHT=1
 _JQ_DIM=2

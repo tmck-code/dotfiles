@@ -3,13 +3,13 @@ if ! $(shopt -q login_shell); then
   echo "~~ non-login shell, exiting"
   return 0
 else
-  echo "~~ login shell"
+  [ -n "${DEBUG:-}" ] && echo "~~ login shell"
   if [ "${BASH_PROFILE_SOURCED:-}" == "true" ]; then
     source "$HOME/.bashrc"
     return 0
   fi
 fi
-echo "~~ sourcing .bash_profile"
+[ -n "${DEBUG:-}" ] && echo "~~ sourcing .bash_profile"
 
 export HOMEBREW_PREFIX="/opt/homebrew"
 
