@@ -1,0 +1,6 @@
+# coding: utf-8
+import datetime, time
+while True:
+     print(datetime.datetime(2025, 7, 26, 15, 15).astimezone() - datetime.datetime.now().astimezone())
+     time.sleep(1)
+     
