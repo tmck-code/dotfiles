@@ -3,16 +3,15 @@
 set -euo pipefail
 
 # This script creates a tmux session with 5 panes:
-# bpytop | nvtop
+# btop | nvtop
 # -----  | bmon
 # htop   | tty-clock
 
-mon="${1:-bpytop}"
+mon="${1:-btop}"
 case "${mon}" in
   gotop) mon_command='gotop -a -p --rate 0.5';;
-  # bpytop) mon_command='~/.pyenv/shims/bpytop' ;;
-  bpytop) mon_command='bpytop' ;;
-  *) echo 'usage: tmon <monitor:gotop/bpytop>' ;;
+  btop) mon_command='btop' ;;
+  *) echo 'usage: tmon <monitor:gotop/btop>' ;;
 esac
 
 # 1. create a new session
