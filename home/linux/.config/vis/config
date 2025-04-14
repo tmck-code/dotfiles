@@ -27,7 +27,7 @@ audio.stereo.enabled=false
 
 ##Applies scaling factor to both lorenz and ellipse visualizers. This is useful when the system audio is set
 #to a low volume.
-# visualizer.scaling.multiplier=0.5
+visualizer.scaling.multiplier=10.1
 
 ##Configures the visualizers and the order they are in. Available visualizers are spectrum,lorenz,ellipse.
 ##Defaults to spectrum,ellipse,lorenz
@@ -40,14 +40,14 @@ audio.stereo.enabled=false
 
 ##Spectrum bar width. Defaults to 2.
 #visualizer.spectrum.bar.width=2
-visualizer.spectrum.bar.width=10
+visualizer.spectrum.bar.width=4
 
 ##The amount of space between each bar in the spectrum visualizer. Defaults to 1. It's possible to set this to
 ##zero to have no space between bars
 visualizer.spectrum.bar.spacing=1
 
 ##Available smoothing options are monstercat, sgs, none.
-#visualizer.spectrum.smoothing.mode=sgs
+visualizer.spectrum.smoothing.mode=sgs
 
 ##This configures the falloff effect on the spectrum visualizer. Available falloff options are fill,top,none.
 ##Defaults to "fill"
@@ -56,10 +56,9 @@ visualizer.spectrum.falloff.mode=fill
 ##Configures how fast the falloff character falls. This is an exponential falloff so values usually look
 ##best 0.9+ and small changes in this value can have a large effect. Defaults to 0.95
 #visualizer.spectrum.falloff.weight=0.95
-visualizer.spectrum.falloff.weight=0.99
 
 ##Margins in percent of total screen for spectrum visualizer. All margins default to 0
-visualizer.spectrum.top.margin=0.20
+visualizer.spectrum.top.margin=0.25
 #visualizer.spectrum.bottom.margin=0.10
 #visualizer.spectrum.right.margin=0.10
 #visualizer.spectrum.left.margin=0.10
@@ -91,4 +90,4 @@ visualizer.spectrum.top.margin=0.20
 
 ##Specifies the color scheme. The color scheme must be in ~/.config/vis/colors/ directory. The default scheme is "colors".
 ##"fire" gradient is from [color-hex](https://www.color-hex.com/color-palette/8727), by author [zelock](https://www.color-hex.com/member/zelock)
-colors.scheme=fire,rainbow,basic_colors
+colors.scheme=fire,basic_colors
