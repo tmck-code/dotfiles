@@ -30,14 +30,14 @@ bindsym --release $mod+Shift+x exec xkill
 # kill focused window
 bindsym $mod+Shift+q kill
 
-# kitty with tmux
-bindsym $mod+t exec alacritty -e 'tmux'
-# kitty without tmux
-bindsym $mod+Shift+t exec alacritty
+# terminal with tmux
+bindsym $mod+t exec notify-send -i folder-new "Running: alacritty (with tmux)" && alacritty -e 'tmux'
+# terminal without tmux
+bindsym $mod+Shift+t exec notify-send -i folder-new "Running: alacritty (without tmux)" && alacritty
 # start running Stone Story RPG
-bindsym --release $mod+Shift+s exec xdg-open steam://rungameid/603390
+bindsym --release $mod+Shift+s exec notify-send -i folder-new "Running: Stone Story RPG" && xdg-open steam://rungameid/603390
 # night-mode
-bindsym $mod+Shift+u exec redshift -PO 3200K
+bindsym $mod+Shift+u exec notify-send -i folder-new "Running: Redshift 3200K" && redshift -PO 3200K
 
 # - menu/launcher -------------------------------
 # j4-dmenu (desktop app launcher)
