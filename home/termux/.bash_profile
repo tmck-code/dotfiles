@@ -38,9 +38,9 @@ if [ "$(uname -o)" == "Android" ]; then
 fi
 export BASH_PROFILE_SOURCED="true"
 
-[ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
+# [ -r "$HOME/bin/theme" ] && source "$HOME/bin/theme"
 # Load previous theme
-set -o allexport; source $HOME/.termux/current; set +o allexport
+# set -o allexport; source $HOME/.termux/current; set +o allexport
 
 h="$(date +%H)"
 if [[ "$h" > "19" ]]; then
