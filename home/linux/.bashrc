@@ -166,3 +166,6 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
     fortune | pokesay -jCub -w 40
   fi
 fi
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/home/freman/.lmstudio/bin"
