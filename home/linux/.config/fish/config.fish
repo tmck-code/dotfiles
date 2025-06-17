@@ -4,3 +4,6 @@ if status is-interactive
     tmux
   end
 end
+
+# Added by LM Studio CLI (lms)
+set -gx PATH $PATH /home/freman/.lmstudio/bin
