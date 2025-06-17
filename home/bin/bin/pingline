@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -euo pipefail
+[ -n "${DEBUG:-}" ] && set -x
+
+ping=$(ping google.com -c1 -t20 2>&1) || { echo "❌" && exit 1; }
+
+ping_ms=$(echo "$ping" \
+  | $HOME/.venv/bin/jc --ping-s -u \
+  | head -n 1 \
+  | jq -rc '"\(.time_ms)"')
+
+ping_ms=$(printf "%3.1fms" "$ping_ms")
+printf "%8s\n" "$ping_ms"

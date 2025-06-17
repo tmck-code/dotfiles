@@ -152,13 +152,15 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 #   source /opt/homebrew/etc/bash_completion.d/git-completion.bash
 
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+export PATH="$PATH:/Users/tomm/.lmstudio/bin"
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $[ $RANDOM % 10 ] == 0 ]; then
-  fortune | pokesay -Wujb | lolcat
+  fortune | pokesay -WujbC -F | lolcat
 else
-  fortune | pokesay -Wujb
+  fortune | pokesay -WujbC -F
 fi
 
 # . "$HOME/.cargo/env"
 . "$HOME/.secrets"
+. "$HOME/.local/bin/env"
