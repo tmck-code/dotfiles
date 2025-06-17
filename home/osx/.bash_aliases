@@ -35,6 +35,8 @@ alias j="cat ${1} | jq ."
 # add ANSI colour reset codes to the end of each line in a file (to STDOUT)
 function cat-with-ansi-reset() { cat "$1" | sed 's/$/\[0m/g'; }
 
+function keep_trying() { while true; do echo "> \"$@\"" ; "$@"; sleep 1; done; }
+
 # -----------------------------------------------
 # AWS commands
 
@@ -54,7 +56,11 @@ if [ -f ~/.aws/credentials ]; then
 fi
 
 function s3ls() {
-  aws s3api list-objects-v2 --bucket $1 --prefix $2 | jq -r '.Contents[].Key' | parallel -n1 -I{} echo s3://${1}{}
+  if [ "${3:-}" == "all" ]; then
+    aws s3api list-objects-v2 --bucket $1 --prefix $2 | jq -rc '.Contents[]'
+  else
+    aws s3api list-objects-v2 --bucket $1 --prefix $2 | jq -r '.Contents[].Key' | parallel -n1 -I{} echo s3://${1}{}
+  fi
 }
 
 # -----------------------------------------------
@@ -77,14 +83,15 @@ _JQ_MAGENTA=35
 _JQ_CYAN=36
 _JQ_WHITE=37
 
-JQ_NULL="$_JQ_REVERSE;$_JQ_RED"
+JQ_NULL="$_JQ_DIM;$_JQ_RED"
 JQ_TRUE="$_JQ_DIM;$_JQ_GREEN"
 JQ_FALSE="$_JQ_DIM;$_JQ_RED"
 JQ_NUMBERS="$_JQ_UNDERSCORE;$_JQ_CYAN"
-JQ_STRINGS="$_JQ_DIM;$_JQ_WHITE"
+JQ_STRINGS="$_JQ_DIM;$_JQ_YELLOW"
+# JQ_STRINGS="$_JQ_REVERSE;$_JQ_BLUE"
 JQ_ARRAYS="$_JQ_REGULAR;$_JQ_BLUE"
-JQ_OBJECTS="$_JQ_BRIGHT;$_JQ_WHITE"
-JQ_OBJECT_KEYS="$_JQ_REVERSE;$_JQ_GREEN"
+JQ_OBJECTS="$_JQ_BRIGHT;$_JQ_BLUE"
+JQ_OBJECT_KEYS="$_JQ_DIM;$_JQ_GREEN"
 
 export JQ_COLORS="${JQ_NULL}:${JQ_FALSE}:${JQ_TRUE}:${JQ_NUMBERS}:${JQ_STRINGS}:${JQ_ARRAYS}:${JQ_OBJECTS}:${JQ_OBJECT_KEYS}"
 

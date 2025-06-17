@@ -30,13 +30,13 @@ export GOPATH=$HOME/go
 PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"       # Add python bins & shims under PYENV_ROOT
 PATH="$HOME/.rvm/bin:$PATH"                          # Add rvm binaries
 PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Ensure that GNU utils are used over BSD
-PATH="$PATH:/opt/homebrew/bin"                       # Add homebrew bins
 # PATH="/Library/Frameworks/Python.framework/Versions/3.11/bin:${PATH}"
 # PATH="/Users/tomm/Library/Python/3.11/:${PATH}"
 PATH="$PATH:$HOME/Personal/dev/nvim-osx64/bin"       # Neovim
 PATH="$CARGO_HOME:$CARGO_HOME/bin:$PATH"
-PATH="$HOME/.venv/bin:$GOPATH/bin:$GOROOT/bin:$PATH"
+PATH="$HOME/.uvenv/bin:$GOPATH/bin:$GOROOT/bin:$PATH"
 PATH="$HOME/.docker/bin:$PATH"                       # Docker
+PATH="/opt/homebrew/bin:$PATH"                       # Add homebrew bins
 
 export PATH
 export TERM=xterm-256color
@@ -60,4 +60,11 @@ export BASH_SILENCE_DEPRECATION_WARNING=1
 export BASH_PROFILE_SOURCED="true"
 
 source "$HOME/.bashrc"
-[ $TMUX ] || tmux -2
+[ $TMUX ] || tmux -2 -u
+
+. "$HOME/.local/bin/env"
+
+# Added by LM Studio CLI (lms)
+export PATH="$PATH:/Users/tomm/.lmstudio/bin"
+# End of LM Studio CLI section
+

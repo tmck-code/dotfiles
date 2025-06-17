@@ -6,7 +6,7 @@ execute pathogen#infect()
 
 " PATHs and such ---------------------------------
 " set python3 path
-let g:python3_host_prog="/home/freman/.venv/bin/python3"
+let g:python3_host_prog="/home/freman/.uvenv/bin/python3"
 " disable perl
 let g:loaded_perl_provider = 0
 
