@@ -40,8 +40,7 @@ function print_message() {
   local choice="${4:-}"
 
   if [[ -z "$choice" ]]; then
-    # choice="${CHOICES[ $RANDOM % ${#CHOICES[@]} ]}"
-    choice="${CHOICES[ $[ $RANDOM % ${#CHOICES[@]} ] ]}"
+    choice="${CHOICES[ $(( RANDOM % ${#CHOICES[@]} )) ]}"
   fi
 
   if ! test -f "$FONTS_DIR/$choice"; then
@@ -50,11 +49,11 @@ function print_message() {
 
   # figlet - use specific font file, set width to terminal and center the text
   # lolcat - randomize the horizontal freq, and force colour always
-  msg="$(echo -e "$message" | figlet -f "$choice" -w "$(tput cols)" $figlet_opts)"
+  msg="$(echo -ne "$message" | figlet -f "$choice" -w "$(tput cols)" "$figlet_opts" | sed '/^[[:space:]]*$/d')"
   if [ "$colour" -eq 1 ]; then
-    echo -e "$msg" | lolcat -h "0.0$[ $RANDOM % 10 ]" -f
+    echo -ne "$msg" | lolcat -F "0.0$(( RANDOM % 10 ))" -f
   else
-    echo -e "$msg"
+    echo -ne "$msg"
   fi
 }
 
@@ -65,10 +64,12 @@ function display_message() {
   local figlet_opts="${3:-}"
   local choice="${4:-}"
 
-  local msg="$(print_message "$message" "$colour" "$figlet_opts" "$choice")"
-  local n_lines=$(echo "$msg" | wc -l)
+  local msg
+  msg="$(print_message "$message" "$colour" "$figlet_opts" "$choice")"
+  local n_lines
+  n_lines=$(echo "$msg" | wc -l)
 
-  local padding=$[ $[ $(tput lines) - $n_lines ] / 2 ]
+  local padding=$(( $(( $(tput lines) - n_lines )) / 2 ))
 
   # display the figlet message, with padding above/below
   clear -x
@@ -87,13 +88,13 @@ function demo_message() {
     display_message "$message" "$colour" "$figlet_opts" "$f"
     printf \
       "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
-      [$idx/${#CHOICES[@]}] $f "press any key to continue..."
+      "[$idx/${#CHOICES[@]}]" "$f" "press any key to continue..."
     read -n1 -s -r
     idx=$((idx+1))
   done
 }
 
-display= print= demo= msg='Hello World!' font= colour=1 figlet_opts="-c"
+display='' print='' demo='' msg='Hello World!' font='' colour=1 figlet_opts="-c"
 while test $# -gt 0; do
   case "$1" in
     -h|--help)      usage; exit 0 ;;
