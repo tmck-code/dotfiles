@@ -1,0 +1,5 @@
+command = /opt/homebrew/bin/bash
+click-repeat-interval = 500
+auto-update-channel = stable
+# theme = ayu
+theme = dark:Catppuccin Frappe,light:Catppuccin Latte
