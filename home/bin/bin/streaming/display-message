@@ -19,13 +19,13 @@ function usage() {
 }
 
 CHOICES=(
-  "3d_diagonal" "3d" "3d_diagonal" "amc_aaa01" "ansi_regular"
-  "ansi_shadow" "big_money-ne" "bloody" "bolger"
-  "calvin_s" "dos_rebel" "delta_corps_priest_1" "elite"
-  "filter" "georgia11" "nscript" "the_edge" "amcaaa01"
+  "3d diagonal" "3d" "3d diagonal" "amc aaa01" "ansi regular"
+  "ansi shadow" "big money-ne" "bloody" "bolger"
+  "calvin s" "dos rebel" "delta corps priest 1" "elite"
+  "filter" "georgia11" "nscript" "the edge" "amcaaa01"
   "basic" "broadway" "colossal" "doh" "fraktur"
   "kompaktblk" "larry3d" "maxiwi" "miniwi" "nancyj-fancy"
-  "nancyj-underlined" "nv_script" "o8" "poison" "roman"
+  "nancyj-underlined" "nv script" "o8" "poison" "roman"
   "rowancap" "rozzo" "sblood" "stencil" "stencil"
   "thick" "univers" "whimsy"
   "bigmono9"
@@ -46,7 +46,7 @@ function print_message() {
   fi
 
   if ! test -f "$FONTS_DIR/$choice"; then
-    choice=$(find "$FONTS_DIR" -iname "${choice}.???" | head -n1)
+    choice=$(find "$FONTS_DIR" -type f | fzf -f "$choice" | head -n1)
   fi
 
   # figlet - use specific font file, set width to terminal and center the text
