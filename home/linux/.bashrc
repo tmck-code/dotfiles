@@ -161,9 +161,9 @@ export LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message
   if test $[ $RANDOM % 10 ] -eq 1; then
-    display-message -p "$(date)" -f pagga -o '' | pokesay -uWbCj -w 110
+    display-message -p "$(date)" -f pagga -o '' | pokesay -uWbCjFI -w 110
   else
-    fortune | pokesay -jCub -w 40
+    fortune | pokesay -jCubFI -w 40
   fi
 fi
 
