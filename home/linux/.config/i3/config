@@ -10,7 +10,8 @@
 
 # border text font & size
 # (size 10 seems to be viewable on a 4K screen without squinting)
-font pango:DejaVu Sans Mono 8
+# font pango:DejaVu Sans Mono 8
+font pango:IosevkaTerm Nerd Font Mono 10
 
 # border colours
 # class                 border  backgr. text    indicator child_border
@@ -39,9 +40,11 @@ bindsym --release $mod+Shift+s exec notify-send -i folder-new "Running: Stone St
 # night-mode
 bindsym $mod+Shift+u exec notify-send -i folder-new "Running: Redshift 3200K" && redshift -PO 3200K
 
+bindsym $mod+y exec "~/bin/i3-gamelayout.sh"
+
 # - menu/launcher -------------------------------
 # j4-dmenu (desktop app launcher)
-bindsym $mod+space exec --no-startup-id j4-dmenu-desktop
+bindsym $mod+space exec --no-startup-id j4-dmenu-desktop --dmenu="dmenu -fn 'IosevkaTerm Nerd Font Mono-12' -i"
 # dmenu (minimal launcher)
 bindsym $mod+Shift+space exec dmenu_run
 # extendo variant (fuzzy matching)
@@ -60,6 +63,12 @@ bindsym $mod+Shift+Left move left
 bindsym $mod+Shift+Down move down
 bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Right move right
+
+
+bindsym $mod+Shift+j move down 5 px
+bindsym $mod+Shift+k move up 5 px
+bindsym $mod+Shift+h move left 5 px
+bindsym $mod+Shift+l move right 5 px
 
 # split in horizontal/vertical orientation
 bindsym $mod+h split h
@@ -126,9 +135,9 @@ bindsym $mod+Shift+r restart
 # exit i3 (logs you out of your X session)
 bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
 # lock screen
-bindsym $mod+Shift+l exec i3lock -c 000000
+bindsym $mod+Shift+x exec i3lock -c 000000
 # wake up screen
-bindsym $mod+Shift+j exec xset dpms force on
+bindsym $mod+Shift+z exec xset dpms force on
 
 # Custom functions ++++++++++++++++++++++++++++++
 
