@@ -50,7 +50,7 @@ tmux send-keys "bmon -p wlp4s0 -R 2.0" C-j
 # 6. Create the bottom-right pane
 tmux split-window -v
 tmux select-pane -t 4
-tmux send-keys "sleep 1; tty-clock -sxc" C-j
+tmux send-keys "while true; do ~/bin/display-message -d \"\$(date +%H:%M:%S)\" -f 'dos rebel' -s 1234; sleep 1 ; done" C-j
 
 # finally attach to the session
 tmux attach -t dev:mon
