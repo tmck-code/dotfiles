@@ -76,7 +76,12 @@ function display_message() {
 
   # display the figlet message, with padding above/below
   clear -x
-  for _ in $(seq 0 $padding); do echo ; done
+  if [ -n "${verbose:-}" ]; then
+    echo "$FONTS_DIR/fonts/$choice"
+    for _ in $(seq 2 $padding); do echo ; done
+  else
+    for _ in $(seq 0 $padding); do echo ; done
+  fi
   printf "%s" "$msg"
   for _ in $(seq 0 $padding); do echo ; done
 }
