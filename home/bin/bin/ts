@@ -14,10 +14,10 @@ declare -A theme_styles
 theme_styles=([light]=".light-theme" [dark]=".dark-theme")
 
 CONFIG_DIR="$HOME/.config/alacritty"
-THEME_DIR="$CONFIG_DIR/themes/themes"
+THEME_DIR="$CONFIG_DIR/themes"
 CONFIG="$CONFIG_DIR/alacritty.toml"
 
-THEME_DIR_PORTABLE="~/.config/alacritty/themes/themes"
+THEME_DIR_PORTABLE="~/.config/alacritty/themes"
 
 function setTheme() {
   local theme_name="$1"
@@ -54,7 +54,7 @@ function getAllThemes() {
   esac
 
   for f in "$THEME_DIR"/*toml; do
-    if grep -H -m1 background "$f" | grep $grep_expr > /dev/null 2>&1; then
+    if grep -H -m1 background "$f" | grep "$grep_expr" > /dev/null 2>&1; then
       echo "$f"
     fi
   done
