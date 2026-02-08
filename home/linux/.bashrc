@@ -5,6 +5,7 @@
 # - use DEBUG=true before sourcing to enable debug print statements
 # - use HIDE=true before sourcing to _not_ print the PS1
 
+# DEBUG=1
 # NOTE: Enter tmux in your .bash_profile, before entering .bashrc
 if [ -n "${DEBUG:-}" ]; then
   echo '{"sourcing": ".bashrc", "DEBUG": "'${DEBUG:-}'"}'
@@ -13,15 +14,16 @@ if [ -n "${DEBUG:-}" ]; then
   echo -n '{".bash_profile sourced": '
   [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo 'false}' || echo 'true}'
 fi
+export _LAST_PS1_TIME=$EPOCHREALTIME
 
 # My utils that need to set before using tmux
-for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
-  [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
-done
-export PATH
+# for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
+#   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
+# done
+# export PATH
 
 # My utils that need to set when using tmux and other tools
-[ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
+# [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
 
 export HISTFILESIZE=          # largest history written to file at one time
 export HISTSIZE=              # large history file
@@ -44,7 +46,7 @@ PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
 # Function to shorten the current directory
 short_pwd() {
-  sed 's:\([^/]\)[^/]*/:\1/:g' <<< "${PWD/#${HOME}/\~}"
+  sed 's:\([^/]\)[^/]*/:\1/:g' <<<"${PWD/#${HOME}/\~}"
 }
 
 if [[ "$USER" == "root" ]]; then
@@ -67,17 +69,17 @@ gitbranch() {
     gitdir="$repo/.git"
   else
     local curr="$PWD"
-    while [[ -n "$curr" ]]; do     # while we are in a dir
+    while [[ -n "$curr" ]]; do       # while we are in a dir
       if [[ -e "$curr/.git" ]]; then # check if .git exists
         repo="$curr"                 # if it does, set our vars and break
         gitdir="$curr/.git"
         break
       fi
-      curr="${curr%/*}"              # else, go up one dir, i.e. "../"
+      curr="${curr%/*}" # else, go up one dir, i.e. "../"
     done
   fi
 
-  if [[ -z "${gitdir:-}" ]]; then    # if we aren't in a git repo, just return
+  if [[ -z "${gitdir:-}" ]]; then # if we aren't in a git repo, just return
     unset _GIT_REPO
     return 0
   fi
@@ -86,19 +88,19 @@ gitbranch() {
 
   # Read and export git branch from the HEAD file
   local head
-  read -r head < "${gitdir}/HEAD"
+  read -r head <"${gitdir}/HEAD"
 
   case "${head}" in
-    ref:*) export GIT_BRANCH="${head##*/}" ;;
-    "")  return 0 ;;
-    *)   export GIT_BRANCH="d:${head:0:7}" ;;
+  ref:*) export GIT_BRANCH="${head##*/}" ;;
+  "") return 0 ;;
+  *) export GIT_BRANCH="d:${head:0:7}" ;;
   esac
 
   local commit
   if [ -f "${gitdir}/refs/heads/${GIT_BRANCH}" ]; then
-    read -r commit < "${gitdir}/refs/heads/${GIT_BRANCH}"
+    read -r commit <"${gitdir}/refs/heads/${GIT_BRANCH}"
   elif [ -f "${gitdir}/ORIG_HEAD" ]; then
-    read -r commit < "${gitdir}/ORIG_HEAD"
+    read -r commit <"${gitdir}/ORIG_HEAD"
   fi
   export GITCOMMIT="${commit:0:9}"
 }
@@ -130,10 +132,15 @@ _mk_prompt() {
       prefix+=("✹")
     fi
     # New, untracked files
-    if [ -n "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
+    if [ -n "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2>/dev/null)" ]; then
       prefix+=("✭")
     fi
   fi
+
+  # elapsed_time=$(echo $EPOCHREALTIME - $_PS0_TIME | bc)
+
+  # prefix+=("($elapsed_time)")
+  unset _PS0_TIME
 
   if test -v HIDE; then
     export PS1=""
@@ -160,12 +167,14 @@ export LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
 # - there isn't an SSH session detected (scp/ssh etc)
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message
-  if test $[ $RANDOM % 10 ] -eq 1; then
+  if test $(($RANDOM % 10)) -eq 1; then
     display-message -p "$(date)" -f pagga -o '' | pokesay -uWbCjFI -w 110
   else
+    # fortune | pokesay -jCubFI -w 40
     fortune | pokesay -jCubFI -w 40
   fi
 fi
 
 # Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/freman/.lmstudio/bin"
+# export PATH="$PATH:/home/freman/.lmstudio/bin"
+. "$HOME/.cargo/env"
