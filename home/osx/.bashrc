@@ -164,3 +164,5 @@ fi
 # . "$HOME/.cargo/env"
 . "$HOME/.secrets"
 . "$HOME/.local/bin/env"
+. "$HOME/.uvenv/bin/activate"
+export PATH="/opt/homebrew/opt/imagemagick-full/bin:$PATH"
