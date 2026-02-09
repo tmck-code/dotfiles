@@ -2,7 +2,6 @@
 set mark-directories on
 set mark-symlinked-directories on
 set show-all-if-unmodified on
-# set show-all-if-ambiguous on
 set visible-stats on
 # ask before showing >200 results
 set completion-query-items 200
@@ -25,6 +24,10 @@ set convert-meta off
 "\e[1;3C": forward-word
 "\e[1;3D": backward-word
 
-# tab
-TAB: complete
-
+# tab completion
+# show all possible completions on first tab press
+set show-all-if-ambiguous on
+# then, cycle through possible completions with tab
+TAB: menu-complete
+# and cycle backwards with shift-tab
+"\e[Z": menu-complete-backward
