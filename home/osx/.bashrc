@@ -7,7 +7,7 @@
 
 # My utils that need to set when using tmux and other tools
 [ -d /opt/homebrew/bin ] && PATH="$PATH:/opt/homebrew/bin"
-[ -f ~/.bash_aliases ]   && source  ~/.bash_aliases
+[ -f ~/.bash_aliases ] && source ~/.bash_aliases
 [ -d ~/bin ] && PATH="$HOME/bin:$PATH"
 
 export PATH
@@ -153,16 +153,17 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 export PATH="$PATH:/Users/tomm/.lmstudio/bin"
+export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
 
 # Present a pretty message, with a small chance to print a "shiny" version
-if [ $[ $RANDOM % 10 ] == 0 ]; then
+if [ $(($RANDOM % 10)) == 0 ]; then
   fortune | pokesay -WujbC -F | lolcat
 else
   fortune | pokesay -WujbC -F
 fi
 
 # . "$HOME/.cargo/env"
-. "$HOME/.secrets"
+# . "$HOME/.secrets"
 . "$HOME/.local/bin/env"
 . "$HOME/.uvenv/bin/activate"
 export PATH="/opt/homebrew/opt/imagemagick-full/bin:$PATH"
