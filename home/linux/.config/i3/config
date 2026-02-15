@@ -11,13 +11,14 @@
 # border text font & size
 # (size 10 seems to be viewable on a 4K screen without squinting)
 # font pango:DejaVu Sans Mono 8
-font pango:IosevkaTerm Nerd Font Mono 10
+# font pango:IosevkaTerm Nerd Font Mono 10
+font pango:IosevkaTerm NFM Bold 11
 
 # border colours
-# class                 border  backgr. text    indicator child_border
-client.focused_inactive #000000 #000000 #d9d9d9 #0d1010 #000000
-client.unfocused        #000000 #000000 #d9d9d9 #424242 #000000
-client.focused          #212121 #212121 #ffffff #d9d9d9 #212121
+# class                  border     backgr.    text     indicator  child_border
+client.focused_inactive  #000000    #000000    #d9d9d9  #0d1010    #000000
+client.unfocused         #140967ff  #0c0253ff  #d9d9d9  #424242    #000000
+client.focused           #6c2701ff  #5d2000ff  #ffffff  #8b3100ff    #212121
 
 # Custom program keybindings ++++++++++++++++++++
 
@@ -40,6 +41,12 @@ bindsym --release $mod+Shift+s exec notify-send -i folder-new "Running: Stone St
 # night-mode
 bindsym $mod+Shift+u exec notify-send -i folder-new "Running: Redshift 3200K" && redshift -PO 3200K
 
+# minimeters (audio visualiser). ensure it's always floating and sticky (follows the user across workspaces)
+bindsym $mod+Shift+m exec notify-send -i folder-new "Running: minimeters" && minimeters
+for_window [title="MiniMeters"] sticky enable
+for_window [title="MiniMeters"] floating enable
+
+# launch momentum mod, a terminal and OBS, and move them into exact positions
 bindsym $mod+y exec "~/bin/i3-gamelayout.sh"
 
 # - menu/launcher -------------------------------
@@ -65,10 +72,10 @@ bindsym $mod+Shift+Up move up
 bindsym $mod+Shift+Right move right
 
 
-bindsym $mod+Shift+j move down 5 px
-bindsym $mod+Shift+k move up 5 px
-bindsym $mod+Shift+h move left 5 px
-bindsym $mod+Shift+l move right 5 px
+bindsym $mod+Control+j move down 5 px
+bindsym $mod+Control+k move up 5 px
+bindsym $mod+Control+h move left 5 px
+bindsym $mod+Control+l move right 5 px
 
 # split in horizontal/vertical orientation
 bindsym $mod+h split h
@@ -171,15 +178,24 @@ bar {
 exec --no-startup-id '/usr/libexec/gsd-xsettings'
 exec --no-startup-id 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark'
 exec --no-startup-id 'gsettings set org.gnome.desktop.interface gtk-theme Pop-dark'
+# set wallpaper
+exec --no-startup-id nitrogen --set-zoom-fill ~/.config/nitrogen/002.png
 
 # network manager applet
 exec --no-startup-id nm-applet
 # bluetooth tray applet
 exec --no-startup-id blueman-applet
+# volume tray applet
+exec --no-startup-id pasystray
 
 # launch with an internet browser & a terminal
 exec --no-startup-id alacritty -e '/home/freman/bin/tmon'
 exec --no-startup-id google-chrome
 exec --no-startup-id '/home/freman/bin/ts-os set dark'
 
+
 # default_border pixel 0
+# gaps inner 2
+# gaps outer 3
+
+smart_gaps on
