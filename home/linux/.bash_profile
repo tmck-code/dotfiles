@@ -34,8 +34,8 @@ PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 export GOPATH="$HOME/go"
 # export GOROOT="/usr/lib/go-1.18/"
 export NVM_DIR="$HOME/.nvm" # node version manager
-PATH="/usr/local/go/bin:$PATH:$NVM_DIR"
-PATH="$HOME/.uvenv/bin/:$PATH"
+PATH="/usr/local/go/bin:$GOPATH/bin:$PATH:$NVM_DIR"
+# PATH="$HOME/.uvenv/bin/:$PATH"
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
 export PATH
@@ -54,8 +54,9 @@ sources_files=(
   # language version managers -------------------
   "$HOME/.cargo/env"         # cargo/rust
   # "$HOME/.venv/bin/activate" # pyhon virtual env
-  "$HOME/.uvenv/bin/activate" # pyhon virtual env
+  # "$HOME/.uvenv/bin/activate" # pyhon virtual env
   "$NVM_DIR/nvm.sh"          # nvm (node version manager)
+  "$HOME/.bash_aliases"      # my bash aliases
 )
 
 for f in "${sources_dirs[@]}"; do
