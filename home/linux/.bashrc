@@ -14,7 +14,6 @@ if [ -n "${DEBUG:-}" ]; then
   echo -n '{".bash_profile sourced": '
   [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo 'false}' || echo 'true}'
 fi
-export _LAST_PS1_TIME=$EPOCHREALTIME
 
 # My utils that need to set before using tmux
 # for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
