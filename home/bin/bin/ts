@@ -24,7 +24,7 @@ function setTheme() {
 
   local sed_expr="s|^  *\"$THEME_DIR_PORTABLE/.*.toml\"|    \"$THEME_DIR_PORTABLE/${theme_name}.toml\"|g"
 
-  sed "$sed_expr" "$CONFIG" > /tmp/alacritty.toml
+  sed "$sed_expr" "$CONFIG" >/tmp/alacritty.toml
   mv /tmp/alacritty.toml "$CONFIG"
 }
 
@@ -33,13 +33,13 @@ function switchStyle() {
   local current_style new_style new_theme
 
   # get the current theme style from ~/.config/alacritty/.current-theme-style file
-  read -r current_style < "$CONFIG_DIR/.current-theme-style"
+  read -r current_style <"$CONFIG_DIR/.current-theme-style"
   new_style="${theme_style_switch[$current_style]}"
-  read -r new_theme < "$CONFIG_DIR/${theme_styles[${new_style}]}"
+  read -r new_theme <"$CONFIG_DIR/${theme_styles[${new_style}]}"
 
   setTheme "$new_theme"
 
-  echo "$new_style" > "$CONFIG_DIR/.current-theme-style"
+  echo "$new_style" >"$CONFIG_DIR/.current-theme-style"
 }
 
 function getAllThemes() {
@@ -47,14 +47,14 @@ function getAllThemes() {
   local grep_expr
 
   case "$style" in
-    all)   grep_expr=".*" ;;
-    dark)  grep_expr="-Ev #[FEfe]" ;;
-    light) grep_expr="-E #[FEfe]" ;;
-    *) echo "style not supported: '$1'" && exit 1 ;;
+  all) grep_expr=".*" ;;
+  dark) grep_expr="-Ev #[FEfe]" ;;
+  light) grep_expr="-E #[FEfe]" ;;
+  *) echo "style not supported: '$1'" && exit 1 ;;
   esac
 
   for f in "$THEME_DIR"/*toml; do
-    if grep -H -m1 background "$f" | grep "$grep_expr" > /dev/null 2>&1; then
+    if grep -H -m1 background "$f" | grep $grep_expr >/dev/null 2>&1; then
       echo "$f"
     fi
   done
@@ -64,11 +64,11 @@ function getAllThemes() {
 function demo() {
   local idx=0
   local style="${1:-all}"
-  local themes=( $(getAllThemes "$style") )
+  local themes=($(getAllThemes "$style"))
 
   [ -z "${themes:-}" ] && echo "no themes found!" && exit 1
 
-  if which pokesay > /dev/null; then
+  if which pokesay >/dev/null; then
     clear -x
     display-message -p "hello world" -o '' | pokesay -WujCb -c small
     echo '{"aasdf": "blkasdjfo", "ca;lksdjf": [3038274,52934,5.23894], "zzndkjshdf": null}' | jq
@@ -93,7 +93,7 @@ function demo() {
 # switch to a random theme
 function random() {
   local style="${1:-all}"
-  local themes=( $(getAllThemes "$style") )
+  local themes=($(getAllThemes "$style"))
   local random_theme=${themes[$RANDOM % ${#themes[@]}]}
 
   echo "Switching to random theme: $random_theme"
@@ -103,18 +103,37 @@ function random() {
 op=switchStyle style=all
 while test $# -gt 0; do
   case "${1}" in
-    switch)        op=switchStyle;  shift ;;
-    demo)          op=demo;         shift ;;
-    random)        op=random;       shift ;;
-    -s|--style)    shift; style="$1"; shift ;;
-    *)
-      echo "Wrong arg: $1" >&2; usage; exit 1 ;;
+  switch)
+    op=switchStyle
+    shift
+    ;;
+  demo)
+    op=demo
+    shift
+    ;;
+  random)
+    op=random
+    shift
+    ;;
+  -s | --style)
+    shift
+    style="$1"
+    shift
+    ;;
+  *)
+    echo "Wrong arg: $1" >&2
+    usage
+    exit 1
+    ;;
   esac
 done
 
 case "${op}" in
-  switchStyle) switchStyle ;;
-  demo)        demo "$style" ;;
-  random)      random "$style" ;;
-  *)           usage; exit 1 ;;
+switchStyle) switchStyle ;;
+demo) demo "$style" ;;
+random) random "$style" ;;
+*)
+  usage
+  exit 1
+  ;;
 esac
