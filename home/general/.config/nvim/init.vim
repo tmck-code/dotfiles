@@ -38,8 +38,8 @@ set background=dark
 let g:material_terminal_italics = 1
 let g:material_style = 'deep ocean'
 "" colorscheme material
-" colorscheme aurora
-colorscheme kanagawa-wave
+colorscheme aurora
+" colorscheme kanagawa-wave
 
 let g:airline_theme = 'google_dark'
 
