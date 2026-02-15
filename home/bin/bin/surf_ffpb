@@ -15,27 +15,33 @@ set -euo pipefail
 #   -r 60 \
 #   Replay\ 2025-11-22\ 00-06-16.surf_quirky.mov
 
-FG_RED='\e[31m'
-FG_GREEN='\e[32m'
-FG_YELLOW='\e[33m'
-FG_BLUE='\e[34m'
-RESET='\e[0m'
+FG_GREEN='\e[32m' FG_YELLOW='\e[33m' FG_BLUE='\e[34m' RESET='\e[0m'
 
 function convert() {
   local infpath="$1"
   local map_name="$2"
   local starting_second="${3:-0}"
+  local ending_second="${4:-}"
+
+  local durationArg=""
+  if [[ -n "$ending_second" ]]; then
+    durationArg="-t $(echo "$ending_second - $starting_second" | bc)"
+  fi
 
   local outfpath="${infpath%.*}.$map_name.mov"
 
   echo -e "> Converting ${FG_YELLOW}$infpath${RESET}"
   echo -e "          to ${FG_GREEN}$outfpath${RESET}"
   echo -e "   start sec ${FG_BLUE}$starting_second${RESET}"
+  if [[ -n "$ending_second" ]]; then
+    echo -e "    duration ${FG_BLUE}$durationArg${RESET}"
+  fi
 
   ffpb -y \
     -r         60 \
     -i         "$infpath" \
     -ss        "$starting_second" \
+    $durationArg \
     -vcodec    dnxhd \
     -profile:v dnxhr_hq \
     -an -b:v   36M \
@@ -49,13 +55,14 @@ function usage() {
   echo "Usage: $0 [-i|--input <input file>] [-m|--map-name <map name>] [-s|--starting-second <starting second>]" >&2
 }
 
-infpath="$1" map_name="$2" starting_second="$3"
+infpath="$1" map_name="$2" starting_second="$3" ending_second=
 while test $# -gt 0; do
   case "$1" in
     -h|--help)            usage; exit 0 ;;
     -i|--input)           shift; infpath="$1";         shift ;;
     -m|--map-name)        shift; map_name="$1";        shift ;;
     -s|--starting-second) shift; starting_second="$1"; shift ;;
+    -e|--ending-second)   shift; ending_second="$1";   shift ;;
     *)
       echo "Wrong arg: $1" >&2; usage; exit 1 ;;
   esac
@@ -66,4 +73,4 @@ if [[ -z "$infpath" || -z "$map_name" ]]; then
   usage
   exit 1
 fi
-convert "$infpath" "$map_name" "$starting_second"
+convert "$infpath" "$map_name" "$starting_second" "$ending_second"

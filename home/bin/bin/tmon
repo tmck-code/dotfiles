@@ -21,11 +21,6 @@ tmux new-session -s "dev" -n "mon" -d
 
 # 2. Create the top-left pane
 tmux send-keys -t dev:mon "${mon_command}" C-j
-# split into top/bottom panes
-tmux split-window -v -l 20%
-# now, select the bottom pane
-tmux select-pane -t 1
-tmux send-keys "lazydocker" C-j
 
 tmux select-pane -t 0
 # split into right/left panes
