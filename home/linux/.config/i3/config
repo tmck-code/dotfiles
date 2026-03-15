@@ -38,8 +38,10 @@ bindsym $mod+t exec notify-send -i folder-new "Running: alacritty (with tmux)" &
 bindsym $mod+Shift+t exec notify-send -i folder-new "Running: alacritty (without tmux)" && alacritty
 # start running Stone Story RPG
 bindsym --release $mod+Shift+s exec notify-send -i folder-new "Running: Stone Story RPG" && xdg-open steam://rungameid/603390
-# night-mode
+# night-mode (easy reading)
 bindsym $mod+Shift+u exec notify-send -i folder-new "Running: Redshift 3200K" && redshift -PO 3200K
+# switch OS light/dark mode
+bindsym $mod+Shift+i exec notify-send -i folder-new "Switching Light/Dark mode" && /home/freman/bin/ts-os switch
 
 # minimeters (audio visualiser). ensure it's always floating and sticky (follows the user across workspaces)
 bindsym $mod+Shift+m exec notify-send -i folder-new "Running: minimeters" && minimeters
@@ -189,9 +191,10 @@ exec --no-startup-id blueman-applet
 exec --no-startup-id pasystray
 
 # launch with an internet browser & a terminal
-exec --no-startup-id alacritty -e '/home/freman/bin/tmon'
-exec --no-startup-id google-chrome
+exec --no-startup-id google-chrome-stable
 exec --no-startup-id '/home/freman/bin/ts-os set dark'
+
+exec --no-startup-id i3-msg 'exec alacritty -e /home/freman/bin/tmon ; move container to workspace "6"'
 
 
 # default_border pixel 0
