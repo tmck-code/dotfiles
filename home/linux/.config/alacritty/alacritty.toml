@@ -2,49 +2,9 @@
 live_config_reload = true
 import = [
     # "~/.config/alacritty/themes/themes/gruvbox_dark.toml"
-    "~/.config/alacritty/themes/themes/cyber_punk_neon.toml"
+    "~/.config/alacritty/font-ansi.toml",
+    "~/.config/alacritty/themes/ansilove.toml",
 ]
-
-# [colors.primary]
-# background = "#000000"
-
-[font]
-size = 16.0
-# offset = { y = 50 }
-
-[font.bold]
-# family = "OperatorMono Nerd Font"
-# family = "FantasqueSansM Nerd Font Mono"
-# family = "Monofur Nerd Font Mono"
-# family = "HeavyData Nerd Font"
-# family = "OpenDyslexicM Nerd Font Mono"
-# family = "Hurmit Nerd Font Mono"
-# family = "CaskaydiaCove Nerd Font Mono"
-family = "IosevkaTerm NFP"
-style = "Bold"
-
-[font.bold_italic]
-# family = "Iosevka Nerd Font"
-# family = "OperatorMono Nerd Font"
-# family = "CaskaydiaCove Nerd Font Mono"
-family = "IosevkaTerm NFP"
-style = "Bold Italic"
-
-[font.italic]
-# family = "Iosevka Nerd Font"
-# family = "OperatorMono Nerd Font"
-# family = "CaskaydiaCove Nerd Font Mono"
-family = "IosevkaTerm NFP"
-style = "Light Italic"
-
-[font.normal]
-# family = "OperatorMono Nerd Font"
-# family = "Monofur Nerd Font Mono"
-# family = "HeavyData Nerd Font"
-# family = "FantasqueSansM Nerd Font Mono"
-# family = "CaskaydiaCove Nerd Font Mono"
-family = "IosevkaTerm NFP"
-style = "Regular"
 
 [keyboard]
 bindings = [
@@ -69,3 +29,5 @@ lines = 240
 
 [terminal]
 
+[env]
+WINIT_X11_SCALE_FACTOR='1.0'

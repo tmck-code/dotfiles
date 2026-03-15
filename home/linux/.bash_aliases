@@ -6,6 +6,8 @@ alias v="vim"
 alias pip="python3 -m pip"
 alias python="python3"
 
+alias bmon="bmon -p enp4s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'"
+
 # LS_COLORS_MISC="rs=0:di=02;93:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32"
 # LS_COLORS_ARCHIVES="*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31"
 # LS_COLORS_IMAGES="*.jpg=01;95:*.jpeg=01;95:*.mjpg=01;95:*.mjpeg=01;95:*.gif=01;95:*.bmp=01;95:*.pbm=01;95:*.pgm=01;95:*.ppm=01;95:*.tga=01;95:*.xbm=01;95:*.xpm=01;95:*.tif=01;95:*.tiff=01;95:*.png=01;95:*.svg=01;95:*.svgz=01;95:*.mng=01;95:*.pcx=01;95"
@@ -153,7 +155,18 @@ ca=${BG_RED_BLACK}:\
 tw=${BG_GREEN_BLACK}:\
 ow=${BG_GREEN_BLUE}:\
 st=${BG_BLUE_WHITE}:\
-ex=${BOLD_GREEN}"
+ex=${BOLD_GREEN}:\
+fi=${FG_WHITE}${BOLD}"
+
+LSC_TEXT="\
+*.txt=${FG_WHITE};${BOLD}:\
+*.md=${FG_WHITE};${BOLD}:\
+*.log=${FG_WHITE};${BOLD}:\
+*.csv=${FG_WHITE};${BOLD}:\
+*.json=${FG_WHITE};${BOLD}:\
+*.xml=${FG_WHITE};${BOLD}:\
+*.yaml=${FG_WHITE};${BOLD}:\
+*.yml=${FG_WHITE};${BOLD}"
 
 # Archive formats (bold red)
 LSC_ARCHIVES="\
@@ -278,5 +291,5 @@ LSC_AUDIO="\
 *.spx=${CYAN}:\
 *.xspf=${CYAN}"
 
-export LS_COLORS="${LSC_MISC}:${LSC_ARCHIVES}:${LSC_IMAGES}:${LSC_VIDEOS}:${LSC_AUDIO}"
+export LS_COLORS="${LSC_MISC}:${LSC_TEXT}:${LSC_ARCHIVES}:${LSC_IMAGES}:${LSC_VIDEOS}:${LSC_AUDIO}"
 alias ls="ls --color=auto"
