@@ -1,0 +1,171 @@
+#!/bin/bash
+
+set -euo pipefail
+
+[ -n "${DEBUG:-}" ] && set -x
+
+[ -z "${TERM:-}" ] && export TERM=xterm-256color
+LOLCAT_DEFAULT_SEED=$RANDOM
+
+FONTS_DIR="$(figlet -I2)"
+FONTS_DIR=~/.config/figlet/fonts
+test -d "$FONTS_DIR/fonts" && FONTS_DIR="$FONTS_DIR/fonts"
+
+if [ -z "${FONTS_DIR:-}" ]; then
+  echo "No figlet fonts found!" >&2 && exit 1
+fi
+
+function usage() {
+  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--display] [-p|--print] [-D|--demo] [-n|--no-colour] [-o|--figlet-opts <opts>]" >&2
+}
+
+CHOICES=(
+  "3d" "3d_diagonal" "amc_aaa01" "ansi_regular"
+  "ansi_shadow" "big_money-ne" "bloody" "bolger"
+  "calvin_s" "dos_rebel" "delta_corps_priest_1" "elite"
+  "filter" "georgia11" "nscript" "the_edge" "amcaaa01"
+  "basic" "broadway" "colossal" "doh" "fraktur"
+  "kompaktblk" "larry3d" "maxiwi" "miniwi" "nancyj-fancy"
+  "nancyj-underlined" "nv_script" "o8" "poison" "roman"
+  "rowancap" "rozzo" "sblood" "stencil" "stencil"
+  "thick" "univers" "whimsy"
+  "bigmono9"
+  "cosmike"
+  "pagga"
+)
+
+# prints a message with a figlet font
+function print_message() {
+  local message="$1"
+  local colour="${2:-1}"
+  local seed="${3:-$LOLCAT_DEFAULT_SEED}"
+  local figlet_opts="${4:-}"
+  local choice="${5:-}"
+
+  if [[ -z "$choice" ]]; then
+    choice="${CHOICES[$((RANDOM % ${#CHOICES[@]}))]}"
+  fi
+
+  if ! test -f "$FONTS_DIR/$choice"; then
+    choice=$(find "$FONTS_DIR" -type f | fzf -f "$choice" | head -n1)
+  fi
+
+  # figlet - use specific font file, set width to terminal and center the text
+  # lolcat - randomize the horizontal freq, and force colour always
+  msg="$(echo -ne "$message" | figlet -f "$choice" -w "$(tput cols)" "$figlet_opts" | sed '/^[[:space:]]*$/d')"
+  if [ "$colour" -eq 1 ]; then
+    echo -ne "$msg" | lolcat -f -h 0.055 -o "$seed"
+  else
+    echo -ne "$msg"
+  fi
+}
+
+# prints a message with a figlet font, centered using padding above/below the message
+function display_message() {
+  local message="$1"
+  local colour="${2:-1}"
+  local seed="${3:-$LOLCAT_DEFAULT_SEED}"
+  local figlet_opts="${4:-}"
+  local choice="${5:-}"
+
+  local msg
+  msg="$(print_message "$message" "$colour" "$seed" "$figlet_opts" "$choice")"
+  local n_lines
+  n_lines=$(echo "$msg" | wc -l)
+
+  local padding=$(($(($(tput lines) - n_lines)) / 2))
+
+  # display the figlet message, with padding above/below
+  clear -x
+  if [ -n "${verbose:-}" ]; then
+    echo "$FONTS_DIR/$choice"
+    for _ in $(seq 2 $padding); do echo; done
+  else
+    for _ in $(seq 0 $padding); do echo; done
+  fi
+  printf "%s" "$msg"
+  for _ in $(seq 0 $padding); do echo; done
+}
+
+# cycles through each chosen figlet font displaying the message. press any key to continue
+function demo_message() {
+  local message="$1"
+  local colour="${2:-1}"
+  local figlet_opts="${3:-}"
+  local idx=1
+  for f in "${CHOICES[@]}"; do
+    display_message "$message" "$colour" "$figlet_opts" "$f"
+    printf \
+      "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
+      "[$idx/${#CHOICES[@]}]" "$f" "press any key to continue..."
+    read -n1 -s -r
+    idx=$((idx + 1))
+  done
+}
+
+display='' print='' demo='' msg='Hello World!' font='' colour=1 seed="$LOLCAT_DEFAULT_SEED" figlet_opts="-c" verbose=0
+while test $# -gt 0; do
+  case "$1" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  -d | --display)
+    display=1
+    shift
+    msg="$1"
+    shift
+    ;;
+  -p | --print)
+    print=1
+    shift
+    msg="$1"
+    shift
+    ;;
+  -f | --font)
+    shift
+    font="$1"
+    shift
+    ;;
+  -s | --seed)
+    shift
+    seed="$1"
+    shift
+    ;;
+  -D | --demo)
+    demo=1
+    shift
+    [ -n "${1:-}" ] && msg="$1" && shift
+    ;;
+  -n | --no-colour)
+    colour=0
+    shift
+    ;;
+  -o | --figlet-opts)
+    shift
+    figlet_opts="$1"
+    shift
+    ;;
+  -v | --verbose)
+    verbose=1
+    shift
+    ;;
+  *)
+    echo "Wrong arg: $1" >&2
+    usage
+    exit 1
+    ;;
+  esac
+done
+
+if [[ -n "$demo" ]]; then
+  demo_message "$msg" "$colour" "$seed" "$figlet_opts"
+elif [[ -n "$display" ]]; then
+  display_message "$msg" "$colour" "$seed" "$figlet_opts" "$font"
+elif [[ -n "$print" ]]; then
+  print_message "$msg" "$colour" "$seed" "$figlet_opts" "$font"
+else
+  echo "No action specified" >&2
+  usage
+  exit 1
+fi
