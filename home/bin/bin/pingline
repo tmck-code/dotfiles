@@ -6,7 +6,7 @@ set -euo pipefail
 ping=$(ping google.com -c1 -t20 2>&1) || { echo "❌" && exit 1; }
 
 ping_ms=$(echo "$ping" \
-  | $HOME/.uvenv/bin/jc --ping-s -u \
+  | jc --ping-s -u \
   | head -n 1 \
   | jq -rc '"\(.time_ms)"')
 
