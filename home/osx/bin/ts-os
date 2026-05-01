@@ -1,0 +1,58 @@
+#!/opt/homebrew/bin/bash
+
+set -euo pipefail
+[ -n "${DEBUG:-}" ] && set -x
+
+function currentTheme() {
+  case $(gsettings get org.gnome.desktop.interface color-scheme) in
+  "'prefer-dark'"*) echo "dark" ;;
+  "'prefer-light'"*) echo "light" ;;
+  *)
+    echo "unknown"
+    exit 1
+    ;;
+  esac
+}
+
+function setDark() {
+  gsettings set org.gnome.desktop.interface gtk-theme Adwaita-dark
+  gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  sleep 0.14
+  $HOME/bin/ts
+}
+
+function setLight() {
+  gsettings set org.gnome.desktop.interface gtk-theme Adwaita
+  gsettings set org.gnome.desktop.interface color-scheme prefer-light
+  sleep 0.14
+  $HOME/bin/ts
+}
+
+function switchTheme() {
+  case $(currentTheme) in
+  "dark") setLight ;;
+  "light") setDark ;;
+  *)
+    echo "unknown theme"
+    exit 1
+    ;;
+  esac
+}
+
+function usage() {
+  echo "Usage: $0 [switch|light|dark]" >&2
+}
+
+if test $# -eq 0; then
+  switchTheme
+else
+  case "$1" in
+  switch) switchTheme ;;
+  light) setLight ;;
+  dark) setDark ;;
+  *)
+    usage
+    exit 1
+    ;;
+  esac
+fi

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 if   test -f "$1/requirements.txt"; then echo "${2:-#[fg=colour226}󰌠 "
+elif test -f "$1/pyproject.toml";   then echo "${2:-#[fg=colour226}󰌠 "
 elif test -f "$1/Gemfile";          then echo "${2:-#[fg=colour196}󰴭 "
 elif test -f "$1/tsconfig.json";    then echo "${2:-#[fg=colour81}󰛦 "
 elif test -f "$1/package.json";     then echo "${2:-#[fg=colour220} "
