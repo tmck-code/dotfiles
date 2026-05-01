@@ -154,6 +154,7 @@ export LESS_TERMCAP_us=$'\e[1;4;31m'
 export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
 export PATH="$PATH:/Users/tomm/.lmstudio/bin"
 export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH" # Add homebrew bins
 
 # Present a pretty message, with a small chance to print a "shiny" version
 if [ $(($RANDOM % 10)) == 0 ]; then

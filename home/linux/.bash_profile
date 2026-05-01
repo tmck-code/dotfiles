@@ -34,8 +34,9 @@ PATH="$PATH:$HOME/bin/:$HOME/.local/bin:/usr/local/bin"
 export GOPATH="$HOME/go"
 # export GOROOT="/usr/lib/go-1.18/"
 export NVM_DIR="$HOME/.nvm" # node version manager
-PATH="/usr/local/go/bin:$GOPATH/bin:$PATH:$NVM_DIR"
-# PATH="$HOME/.uvenv/bin/:$PATH"
+PATH="$HOME/.local/bin:/usr/local/go/bin:$GOPATH/bin:$PATH:$NVM_DIR"
+
+PATH="$HOME/.uvenv/bin/:$PATH"
 # Tool paths
 PATH="$PATH:.emacs.d/bin"
 export PATH

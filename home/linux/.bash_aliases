@@ -60,8 +60,14 @@ alias emacs="emacs -nw"
 
 alias code="/usr/share/code/bin/code"
 
+alias dark='gsettings set org.gnome.desktop.interface gtk-theme Adwaita-dark \
+&& gsettings set org.gnome.desktop.interface color-scheme prefer-dark'
+
+alias light='gsettings set org.gnome.desktop.interface gtk-theme Adwaita \
+&& gsettings set org.gnome.desktop.interface color-scheme prefer-light'
+
 function ppj-clipboard() {
-  echo "$(xclip -o -selection clipboard)" | jq | xclip -i -selection clipboard
+  xclip -o -selection clipboard | jq | xclip -i -selection clipboard
 }
 
 _JQ_REGULAR=0
@@ -81,14 +87,24 @@ _JQ_MAGENTA=35
 _JQ_CYAN=36
 _JQ_WHITE=37
 
+# JQ_NULL="$_JQ_UNDERSCORE;$_JQ_WHITE"
+# JQ_TRUE="$_JQ_BRIGHT;$_JQ_YELLOW"
+# JQ_FALSE="$_JQ_BRIGHT;$_JQ_RED"
+# JQ_NUMBERS="$_JQ_REGULAR;$_JQ_CYAN"
+# JQ_STRINGS="$_JQ_REGULAR;$_JQ_WHITE"
+# JQ_ARRAYS="$_JQ_REGULAR;$_JQ_BLUE"
+# JQ_OBJECTS="$_JQ_BRIGHT;$_JQ_MAGENTA"
+# # JQ_OBJECT_KEYS="$_JQ_BRIGHT;$_JQ_GREEN"
+# JQ_OBJECT_KEYS="$_JQ_REGULAR;$_JQ_YELLOW"
+
 JQ_NULL="$_JQ_UNDERSCORE;$_JQ_WHITE"
-JQ_TRUE="$_JQ_BRIGHT;$_JQ_YELLOW"
+JQ_TRUE="$_JQ_BRIGHT;$_JQ_GREEN"
 JQ_FALSE="$_JQ_BRIGHT;$_JQ_RED"
 JQ_NUMBERS="$_JQ_REGULAR;$_JQ_CYAN"
 JQ_STRINGS="$_JQ_REGULAR;$_JQ_YELLOW"
-JQ_ARRAYS="$_JQ_REGULAR;$_JQ_BLUE"
-JQ_OBJECTS="$_JQ_BRIGHT;$_JQ_MAGENTA"
-JQ_OBJECT_KEYS="$_JQ_REGULAR;$_JQ_GREEN"
+JQ_ARRAYS="$_JQ_REGULAR;$_JQ_GREEN"
+JQ_OBJECTS="$_JQ_REGULAR;$_JQ_RED"
+JQ_OBJECT_KEYS="$_JQ_REGULAR;$_JQ_WHITE"
 
 export JQ_COLORS="${JQ_NULL}:${JQ_FALSE}:${JQ_TRUE}:${JQ_NUMBERS}:${JQ_STRINGS}:${JQ_ARRAYS}:${JQ_OBJECTS}:${JQ_OBJECT_KEYS}"
 
