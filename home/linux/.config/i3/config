@@ -6,6 +6,41 @@
 # i3 config file (v4)
 # Please see https://i3wm.org/docs/userguide.html for a complete reference!
 
+# alphabetical list of all keybinds:
+
+# Super+1-0.........Switch to workspace 1-10
+# Super+A...........Focus parent container
+# Super+D...........Focus child container
+# Super+E...........Toggle split/stacking/tabbed
+# Super+Shift+E.....Exit i3
+# Super+Enter.......dmenu-extended (fuzzy matching launcher)
+# Super+F...........Toggle fullscreen
+# Super+Shift+F.....Toggle floating
+# Super+G...........Toggle focus between tiling/floating
+# Super+L/K.........Switch to next/previous workspace
+# Super+Shift+L/K...Move focused container to next/previous workspace
+# Super+R...........Enter resize mode (use arrow keys to resize, Enter or Escape to exit)
+# Super+Shift+R.....Restart i3
+# Super+S...........Change layout to stacking
+# Super+Shift+S.....Start Stone Story RPG
+# Super+Shift+1-0...Move focused container to workspace 1-10
+# Super+Shift+I.....Switch OS light/dark mode
+# Super+Shift+M.....minimeters (audio visualiser)
+# Super+Shift+Q.....Kill focused window
+# Super+Shift+Space.dmenu (minimal launcher)
+# Super+Shift+T.....Terminal without tmux
+# Super+Shift+U.....Night mode (Redshift 3200K)
+# Super+Shift+V.....Display help menu (list of keybindings)
+# Super+Shift+X.....Kill program with mouse cursor
+# Super+Shift+X.....Lock screen
+# Super+Shift+Y.....Reload config
+# Super+Shift+Y.....Show this help menu
+# Super+Shift+Z.....Wake up screen
+# Super+Space.......j4-dmenu (desktop app launcher)
+# Super+T...........Terminal with tmux
+# Super+W...........Change layout to tabbed
+# Super+Y...........Momentum mod (terminal, OBS, and window layout)
+
 # Aesthetics ++++++++++++++++++++++++++++++++++++
 
 # border text font & size
