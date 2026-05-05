@@ -86,6 +86,10 @@ for_window [title="MiniMeters"] floating enable
 # launch momentum mod, a terminal and OBS, and move them into exact positions
 bindsym $mod+y exec "~/bin/i3-gamelayout.sh"
 
+# help menu (list of keybindings)
+
+# bindsym $mod+Shift+v exec notify-send -i folder-new "Help: i3 Keybindings" 'Super+Shift+Y: Show this help menu\nSuper+Space: j4-dmenu (desktop app launcher)\nSuper+Shift+Space: dmenu (minimal launcher)\nSuper+Enter: dmenu-extended (fuzzy matching launcher)\nSuper+T: Terminal with tmux\nSuper+Shift+T: Terminal without tmux\nSuper+Shift+S: Start Stone Story RPG\nSuper+Shift+U: Night mode (Redshift 3200K)\nSuper+Shift+I: Switch OS light/dark mode\nSuper+Shift+M: minimeters (audio visualiser)\nSuper+Y: Momentum mod\nSuper+Shift+X: Kill program with mouse cursor\nSuper+Shift+Q: Kill focused window\nSuper+R: Enter resize mode (use arrow keys to resize, Enter or Escape to exit)\nSuper+F: Toggle fullscreen\nSuper+Shift+F: Toggle floating\nSuper+S: Change layout to stacking\nSuper+W: Change layout to tabbed\nSuper+E: Toggle split/stacking/tabbed\nSuper+G: Toggle focus between tiling/floating\nSuper+A: Focus parent container\nSuper+D: Focus child container\nSuper+1-0: Switch to workspace 1-10\nSuper+L/K: Switch to next/previous workspace\nSuper+Shift+1-0: Move focused container to workspace 1-10\nSuper+Shift+L/K: Move focused container to next/previous workspace\nSuper+Shift+Y: Reload config\nSuper+Shift+R: Restart i3\nSuper+Shift+E: Exit i3\nSuper+Shift+X: Lock screen\nSuper+Shift+Z: Wake up screen'
+
 # - menu/launcher -------------------------------
 # j4-dmenu (desktop app launcher)
 bindsym $mod+space exec --no-startup-id j4-dmenu-desktop --dmenu="dmenu -fn 'IosevkaTerm Nerd Font Mono-12' -i"
