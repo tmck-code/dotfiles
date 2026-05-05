@@ -40,7 +40,7 @@ tmux send-keys "nvtop -d 20" C-j
 # 5. Create the middle-right pane
 tmux split-window -v
 tmux select-pane -t 3
-tmux send-keys "bmon -p wlp4s0 -R 2.0" C-j
+tmux send-keys "bmon -p enp5s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'" C-j
 
 # 6. Create the bottom-right pane
 tmux split-window -v
