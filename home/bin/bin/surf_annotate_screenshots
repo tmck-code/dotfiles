@@ -21,7 +21,7 @@ function create_annotated_image() {
   # create the overlay
   magick -size 2560x1440 xc:none -font /usr/share/fonts/OTF/FiraSansCompressed-Bold.otf \
     -pointsize 300 -gravity SouthWest -fill none -stroke white -strokewidth 10 -annotate +100+350 "surf" \
-    -pointsize 400 -fill white -stroke none -annotate +100+50 "$surf_map_name" \
+    -pointsize 400 -fill white -stroke none -annotate +100+50 "${surf_map_name#surf_}" \
     "$overlay_tmp_path"
 
   # composite the overlay onto the original image
