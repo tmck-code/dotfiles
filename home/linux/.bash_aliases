@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# set -euxo pipefail
+
 alias g="git"
 alias v="vim"
 
@@ -8,46 +10,26 @@ alias python="python3"
 
 alias bmon="bmon -p enp4s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'"
 
-# LS_COLORS_MISC="rs=0:di=02;93:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32"
-# LS_COLORS_ARCHIVES="*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31"
-# LS_COLORS_IMAGES="*.jpg=01;95:*.jpeg=01;95:*.mjpg=01;95:*.mjpeg=01;95:*.gif=01;95:*.bmp=01;95:*.pbm=01;95:*.pgm=01;95:*.ppm=01;95:*.tga=01;95:*.xbm=01;95:*.xpm=01;95:*.tif=01;95:*.tiff=01;95:*.png=01;95:*.svg=01;95:*.svgz=01;95:*.mng=01;95:*.pcx=01;95"
-# LS_COLORS_VIDEOS="*.mov=01;95:*.mpg=01;95:*.mpeg=01;95:*.m2v=01;95:*.mkv=01;95:*.webm=01;95:*.ogm=01;95:*.mp4=01;95:*.m4v=01;95:*.mp4v=01;95:*.vob=01;95:*.qt=01;95:*.nuv=01;95:*.wmv=01;95:*.asf=01;95:*.rm=01;95:*.rmvb=01;95:*.flc=01;95:*.avi=01;95:*.fli=01;95:*.flv=01;95:*.gl=01;95:*.dl=01;95:*.xcf=01;95:*.xwd=01;95:*.yuv=01;95:*.cgm=01;95:*.emf=01;95:*.ogv=01;35:*.ogx=01;35"
-# LS_COLORS_AUDIO="*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36"
-# export LS_COLORS="${LS_COLORS_MISC}:${LS_COLORS_ARCHIVES}:${LS_COLORS_IMAGES}:${LS_COLORS_VIDEOS}:${LS_COLORS_AUDIO}"
+LESS_TERMCAP_mb=$(tput bold && tput setaf 2)                 # mb - begin bold mode                              - green
+LESS_TERMCAP_md=$(tput bold && tput setaf 6)                 # md - begin double-bright mode                     - cyan
+LESS_TERMCAP_me=$(tput sgr0)                                 # me - end mode (turn off all attributes)
+LESS_TERMCAP_so=$(tput bold && tput setaf 3 && tput setab 4) # so - begin standout mode (reverse video)          - yellow on blue
+LESS_TERMCAP_se=$(tput rmso && tput sgr0)                    # se - end standout mode
+LESS_TERMCAP_us=$(tput smul && tput bold && tput setaf 7)    # us - begin underline mode                         - white and bold
+LESS_TERMCAP_ue=$(tput rmul && tput sgr0)                    # ue - end underline mode
+LESS_TERMCAP_mr=$(tput rev)                                  # mr - begin reverse mode
+LESS_TERMCAP_mh=$(tput dim)                                  # mh - begin dim mode
+LESS_TERMCAP_ZN=$(tput ssubm)                                # ZN - begin blinking mode
+LESS_TERMCAP_ZV=$(tput rsubm)                                # ZV - end blinking mode
+LESS_TERMCAP_ZO=$(tput ssupm)                                # ZO - begin bold mode (often used for bold colors)
+LESS_TERMCAP_ZW=$(tput rsupm)                                # ZW - end bold mode (often used for bold colors)
 
-export LESS_TERMCAP_mb=$(
-  tput bold
-  tput setaf 2
-) # green
-export LESS_TERMCAP_md=$(
-  tput bold
-  tput setaf 6
-) # cyan
-export LESS_TERMCAP_me=$(tput sgr0)
-export LESS_TERMCAP_so=$(
-  tput bold
-  tput setaf 3
-  tput setab 4
-) # yellow on blue
-export LESS_TERMCAP_se=$(
-  tput rmso
-  tput sgr0
-)
-export LESS_TERMCAP_us=$(
-  tput smul
-  tput bold
-  tput setaf 7
-) # white
-export LESS_TERMCAP_ue=$(
-  tput rmul
-  tput sgr0
-)
-export LESS_TERMCAP_mr=$(tput rev)
-export LESS_TERMCAP_mh=$(tput dim)
-export LESS_TERMCAP_ZN=$(tput ssubm)
-export LESS_TERMCAP_ZV=$(tput rsubm)
-export LESS_TERMCAP_ZO=$(tput ssupm)
-export LESS_TERMCAP_ZW=$(tput rsupm)
+export \
+  LESS_TERMCAP_mb LESS_TERMCAP_md LESS_TERMCAP_me LESS_TERMCAP_so \
+  LESS_TERMCAP_se LESS_TERMCAP_us LESS_TERMCAP_ue LESS_TERMCAP_mr \
+  LESS_TERMCAP_mh LESS_TERMCAP_ZN LESS_TERMCAP_ZV LESS_TERMCAP_ZO \
+  LESS_TERMCAP_ZW
+
 export GROFF_NO_SGR=1             # For Konsole and Gnome-terminal
 export LESS="--RAW-CONTROL-CHARS" # Allow ANSI colours in less
 
@@ -70,242 +52,185 @@ function ppj-clipboard() {
   xclip -o -selection clipboard | jq | xclip -i -selection clipboard
 }
 
-_JQ_REGULAR=0
-_JQ_BRIGHT=1
-_JQ_DIM=2
-_JQ_UNDERSCORE=4
-_JQ_BLINK=5
-_JQ_REVERSE=7
-_JQ_HIDDEN=8
+_REGULAR=0 ; _BRIGHT=1 ; _DIM=2 ; _ITALIC=3; _UNDERSCORE=4 ; _BLINK=5 ; _REVERSE=7 ; _HIDDEN=8
+_FG_BLACK=30   ; _FG_BRIGHT_BLACK=90   ; _BG_BLACK=40   ; _BG_BRIGHT_BLACK=100  ;
+_FG_RED=31     ; _FG_BRIGHT_RED=91     ; _BG_RED=41     ; _BG_BRIGHT_RED=101    ;
+_FG_GREEN=32   ; _FG_BRIGHT_GREEN=92   ; _BG_GREEN=42   ; _BG_BRIGHT_GREEN=102  ;
+_FG_YELLOW=33  ; _FG_BRIGHT_YELLOW=93  ; _BG_YELLOW=43  ; _BG_BRIGHT_YELLOW=103 ;
+_FG_BLUE=34    ; _FG_BRIGHT_BLUE=94    ; _BG_BLUE=44    ; _BG_BRIGHT_BLUE=104   ;
+_FG_MAGENTA=35 ; _FG_BRIGHT_MAGENTA=95 ; _BG_MAGENTA=45 ; _BG_BRIGHT_MAGENTA=105 ;
+_FG_CYAN=36    ; _FG_BRIGHT_CYAN=96    ; _BG_CYAN=46    ; _BG_BRIGHT_CYAN=106   ;
+_FG_WHITE=37   ; _FG_BRIGHT_WHITE=97   ; _BG_WHITE=47   ; _BG_BRIGHT_WHITE=107  ;
 
-_JQ_BLACK=30
-_JQ_RED=31
-_JQ_GREEN=32
-_JQ_YELLOW=33
-_JQ_BLUE=34
-_JQ_MAGENTA=35
-_JQ_CYAN=36
-_JQ_WHITE=37
-
-# JQ_NULL="$_JQ_UNDERSCORE;$_JQ_WHITE"
-# JQ_TRUE="$_JQ_BRIGHT;$_JQ_YELLOW"
-# JQ_FALSE="$_JQ_BRIGHT;$_JQ_RED"
-# JQ_NUMBERS="$_JQ_REGULAR;$_JQ_CYAN"
-# JQ_STRINGS="$_JQ_REGULAR;$_JQ_WHITE"
-# JQ_ARRAYS="$_JQ_REGULAR;$_JQ_BLUE"
-# JQ_OBJECTS="$_JQ_BRIGHT;$_JQ_MAGENTA"
-# # JQ_OBJECT_KEYS="$_JQ_BRIGHT;$_JQ_GREEN"
-# JQ_OBJECT_KEYS="$_JQ_REGULAR;$_JQ_YELLOW"
-
-JQ_NULL="$_JQ_UNDERSCORE;$_JQ_WHITE"
-JQ_TRUE="$_JQ_BRIGHT;$_JQ_GREEN"
-JQ_FALSE="$_JQ_BRIGHT;$_JQ_RED"
-JQ_NUMBERS="$_JQ_REGULAR;$_JQ_CYAN"
-JQ_STRINGS="$_JQ_REGULAR;$_JQ_YELLOW"
-JQ_ARRAYS="$_JQ_REGULAR;$_JQ_GREEN"
-JQ_OBJECTS="$_JQ_REGULAR;$_JQ_RED"
-JQ_OBJECT_KEYS="$_JQ_REGULAR;$_JQ_WHITE"
+JQ_NULL="$_UNDERSCORE;$_FG_WHITE"
+JQ_TRUE="$_BRIGHT;$_FG_GREEN"
+JQ_FALSE="$_BRIGHT;$_FG_RED"
+JQ_NUMBERS="$_REGULAR;$_FG_CYAN"
+JQ_STRINGS="$_REGULAR;$_FG_YELLOW"
+JQ_ARRAYS="$_REGULAR;$_FG_GREEN"
+JQ_OBJECTS="$_REGULAR;$_FG_RED"
+JQ_OBJECT_KEYS="$_REGULAR;$_FG_WHITE"
 
 export JQ_COLORS="${JQ_NULL}:${JQ_FALSE}:${JQ_TRUE}:${JQ_NUMBERS}:${JQ_STRINGS}:${JQ_ARRAYS}:${JQ_OBJECTS}:${JQ_OBJECT_KEYS}"
 
-# Color and attribute definitions
-RESET="0"
-BOLD="01"
-DIM="02"
-BG_BLACK="40"
-
-# Foreground colors
-FG_BLACK="30"
-FG_RED="31"
-FG_GREEN="32"
-FG_YELLOW="33"
-FG_BLUE="34"
-FG_MAGENTA="35"
-FG_CYAN="36"
-FG_WHITE="37"
-FG_BRIGHT_YELLOW="93"
-FG_BRIGHT_MAGENTA="95"
-
-# Background colors
-BG_RED="41"
-BG_GREEN="42"
-BG_YELLOW="43"
-BG_BRIGHT_YELLOW="103"
-BG_BLUE="44"
-
-# Composite styles (using semicolon separator)
-BOLD_RED="${BOLD};${FG_RED}"
-BOLD_GREEN="${BOLD};${FG_GREEN}"
-BOLD_CYAN="${BOLD};${FG_CYAN}"
-BOLD_MAGENTA="${BOLD};${FG_MAGENTA}"
-BOLD_BRIGHT_MAGENTA="${BOLD};${FG_BRIGHT_MAGENTA}"
-BOLD_BRIGHT_YELLOW="${BOLD};${FG_BRIGHT_YELLOW}"
-CYAN="${RESET};${FG_CYAN}"
-
-BG_BLACK_YELLOW="${BG_BLACK};${FG_YELLOW}"
-BG_BLACK_YELLOW_BOLD="${BG_BLACK};${FG_YELLOW};${BOLD}"
-BG_BLACK_RED_BOLD="${BG_BLACK};${FG_RED};${BOLD}"
-BG_RED_WHITE="${FG_WHITE};${BG_RED}"
-BG_RED_BLACK="${FG_BLACK};${BG_RED}"
-BG_YELLOW_BLACK="${FG_BLACK};${BG_BRIGHT_YELLOW}"
-BG_GREEN_BLACK="${FG_BLACK};${BG_GREEN}"
-BG_GREEN_BLUE="${FG_BLUE};${BG_GREEN}"
-BG_BLUE_WHITE="${FG_WHITE};${BG_BLUE}"
-
 # File type and special file colors
 LSC_MISC="\
-rs=${RESET}:\
-di=${BG_YELLOW_BLACK}:\
-ln=${BOLD_CYAN}:\
-mh=${RESET}:\
-pi=${BG_BLACK_YELLOW}:\
-so=${BOLD_MAGENTA}:\
-do=${BOLD_MAGENTA}:\
-bd=${BG_BLACK_YELLOW_BOLD}:\
-cd=${BG_BLACK_YELLOW_BOLD}:\
-or=${BG_BLACK_RED_BOLD}:\
-mi=${RESET}:\
-su=${BG_RED_WHITE}:\
-sg=${BG_YELLOW_BLACK}:\
-ca=${BG_RED_BLACK}:\
-tw=${BG_GREEN_BLACK}:\
-ow=${BG_GREEN_BLUE}:\
-st=${BG_BLUE_WHITE}:\
-ex=${BOLD_GREEN}:\
-fi=${FG_WHITE}${BOLD}"
+rs=$_RESET:\
+di=$_ITALIC;$_BG_BLACK;$_FG_YELLOW:\
+ln=$_BOLD;$_FG_CYAN:\
+mh=$_RESET:\
+pi=$_BG_BLACK;$_FG_YELLOW:\
+so=$_BOLD;$_FG_MAGENTA:\
+do=$_BOLD;$_FG_MAGENTA:\
+bd=$_BG_BLACK;$_FG_YELLOW;$_BOLD:\
+cd=$_BG_BLACK;$_FG_YELLOW;$_BOLD:\
+or=$_BG_BLACK;$_FG_RED;$_BOLD:\
+mi=$_RESET:\
+su=$_FG_WHITE;$_BG_RED:\
+sg=$_FG_BLACK;$_BG_BRIGHT_YELLOW:\
+ca=$_FG_BLACK;$_BG_RED:\
+tw=$_FG_BLACK;$_BG_GREEN:\
+ow=$_ITALIC;$_BG_BLACK;$_FG_GREEN:\
+st=$_FG_WHITE;$_BG_BLUE:\
+ex=$_RESET;$_ITALIC;$_BRIGHT;$_FG_RED:\
+fi=$_FG_WHITE$_BOLD"
 
 LSC_TEXT="\
-*.txt=${FG_WHITE};${BOLD}:\
-*.md=${FG_WHITE};${BOLD}:\
-*.log=${FG_WHITE};${BOLD}:\
-*.csv=${FG_WHITE};${BOLD}:\
-*.json=${FG_WHITE};${BOLD}:\
-*.xml=${FG_WHITE};${BOLD}:\
-*.yaml=${FG_WHITE};${BOLD}:\
-*.yml=${FG_WHITE};${BOLD}"
+*.txt=$_RESET;$_FG_WHITE;$_BOLD:\
+*.log=$_RESET;$_ITALIC;$_DIM;$_FG_WHITE:\
+*.csv=$_RESET;$_ITALIC;$_BRIGHT;$_FG_WHITE:\
+*.json=$_RESET;$_ITALIC;$_BRIGHT;$_FG_WHITE:\
+*.xml=$_RESET;$_BOLD;$_FG_GREEN:\
+*.html=$_RESET;$_BOLD;$_FG_GREEN:\
+*.md=$_RESET;$_ITALIC;$_BRIGHT;$_FG_BLUE:\
+*.yaml=$_RESET;$_ITALIC;$_BRIGHT;$_FG_BLUE:\
+*.yml=$_RESET;$_ITALIC;$_BRIGHT;$_FG_BLUE:\
+*.toml=$_RESET;$_ITALIC;$_BRIGHT;$_FG_BLUE:\
+*uv.lock=$_RESET;$_ITALIC;$_BRIGHT;$_FG_BLUE:\
+*.py=$_RESET;$_ITALIC;$_BRIGHT;$_FG_RED"
 
 # Archive formats (bold red)
 LSC_ARCHIVES="\
-*.tar=${BOLD_RED}:\
-*.tgz=${BOLD_RED}:\
-*.arc=${BOLD_RED}:\
-*.arj=${BOLD_RED}:\
-*.taz=${BOLD_RED}:\
-*.lha=${BOLD_RED}:\
-*.lz4=${BOLD_RED}:\
-*.lzh=${BOLD_RED}:\
-*.lzma=${BOLD_RED}:\
-*.tlz=${BOLD_RED}:\
-*.txz=${BOLD_RED}:\
-*.tzo=${BOLD_RED}:\
-*.t7z=${BOLD_RED}:\
-*.zip=${BOLD_RED}:\
-*.z=${BOLD_RED}:\
-*.dz=${BOLD_RED}:\
-*.gz=${BOLD_RED}:\
-*.lrz=${BOLD_RED}:\
-*.lz=${BOLD_RED}:\
-*.lzo=${BOLD_RED}:\
-*.xz=${BOLD_RED}:\
-*.zst=${BOLD_RED}:\
-*.tzst=${BOLD_RED}:\
-*.bz2=${BOLD_RED}:\
-*.bz=${BOLD_RED}:\
-*.tbz=${BOLD_RED}:\
-*.tbz2=${BOLD_RED}:\
-*.tz=${BOLD_RED}:\
-*.deb=${BOLD_RED}:\
-*.rpm=${BOLD_RED}:\
-*.jar=${BOLD_RED}:\
-*.war=${BOLD_RED}:\
-*.ear=${BOLD_RED}:\
-*.sar=${BOLD_RED}:\
-*.rar=${BOLD_RED}:\
-*.alz=${BOLD_RED}:\
-*.ace=${BOLD_RED}:\
-*.zoo=${BOLD_RED}:\
-*.cpio=${BOLD_RED}:\
-*.7z=${BOLD_RED}:\
-*.rz=${BOLD_RED}:\
-*.cab=${BOLD_RED}:\
-*.wim=${BOLD_RED}:\
-*.swm=${BOLD_RED}:\
-*.dwm=${BOLD_RED}:\
-*.esd=${BOLD_RED}"
+*.tar=$_BOLD;$_FG_RED:\
+*.tgz=$_BOLD;$_FG_RED:\
+*.arc=$_BOLD;$_FG_RED:\
+*.arj=$_BOLD;$_FG_RED:\
+*.taz=$_BOLD;$_FG_RED:\
+*.lha=$_BOLD;$_FG_RED:\
+*.lz4=$_BOLD;$_FG_RED:\
+*.lzh=$_BOLD;$_FG_RED:\
+*.lzma=$_BOLD;$_FG_RED:\
+*.tlz=$_BOLD;$_FG_RED:\
+*.txz=$_BOLD;$_FG_RED:\
+*.tzo=$_BOLD;$_FG_RED:\
+*.t7z=$_BOLD;$_FG_RED:\
+*.zip=$_BOLD;$_FG_RED:\
+*.z=$_BOLD;$_FG_RED:\
+*.dz=$_BOLD;$_FG_RED:\
+*.gz=$_BOLD;$_FG_RED:\
+*.lrz=$_BOLD;$_FG_RED:\
+*.lz=$_BOLD;$_FG_RED:\
+*.lzo=$_BOLD;$_FG_RED:\
+*.xz=$_BOLD;$_FG_RED:\
+*.zst=$_BOLD;$_FG_RED:\
+*.tzst=$_BOLD;$_FG_RED:\
+*.bz2=$_BOLD;$_FG_RED:\
+*.bz=$_BOLD;$_FG_RED:\
+*.tbz=$_BOLD;$_FG_RED:\
+*.tbz2=$_BOLD;$_FG_RED:\
+*.tz=$_BOLD;$_FG_RED:\
+*.deb=$_BOLD;$_FG_RED:\
+*.rpm=$_BOLD;$_FG_RED:\
+*.jar=$_BOLD;$_FG_RED:\
+*.war=$_BOLD;$_FG_RED:\
+*.ear=$_BOLD;$_FG_RED:\
+*.sar=$_BOLD;$_FG_RED:\
+*.rar=$_BOLD;$_FG_RED:\
+*.alz=$_BOLD;$_FG_RED:\
+*.ace=$_BOLD;$_FG_RED:\
+*.zoo=$_BOLD;$_FG_RED:\
+*.cpio=$_BOLD;$_FG_RED:\
+*.7z=$_BOLD;$_FG_RED:\
+*.rz=$_BOLD;$_FG_RED:\
+*.cab=$_BOLD;$_FG_RED:\
+*.wim=$_BOLD;$_FG_RED:\
+*.swm=$_BOLD;$_FG_RED:\
+*.dwm=$_BOLD;$_FG_RED:\
+*.esd=$_BOLD;$_FG_RED"
 
 # Image formats (bold bright magenta)
 LSC_IMAGES="\
-*.jpg=${BOLD_BRIGHT_MAGENTA}:\
-*.jpeg=${BOLD_BRIGHT_MAGENTA}:\
-*.mjpg=${BOLD_BRIGHT_MAGENTA}:\
-*.mjpeg=${BOLD_BRIGHT_MAGENTA}:\
-*.gif=${BOLD_BRIGHT_MAGENTA}:\
-*.bmp=${BOLD_BRIGHT_MAGENTA}:\
-*.pbm=${BOLD_BRIGHT_MAGENTA}:\
-*.pgm=${BOLD_BRIGHT_MAGENTA}:\
-*.ppm=${BOLD_BRIGHT_MAGENTA}:\
-*.tga=${BOLD_BRIGHT_MAGENTA}:\
-*.xbm=${BOLD_BRIGHT_MAGENTA}:\
-*.xpm=${BOLD_BRIGHT_MAGENTA}:\
-*.tif=${BOLD_BRIGHT_MAGENTA}:\
-*.tiff=${BOLD_BRIGHT_MAGENTA}:\
-*.png=${BOLD_BRIGHT_MAGENTA}:\
-*.svg=${BOLD_BRIGHT_MAGENTA}:\
-*.svgz=${BOLD_BRIGHT_MAGENTA}:\
-*.mng=${BOLD_BRIGHT_MAGENTA}:\
-*.pcx=${BOLD_BRIGHT_MAGENTA}"
+*.jpg=$_FG_BRIGHT_MAGENTA:\
+*.jpeg=$_FG_BRIGHT_MAGENTA:\
+*.mjpg=$_FG_BRIGHT_MAGENTA:\
+*.mjpeg=$_FG_BRIGHT_MAGENTA:\
+*.gif=$_FG_BRIGHT_MAGENTA:\
+*.bmp=$_FG_BRIGHT_MAGENTA:\
+*.pbm=$_FG_BRIGHT_MAGENTA:\
+*.pgm=$_FG_BRIGHT_MAGENTA:\
+*.ppm=$_FG_BRIGHT_MAGENTA:\
+*.tga=$_FG_BRIGHT_MAGENTA:\
+*.xbm=$_FG_BRIGHT_MAGENTA:\
+*.xpm=$_FG_BRIGHT_MAGENTA:\
+*.tif=$_FG_BRIGHT_MAGENTA:\
+*.tiff=$_FG_BRIGHT_MAGENTA:\
+*.png=$_FG_BRIGHT_MAGENTA:\
+*.svg=$_FG_BRIGHT_MAGENTA:\
+*.svgz=$_FG_BRIGHT_MAGENTA:\
+*.mng=$_FG_BRIGHT_MAGENTA:\
+*.pcx=$_FG_BRIGHT_MAGENTA"
 
 # Video formats (mostly bold bright magenta, some bold magenta)
 LSC_VIDEOS="\
-*.mov=${BOLD_BRIGHT_MAGENTA}:\
-*.mpg=${BOLD_BRIGHT_MAGENTA}:\
-*.mpeg=${BOLD_BRIGHT_MAGENTA}:\
-*.m2v=${BOLD_BRIGHT_MAGENTA}:\
-*.mkv=${BOLD_BRIGHT_MAGENTA}:\
-*.webm=${BOLD_BRIGHT_MAGENTA}:\
-*.ogm=${BOLD_BRIGHT_MAGENTA}:\
-*.mp4=${BOLD_BRIGHT_MAGENTA}:\
-*.m4v=${BOLD_BRIGHT_MAGENTA}:\
-*.mp4v=${BOLD_BRIGHT_MAGENTA}:\
-*.vob=${BOLD_BRIGHT_MAGENTA}:\
-*.qt=${BOLD_BRIGHT_MAGENTA}:\
-*.nuv=${BOLD_BRIGHT_MAGENTA}:\
-*.wmv=${BOLD_BRIGHT_MAGENTA}:\
-*.asf=${BOLD_BRIGHT_MAGENTA}:\
-*.rm=${BOLD_BRIGHT_MAGENTA}:\
-*.rmvb=${BOLD_BRIGHT_MAGENTA}:\
-*.flc=${BOLD_BRIGHT_MAGENTA}:\
-*.avi=${BOLD_BRIGHT_MAGENTA}:\
-*.fli=${BOLD_BRIGHT_MAGENTA}:\
-*.flv=${BOLD_BRIGHT_MAGENTA}:\
-*.gl=${BOLD_BRIGHT_MAGENTA}:\
-*.dl=${BOLD_BRIGHT_MAGENTA}:\
-*.xcf=${BOLD_BRIGHT_MAGENTA}:\
-*.xwd=${BOLD_BRIGHT_MAGENTA}:\
-*.yuv=${BOLD_BRIGHT_MAGENTA}:\
-*.cgm=${BOLD_BRIGHT_MAGENTA}:\
-*.emf=${BOLD_BRIGHT_MAGENTA}:\
-*.ogv=${BOLD_MAGENTA}:\
-*.ogx=${BOLD_MAGENTA}"
+*.mov=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.mpg=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.mpeg=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.m2v=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.mkv=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.webm=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.ogm=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.mp4=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.m4v=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.mp4v=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.vob=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.qt=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.nuv=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.wmv=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.asf=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.rm=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.rmvb=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.flc=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.avi=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.fli=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.flv=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.gl=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.dl=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.xcf=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.xwd=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.yuv=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.cgm=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.emf=$_BOLD;$_FG_BRIGHT_MAGENTA:\
+*.ogv=$_BOLD;$_FG_MAGENTA:\
+*.ogx=$_BOLD;$_FG_MAGENTA"
 
 # Audio formats (normal cyan)
 LSC_AUDIO="\
-*.aac=${CYAN}:\
-*.au=${CYAN}:\
-*.flac=${CYAN}:\
-*.m4a=${CYAN}:\
-*.mid=${CYAN}:\
-*.midi=${CYAN}:\
-*.mka=${CYAN}:\
-*.mp3=${CYAN}:\
-*.mpc=${CYAN}:\
-*.ogg=${CYAN}:\
-*.ra=${CYAN}:\
-*.wav=${CYAN}:\
-*.oga=${CYAN}:\
-*.opus=${CYAN}:\
-*.spx=${CYAN}:\
-*.xspf=${CYAN}"
+*.aac=$_FG_CYAN:\
+*.au=$_FG_CYAN:\
+*.flac=$_FG_CYAN:\
+*.m4a=$_FG_CYAN:\
+*.mid=$_FG_CYAN:\
+*.midi=$_FG_CYAN:\
+*.mka=$_FG_CYAN:\
+*.mp3=$_FG_CYAN:\
+*.mpc=$_FG_CYAN:\
+*.ogg=$_FG_CYAN:\
+*.ra=$_FG_CYAN:\
+*.wav=$_FG_CYAN:\
+*.oga=$_FG_CYAN:\
+*.opus=$_FG_CYAN:\
+*.spx=$_FG_CYAN:\
+*.xspf=$_FG_CYAN"
 
 export LS_COLORS="${LSC_MISC}:${LSC_TEXT}:${LSC_ARCHIVES}:${LSC_IMAGES}:${LSC_VIDEOS}:${LSC_AUDIO}"
 alias ls="ls --color=auto"
