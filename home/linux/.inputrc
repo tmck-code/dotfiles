@@ -36,3 +36,9 @@ TAB: complete
 # cd to previous dir and ls
 "\e\ex": 'cd !$ \015ls\015'
 
+
+# Color files by type (directories blue, executables green, etc.)
+set colored-stats on
+
+# Highlight the part of the suggestion that matches what you've already typed
+set colored-completion-prefix on
