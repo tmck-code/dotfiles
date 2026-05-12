@@ -6,20 +6,21 @@ set -euo pipefail
 # "good but not great"
 # /usr/share/figlet/fonts/Banner3.flf
 
+FIGLET_FONTS_DIR="$(figlet -I2)"
+
 # Choices
 CHOICES="\
-/usr/share/figlet/ansi_shadow.flf
-/usr/share/figlet/3d-ascii.flf
-/usr/share/figlet/3d.flf
-/usr/share/figlet/colossal.flf
-/usr/share/figlet/cosmike.flf
-/usr/share/figlet/cricket.flf
-/usr/share/figlet/def_leppard.flf
-/usr/share/figlet/fraktur.flf
-/usr/share/figlet/s_blood.flf
-/usr/share/figlet/smpoison.flf
-/usr/share/figlet/swampland.flf
-/usr/share/figlet/train.flf"
+shadow.flf
+3d.flf
+3d.flf
+colossal.flf
+cosmic.flf
+def_leppard.flf
+fraktur.flf
+sblood.flf
+smpoison.flf
+swampland.flf
+train.flf"
 
 SECONDS="${1:-10}"
 INTERVAL="${2:-3}"
@@ -35,7 +36,8 @@ echo "$CHOICE"
 for i in $SEQ; do
   clear
   for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
-  figlet "$i" -f "$CHOICE" -w "$(tput cols)" -c | lolcat
+  fname=$(ls -1 "$FIGLET_FONTS_DIR" | fzf -f "$CHOICE" | head -n1)
+  figlet "$i" -f "$FIGLET_FONTS_DIR/$fname" -w "$(tput cols)" -c | lolcat
   sleep "$INTERVAL"
 done
 
