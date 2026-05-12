@@ -24,18 +24,15 @@ fi
 # My utils that need to set when using tmux and other tools
 # [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
 
-export HISTFILESIZE=          # largest history written to file at one time
-export HISTSIZE=              # large history file
-export HISTCONTROL=ignoreboth # don't put duplicate lines or lines starting with space in the history.
-shopt -s histappend           # append to the history file, don't overwrite it
-# Change the file location because certain bash sessions truncate .bash_history file upon close.
-# http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
-export HISTFILE=~/.bash_eternal_history
+export HISTFILESIZE=                    # largest history written to file at one time
+export HISTSIZE=                        # large history file
+export HISTCONTROL=ignoreboth:erasedups # don't put lines in the history that start with space, or are duplicates
+shopt -s histappend                     # append to the history file, don't overwrite
+
 # Force prompt to write history after every command.
 # http://superuser.com/questions/20900/bash-history-loss
 PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
-
-export PROMPT_DIRTRIM=2
+# export PROMPT_DIRTRIM=2 # shorten the path in the prompt to only show the last 2 directories
 
 # Change the file location because certain bash sessions truncate .bash_history file upon close.
 # - http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
