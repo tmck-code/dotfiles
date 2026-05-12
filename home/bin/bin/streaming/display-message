@@ -14,10 +14,6 @@ if [ -z "${FONTS_DIR:-}" ]; then
   echo "No figlet fonts found!" >&2 && exit 1
 fi
 
-function usage() {
-  echo "Usage: $0 [-m|--message <message>] [-f|--font <font>] [-d|--display] [-p|--print] [-D|--demo] [-n|--no-colour] [-o|--figlet-opts <opts>]" >&2
-}
-
 CHOICES=(
   "3d diagonal" "3d" "3d diagonal" "amc aaa01" "ansi regular"
   "ansi shadow" "big money-ne" "bloody" "bolger"
@@ -102,6 +98,24 @@ function demo_message() {
   done
 }
 
+function usage() {
+  echo -e "Usage: $0 [-h|--help] [-d|--display <message>] [-p|--print <message>] [-f|--font <font>] [-l|--list-fonts] [-s|--seed <seed>] [-D|--demo [<message>]] [-n|--no-colour] [-o|--figlet-opts <opts>] [-v|--verbose]" \
+    "\n\nOptions:\n" \
+    "\e[1;32m -h|--help               \e[0;3;32mShow this help message and exit\e[0m\n" \
+    "\e[1;32m -d|--display <message>  \e[0;3;32mDisplay the message in a figlet font, centered on the screen\e[0m\n" \
+    "\e[1;32m -p|--print <message>    \e[0;3;32mPrint the message in a figlet font to the terminal\e[0m\n" \
+    "\e[1;32m -D|--demo [<message>]   \e[0;3;32mCycle through each figlet font displaying the message. Press any key to continue to the next font (default message: 'Hello World!')\e[0m\n" \
+    "\e[1;33m -f|--font <font>        \e[0;3;33mSpecify the figlet font to use (default: random)\e[0m\n" \
+    "\e[1;33m -l|--list-fonts         \e[0;3;33mList all available figlet fonts\e[0m\n" \
+    "\e[1;31m -s|--seed <seed>        \e[0;3;31mSet the seed for lolcat's random colour generation (default: random)\e[0m\n" \
+    "\e[1;31m -n|--no-colour          \e[0;3;31mDisable colour output\e[0m\n" \
+    "\e[1;34m -o|--figlet-opts <opts> \e[0;3;34mAdditional options to pass to figlet (e.g. '-c' to center the text, '-w 100' to set the width)\e[0m\n" \
+    "\e[1;34m -v|--verbose            \e[0;3;34mShow additional information such as the font file being used\e[0m" \
+     >&2
+}
+# [-m|--message <message>]\n[-f|--font <font>]\n[-d|--display]\n[-p|--print]\n[-D|--demo]\n[-n|--no-colour]\n[-o|--figlet-opts <opts>]\n[-s|--seed <seed>]\n[-l|--list-fonts]\n[-v|--verbose]" >&2
+
+
 display='' print='' demo='' msg='Hello World!' font='' colour=1 seed="$LOLCAT_DEFAULT_SEED" figlet_opts="-c" verbose=0
 while test $# -gt 0; do
   case "$1" in
@@ -109,6 +123,7 @@ while test $# -gt 0; do
     -d|--display)   display=1; shift; msg="$1"; shift ;;
     -p|--print)     print=1;   shift; msg="$1"; shift ;;
     -f|--font)                 shift; font="$1"; shift ;;
+    -l|--list-fonts) for f in "${CHOICES[@]}"; do echo "$f"; done; exit 0 ;;
     -s|--seed)                 shift; seed="$1"; shift ;;
     -D|--demo)      demo=1;    shift; [ -n "${1:-}" ] && msg="$1" && shift ;;
     -n|--no-colour) colour=0;  shift ;;
