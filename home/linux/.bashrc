@@ -105,8 +105,30 @@ PS1_green='\[\e[1;32m\]'
 PS1_purple='\[\e[3;35m\]'
 PS1_reset='\[\e[0m\]'
 PS1_yellow_bg='\[\e[1;33m\]'
+PS1_dim='\[\e[2;37m\]'
+
+# Capture command start time before execution. \r\e[K erases the printed
+# integer so it doesn't appear above the command output.
+PS0=$'${_PS0_TIME:=${EPOCHREALTIME/./}}\r\e[K'
+
+# Format integer microseconds as fixed-width auto-scaled duration.
+_fmt_duration() {
+  local us=$1 out
+  if   (( us < 1000 ));     then printf -v out '%d µs' "$us"
+  elif (( us < 1000000 ));  then printf -v out '%d.%02d ms' $((us/1000))    $((us%1000/10))
+  elif (( us < 60000000 )); then printf -v out '%d.%02d s'  $((us/1000000)) $((us%1000000/10000))
+  else
+    local s=$((us/1000000))
+    printf -v out '%dm %02ds' $((s/60)) $((s%60))
+  fi
+  # Pad to 8 display columns. µ is 2 bytes / 1 column, so add a byte when µs.
+  if [[ $out == *µs ]]; then printf '%-9s' "$out"
+  else                       printf '%-8s' "$out"; fi
+}
 
 _mk_prompt() {
+  local last_exit=$? # Must be first: capture exit status of last command
+
   history -a # Update the a/.bash_history every time
 
   # Change the window title of X terminals
@@ -117,8 +139,16 @@ _mk_prompt() {
   # get the current git branch
   gitbranch
 
+  local dur_str='        ' # 8-space placeholder when no command was run
+  if [[ -n "${_PS0_TIME:-}" ]]; then
+    dur_str=$(_fmt_duration $(( ${EPOCHREALTIME/./} - _PS0_TIME )))
+  fi
+  unset _PS0_TIME
+
   sep="∈"
-  local prefix=("\D{%T}")
+  local exit_colour="${PS1_green}"
+  [ "$last_exit" -ne 0 ] && exit_colour='\[\e[1;31m\]'
+  local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset} > \D{%T}")
   # local prefix=("")
   if [ -n "${GIT_BRANCH:-}" ]; then
     prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GIT_BRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
@@ -146,8 +176,7 @@ _mk_prompt() {
 }
 
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
-export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt
-export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt (history -a is called inside)
 
 # enable colours in less & man pages
 export LESS_TERMCAP_mb=$'\e[1;32m'   # start blink
