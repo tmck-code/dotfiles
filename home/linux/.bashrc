@@ -15,30 +15,31 @@ if [ -n "${DEBUG:-}" ]; then
   [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo 'false}' || echo 'true}'
 fi
 
-# My utils that need to set before using tmux
-# for dirpath in $HOME/bin $HOME/bin/streaming $HOME/.local/bin /usr/local/bin; do
-#   [ -d "${dirpath}" ] && PATH="$PATH:${dirpath}"
-# done
-# export PATH
-
-# My utils that need to set when using tmux and other tools
-# [ -f ~/.bash_aliases ] && source "$HOME/.bash_aliases"
-
 export HISTFILESIZE=                    # largest history written to file at one time
 export HISTSIZE=                        # large history file
 export HISTCONTROL=ignoreboth:erasedups # don't put lines in the history that start with space, or are duplicates
 shopt -s histappend                     # append to the history file, don't overwrite
 
-# Force prompt to write history after every command.
-# http://superuser.com/questions/20900/bash-history-loss
-PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
-# export PROMPT_DIRTRIM=2 # shorten the path in the prompt to only show the last 2 directories
-
 # Change the file location because certain bash sessions truncate .bash_history file upon close.
 # - http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
 export HISTFILE="$HOME/.bash_eternal_history"
-# Force prompt to write history after every command (http://superuser.com/questions/20900/bash-history-loss)
-PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
+
+# Per-pane shell-local setup --------------------
+
+# For every interactive shell, resource aliases, functions, and completions
+[ -f "$HOME/.bash_aliases" ] && source "$HOME/.bash_aliases"
+[ -f "$HOME/dev/z/z.sh" ] && source "$HOME/dev/z/z.sh"
+[ -f /usr/share/bash-completion/bash_completion ] && source /usr/share/bash-completion/bash_completion
+
+# NVM lazy-load shim: stub functions source nvm.sh on first use.
+# This allows each pane to start up in <1ms, avoiding the ~500 ms cost to load nvm.sh
+for cmd in nvm node npm npx; do
+  eval "$cmd() {
+    unset -f nvm node npm npx
+    [ -s \"\$NVM_DIR/nvm.sh\" ] && . \"\$NVM_DIR/nvm.sh\"
+    $cmd \"\$@\"
+  }"
+done
 
 # Function to shorten the current directory
 short_pwd() {
@@ -54,6 +55,14 @@ fi
 export _GIT_LAST_REPO=""
 
 # 100% pure Bash (no forking) function to determine the name of the current git branch
+#
+# The best speed to fetch all the git info is achieved by reading .git files rather
+# than running any git commands.
+# The function searches recursively up the directory tree until it find a .git dir.
+# - If this is found, then that dir path is cached in _GIT_REPO.
+# - If root is reached without finding a .git dir, then _GIT_REPO is unset.
+# If the user moves to a dir that is under _GIT_REPO, then git infor is reused
+# (only the branch name is re-read)
 gitbranch() {
   export GIT_BRANCH=""
 
@@ -107,8 +116,8 @@ PS1_reset='\[\e[0m\]'
 PS1_yellow_bg='\[\e[1;33m\]'
 PS1_dim='\[\e[2;37m\]'
 
-# Capture command start time before execution. \r\e[K erases the printed
-# integer so it doesn't appear above the command output.
+# Capture command start time before execution to use for duration calc later.
+# \r\e[K erases the printed integer so it doesn't appear above the command output.
 PS0=$'${_PS0_TIME:=${EPOCHREALTIME/./}}\r\e[K'
 
 # Format integer microseconds as fixed-width auto-scaled duration.
@@ -122,14 +131,15 @@ _fmt_duration() {
     printf -v out '%dm %02ds' $((s/60)) $((s%60))
   fi
   # Pad to 8 display columns. µ is 2 bytes / 1 column, so add a byte when µs.
-  if [[ $out == *µs ]]; then printf '%-9s' "$out"
-  else                       printf '%-8s' "$out"; fi
+  [[ $out == *µs ]] && printf '%-9s' "$out" || printf '%-8s' "$out"
 }
 
 _mk_prompt() {
-  local last_exit=$? # Must be first: capture exit status of last command
+  # Capture exit status of last command^. MUST be done first.
+  local last_exit=$?
 
-  history -a # Update the a/.bash_history every time
+  # Update the ~/.bash_eternal_history every time
+  history -a
 
   # Change the window title of X terminals
   if [[ "$TERM" =~ xterm* ]]; then
@@ -163,9 +173,6 @@ _mk_prompt() {
     fi
   fi
 
-  # elapsed_time=$(echo $EPOCHREALTIME - $_PS0_TIME | bc)
-
-  # prefix+=("($elapsed_time)")
   unset _PS0_TIME
 
   if test -v HIDE; then
@@ -178,28 +185,15 @@ _mk_prompt() {
 export _MK_PROMPT_ORIG_PS1="$PS1" # Keep a static copy of PS1
 export PROMPT_COMMAND=_mk_prompt  # Create PS1 prompt (history -a is called inside)
 
-# enable colours in less & man pages
-export LESS_TERMCAP_mb=$'\e[1;32m'   # start blink
-export LESS_TERMCAP_md=$'\e[1;32m'   # start bold mode
-export LESS_TERMCAP_me=$'\e[0m'      # turn off bold, blink & underline
-export LESS_TERMCAP_se=$'\e[0m'      # stop standout
-export LESS_TERMCAP_so=$'\e[01;33m'  # start standout (reverse video)
-export LESS_TERMCAP_ue=$'\e[0m'      # stop underline
-export LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
-
 # Detect if in SSH/SCP session, as printing the pokesay message causes scp to fail
 # Only print the pokemon fortune if:
 # - there isn't an SSH session detected (scp/ssh etc)
 if [ -z "${SSH_CONNECTION:-}" ]; then
   # Present a pretty message
-  if test $(($RANDOM % 10)) -eq 1; then
+  if test $((RANDOM % 10)) -eq 1; then
     display-message -p "$(date)" -f 'AMC AAA01' | pokesay -uWbCjFI -w 150
   else
     # fortune | pokesay -jCubFI -w 40
     fortune | pokesay -jCubFI -w 40
   fi
 fi
-
-# Added by LM Studio CLI (lms)
-# export PATH="$PATH:/home/freman/.lmstudio/bin"
-. "$HOME/.cargo/env"

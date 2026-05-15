@@ -42,29 +42,14 @@ PATH="$PATH:.emacs.d/bin"
 export PATH
 
 
-# Bash completion -------------------------------
-sources_dirs=(
-  "/etc/bash_completion.d" # bash completions
-)
+# Login-only sources ----------------------------
+# Load anything that should only be loaded once, and not in subshells (i.e. new tmux panes)
+# - ENV var exports for API keys/secrets
+# - PATH mutations for cargo/rust.
 sources_files=(
-  # personal vars -------------------------------
-  "$HOME/.secrets"           # my api keys/secrets
-  # terminal experience -------------------------
-  "/usr/share/bash-completion/bash_completion" # this is sourced by /etc/bash_completion, so just source it directly
-  "$HOME/dev/z/z.sh"         # z - jump around e.g. `z lang` == `cd $HOME/dev/lang_tests/`
-  # language version managers -------------------
-  "$HOME/.cargo/env"         # cargo/rust
-  # "$HOME/.venv/bin/activate" # pyhon virtual env
-  # "$HOME/.uvenv/bin/activate" # pyhon virtual env
-  "$NVM_DIR/nvm.sh"          # nvm (node version manager)
-  "$HOME/.bash_aliases"      # my bash aliases
+  "$HOME/.secrets"   # env-var exports for API keys/secrets
+  "$HOME/.cargo/env" # PATH mutation for cargo/rust
 )
-
-for f in "${sources_dirs[@]}"; do
-  for i in "$f"/*; do
-    test -f "$i" && source "$i"
-  done
-done
 
 for f in "${sources_files[@]}"; do
   test -f "$f" && source "$f"
@@ -78,13 +63,10 @@ if [ $TERM == "tmux-256color" ]; then
   [ -n "${DEBUG:-}" ] && echo "{"already in tmux?": true}"
 else
   [ -n "${DEBUG:-}" ] && echo "{"status": "launching tmux", "already in tmux?": false}"
-  tmux -2
+  exec tmux -2
 fi
 
 if [ -f "$HOME/.bashrc" ]; then
   [ -n "${DEBUG:-}" ] && echo '{"file": ".bash_profile", "sourcing": ".bashrc", "DEBUG": "'${DEBUG:-}'"}'
   source ~/.bashrc
 fi
-
-# Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/freman/.lmstudio/bin"

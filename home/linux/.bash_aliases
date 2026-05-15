@@ -10,27 +10,18 @@ alias python="python3"
 
 alias bmon="bmon -p enp4s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'"
 
-LESS_TERMCAP_mb=$(tput bold && tput setaf 2)                 # mb - begin bold mode                              - green
-LESS_TERMCAP_md=$(tput bold && tput setaf 6)                 # md - begin double-bright mode                     - cyan
-LESS_TERMCAP_me=$(tput sgr0)                                 # me - end mode (turn off all attributes)
-LESS_TERMCAP_so=$(tput bold && tput setaf 3 && tput setab 4) # so - begin standout mode (reverse video)          - yellow on blue
-LESS_TERMCAP_se=$(tput rmso && tput sgr0)                    # se - end standout mode
-LESS_TERMCAP_us=$(tput smul && tput bold && tput setaf 7)    # us - begin underline mode                         - white and bold
-LESS_TERMCAP_ue=$(tput rmul && tput sgr0)                    # ue - end underline mode
-LESS_TERMCAP_mr=$(tput rev)                                  # mr - begin reverse mode
-LESS_TERMCAP_mh=$(tput dim)                                  # mh - begin dim mode
-LESS_TERMCAP_ZN=$(tput ssubm)                                # ZN - begin blinking mode
-LESS_TERMCAP_ZV=$(tput rsubm)                                # ZV - end blinking mode
-LESS_TERMCAP_ZO=$(tput ssupm)                                # ZO - begin bold mode (often used for bold colors)
-LESS_TERMCAP_ZW=$(tput rsupm)                                # ZW - end bold mode (often used for bold colors)
+# enable colours in less & man pages
+LESS_TERMCAP_mb=$'\e[1;32m'   # start blink
+LESS_TERMCAP_md=$'\e[1;32m'   # start bold mode
+LESS_TERMCAP_me=$'\e[0m'      # turn off bold, blink & underline
+LESS_TERMCAP_se=$'\e[0m'      # stop standout
+LESS_TERMCAP_so=$'\e[01;33m'  # start standout (reverse video)
+LESS_TERMCAP_ue=$'\e[0m'      # stop underline
+LESS_TERMCAP_us=$'\e[1;4;31m' # start underline
 
-export \
-  LESS_TERMCAP_mb LESS_TERMCAP_md LESS_TERMCAP_me LESS_TERMCAP_so \
-  LESS_TERMCAP_se LESS_TERMCAP_us LESS_TERMCAP_ue LESS_TERMCAP_mr \
-  LESS_TERMCAP_mh LESS_TERMCAP_ZN LESS_TERMCAP_ZV LESS_TERMCAP_ZO \
-  LESS_TERMCAP_ZW
+export LESS_TERMCAP_mb LESS_TERMCAP_md LESS_TERMCAP_me LESS_TERMCAP_se \
+  LESS_TERMCAP_so LESS_TERMCAP_ue LESS_TERMCAP_us
 
-export GROFF_NO_SGR=1             # For Konsole and Gnome-terminal
 export LESS="--RAW-CONTROL-CHARS" # Allow ANSI colours in less
 
 alias sort="LC_ALL=C sort" # Makes GNU sort _much_ faster
@@ -48,9 +39,9 @@ alias dark='gsettings set org.gnome.desktop.interface gtk-theme Adwaita-dark \
 alias light='gsettings set org.gnome.desktop.interface gtk-theme Adwaita \
 && gsettings set org.gnome.desktop.interface color-scheme prefer-light'
 
-function ppj-clipboard() {
-  xclip -o -selection clipboard | jq | xclip -i -selection clipboard
-}
+# function ppj-clipboard() {
+#   xclip -o -selection clipboard | jq | xclip -i -selection clipboard
+# }
 
 _REGULAR=0 ; _BRIGHT=1 ; _DIM=2 ; _ITALIC=3; _UNDERSCORE=4 ; _BLINK=5 ; _REVERSE=7 ; _HIDDEN=8
 _FG_BLACK=30   ; _FG_BRIGHT_BLACK=90   ; _BG_BLACK=40   ; _BG_BRIGHT_BLACK=100  ;
