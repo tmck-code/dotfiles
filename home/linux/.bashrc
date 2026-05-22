@@ -24,6 +24,11 @@ shopt -s histappend                     # append to the history file, don't over
 # - http://superuser.com/questions/575479/bash-history-truncated-to-500-lines-on-each-login
 export HISTFILE="$HOME/.bash_eternal_history"
 
+shopt -s checkwinsize # update LINES and COLUMNS if terminal is resized
+export COLUMNS        # ensure that $COLUMNS is available to child processes
+# make truecolor codes work in tmux for claude code statusline
+export CLAUDE_CODE_TMUX_TRUECOLOR=1
+
 # Per-pane shell-local setup --------------------
 
 # For every interactive shell, resource aliases, functions, and completions
