@@ -46,14 +46,15 @@
 # border text font & size
 # (size 10 seems to be viewable on a 4K screen without squinting)
 # font pango:DejaVu Sans Mono 8
-# font pango:IosevkaTerm Nerd Font Mono 10
-font pango:IosevkaTerm NFM Bold 11
+# font pango:IosevkaTerm Nerd Font Mono 11
+# font pango:IosevkaTerm NFM Bold 11
+font pango:Operator Mono Book 12
 
-# border colours
+# border colours (gruvbox dark — matches ~/.tmux.conf status bar)
 # class                  border     backgr.    text     indicator  child_border
-client.focused_inactive  #000000    #000000    #d9d9d9  #0d1010    #000000
-client.unfocused         #140967ff  #0c0253ff  #d9d9d9  #424242    #000000
-client.focused           #6c2701ff  #5d2000ff  #ffffff  #8b3100ff    #212121
+client.focused_inactive  #262626    #262626    #a8a8a8  #444444    #1c1c1c
+client.unfocused         #262626    #262626    #e5c19d  #444444    #1c1c1c
+client.focused           #4f4f4f    #4f4f4f    #e5c19d  #b8bb26    #4f4f4f
 
 # Custom program keybindings ++++++++++++++++++++
 
@@ -211,6 +212,17 @@ bindsym $mod+r mode "resize"
 # display a workspace bar & available system information
 bar {
   status_command i3status --config $HOME/.config/i3status/i3status.conf
+  colors {
+    background #1c1c1c
+    statusline #ffd7af
+    separator  #262626
+    #                    border    bg         text
+    focused_workspace    #4f4f4f   #4f4f4f    #ffd7af
+    active_workspace     #d79921   #d79921    #1c1c1c
+    inactive_workspace   #262626   #262626    #ffd7af
+    urgent_workspace     #d75f5f   #d75f5f    #ffd7af
+    binding_mode         #fabd2f   #fabd2f    #1c1c1c
+  }
 }
 
 # Ensure that services are started ++++++++++++++
@@ -233,8 +245,7 @@ exec --no-startup-id pasystray
 exec --no-startup-id google-chrome-stable
 exec --no-startup-id '/home/freman/bin/ts-os set dark'
 
-exec --no-startup-id i3-msg 'exec alacritty -e /home/freman/bin/tmon ; move container to workspace "6"'
-
+exec --no-startup-id i3-msg 'exec alacritty -e \'sleep 1 && /home/freman/bin/tmon\' ; move container to workspace "6"'
 
 # default_border pixel 0
 # gaps inner 2
