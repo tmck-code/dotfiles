@@ -2,6 +2,7 @@
 set mark-directories on
 set mark-symlinked-directories on
 set show-all-if-unmodified on
+# set show-all-if-ambiguous on
 set visible-stats on
 # ask before showing >200 results
 set completion-query-items 200
@@ -21,13 +22,23 @@ set convert-meta off
 "\e[B": history-search-forward
 
 # alt-arrow keys
-"\e[1;3C": forward-word
-"\e[1;3D": backward-word
+# "\e[1;3C": forward-word
+# "\e[C": forward-word
+"\e\e[C": forward-word
 
-# tab completion
-# show all possible completions on first tab press
-set show-all-if-ambiguous on
-# then, cycle through possible completions with tab
-TAB: menu-complete
-# and cycle backwards with shift-tab
-"\e[Z": menu-complete-backward
+# "\e[1;3D": backward-word
+# "\e[D": backward-word
+"\e\e[D": backward-word
+
+# tab
+TAB: complete
+
+# cd to previous dir and ls
+"\e\ex": 'cd !$ \015ls\015'
+
+
+# Color files by type (directories blue, executables green, etc.)
+set colored-stats on
+
+# Highlight the part of the suggestion that matches what you've already typed
+set colored-completion-prefix on

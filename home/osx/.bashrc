@@ -25,6 +25,9 @@ PROMPT_COMMAND="history -a; $PROMPT_COMMAND"
 
 export PROMPT_DIRTRIM=2
 
+# make truecolor codes work in tmux for claude code statusline
+export CLAUDE_CODE_TMUX_TRUECOLOR=1
+
 # Enable bash completion
 # [[ -r /usr/local/etc/bash_completion.d ]] && . /usr/local/etc/bash_completion
 
@@ -32,7 +35,7 @@ export PROMPT_DIRTRIM=2
 short_pwd() {
   local pwd=$(pwd)
   pwd=${pwd/#$HOME/\~}
-  sed 's:\([^/]\)[^/]*/:\1/:g' <<< "$pwd"
+  sed 's:\([^/]\)[^/]*/:\1/:g' <<<"$pwd"
 }
 
 if [[ "$USER" == "root" ]]; then
@@ -57,11 +60,11 @@ gitbranch() {
         gitdir="$curr/.git"
         break
       fi
-      curr="${curr%/*}"              # else, go up one dir, i.e. "../"
+      curr="${curr%/*}" # else, go up one dir, i.e. "../"
     done
   fi
 
-  if [[ -z "${gitdir:-}" ]]; then    # if we aren't in a git repo, just return
+  if [[ -z "${gitdir:-}" ]]; then # if we aren't in a git repo, just return
     unset _GITBRANCH_LAST_REPO
     unset GITBRANCH
     return 0
@@ -80,16 +83,16 @@ gitbranch() {
 
   # Read and export git branch from the HEAD file
   local head=""
-  read head < "$gitdir/HEAD"
+  read head <"$gitdir/HEAD"
   case "$head" in
-    ref:*) export GITBRANCH="${head##*/}" ;;
-    "")  return 0 ;;
-    *)   export GITBRANCH="$branch""d:${head:0:7}" ;;
+  ref:*) export GITBRANCH="${head##*/}" ;;
+  "") return 0 ;;
+  *) export GITBRANCH="$branch""d:${head:0:7}" ;;
   esac
 
   if [ -f "$gitdir/ORIG_HEAD" ]; then
     local commit=""
-    read commit < "$gitdir/ORIG_HEAD"
+    read commit <"$gitdir/ORIG_HEAD"
     export GITCOMMIT="${commit:0:9}"
   fi
 }
@@ -105,8 +108,8 @@ _mk_prompt() {
 
   # Change the window title of X terminals
   case $TERM in
-    xterm*) echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007" ;;
-    screen) echo -ne "\033_${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\033\\" ;;
+  xterm*) echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\007" ;;
+  screen) echo -ne "\033_${USER}@${HOSTNAME%%.*}:${PWD/$HOME/~}\033\\" ;;
   esac
 
   gitbranch
@@ -121,7 +124,7 @@ _mk_prompt() {
       _GITBRANCH_PREFIX+=("✹")
     fi
     # New, untracked files
-    if [ ! -z "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2> /dev/null)" ]; then
+    if [ ! -z "$(git ls-files --others --exclude-standard --directory --no-empty-directory --error-unmatch -- ':/*' 2>/dev/null)" ]; then
       _GITBRANCH_PREFIX+=("✭")
     fi
     export _GITBRANCH_PREFIX
@@ -156,11 +159,13 @@ export PATH="$PATH:/Users/tomm/.lmstudio/bin"
 export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
 export PATH="/opt/homebrew/bin:$PATH" # Add homebrew bins
 
-# Present a pretty message, with a small chance to print a "shiny" version
-if [ $(($RANDOM % 10)) == 0 ]; then
-  fortune | pokesay -WujbC -F | lolcat
-else
-  fortune | pokesay -WujbC -F
+if ! test -v SSH_CONNECTION; then
+  # Present a pretty message, with a small chance to print a "shiny" version
+  if [ $(($RANDOM % 10)) == 0 ]; then
+    fortune | pokesay -WujbC -F | lolcat
+  else
+    fortune | pokesay -WujbC -F
+  fi
 fi
 
 # . "$HOME/.cargo/env"

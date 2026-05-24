@@ -37,6 +37,7 @@ PATH="$CARGO_HOME:$CARGO_HOME/bin:$PATH"
 PATH="$HOME/.uvenv/bin:$GOPATH/bin:$GOROOT/bin:$PATH"
 PATH="$HOME/.docker/bin:$PATH"                       # Docker
 PATH="/opt/homebrew/bin:$PATH"                       # Add homebrew bins
+PATH="$HOME/bin:$PATH"                               # Add $HOME/bin
 
 export PATH
 export TERM=xterm-256color
