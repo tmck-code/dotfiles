@@ -15,6 +15,23 @@ if [ -n "${DEBUG:-}" ]; then
   [ -z "${BASH_PROFILE_SOURCED:-}" ] && echo 'false}' || echo 'true}'
 fi
 
+# Define the function you want to run
+on_resize() {
+  paneID=$(tmux display-message -p '#{pane_id}')
+  paneWidth=$(tput cols)
+
+  if grep -q "$paneID" ~/.claude/terminal-width; then
+    # if paneID is found, replace the width
+    sed -i "s/${paneID}|.*/${paneID}|${paneWidth}/" ~/.claude/terminal-width
+  else
+    # else add a new line with the paneID and width
+    echo "${paneID}|${paneWidth}" >> ~/.claude/terminal-width
+  fi
+}
+
+# Set the trap for the SIGWINCH signal
+trap on_resize SIGWINCH
+
 export HISTFILESIZE=                    # largest history written to file at one time
 export HISTSIZE=                        # large history file
 export HISTCONTROL=ignoreboth:erasedups # don't put lines in the history that start with space, or are duplicates
