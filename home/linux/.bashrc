@@ -118,7 +118,7 @@ gitbranch() {
   read -r head <"${gitdir}/HEAD"
 
   case "${head}" in
-  ref:*) export GIT_BRANCH="${head##*/}" ;;
+  ref:*) export GIT_BRANCH="${head##*heads/}" ;;
   "") return 0 ;;
   *) export GIT_BRANCH="d:${head:0:7}" ;;
   esac
