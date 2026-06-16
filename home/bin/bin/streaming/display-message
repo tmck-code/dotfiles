@@ -86,10 +86,11 @@ function display_message() {
 function demo_message() {
   local message="$1"
   local colour="${2:-1}"
-  local figlet_opts="${3:-}"
+  local seed="${3:-$LOLCAT_DEFAULT_SEED}"
+  local figlet_opts="${4:-}"
   local idx=1
   for f in "${CHOICES[@]}"; do
-    display_message "$message" "$colour" "$figlet_opts" "$f"
+    display_message "$message" "$colour" "$seed" "$figlet_opts" "$f"
     printf \
       "\e[1m%s %s\e[0m\e[3m, %s\e[0m" \
       "[$idx/${#CHOICES[@]}]" "$f" "press any key to continue..."
