@@ -3,7 +3,7 @@
 set -euo pipefail
 [ -n "${DEBUG:-}" ] && set -x
 
-ping=$(ping google.com -c1 -t20 2>&1) || { echo "❌" && exit 1; }
+ping=$(ping google.com -c1 -t10 2>&1) || { echo "❌" && exit 1; }
 
 ping_ms=$(echo "$ping" \
   | jc --ping-s -u \

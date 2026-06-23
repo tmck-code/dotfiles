@@ -85,7 +85,7 @@ gitbranch() {
   local head=""
   read head <"$gitdir/HEAD"
   case "$head" in
-  ref:*) export GITBRANCH="${head##*/}" ;;
+  ref:*) export GITBRANCH="${head##*heads/}" ;;
   "") return 0 ;;
   *) export GITBRANCH="$branch""d:${head:0:7}" ;;
   esac
