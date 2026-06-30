@@ -11,6 +11,10 @@ This is the ragtag collection of my various dotfiles. Use at your peril!
   - [X] ~/.vimrc
   - [X] ~/.gitconfig
 
+## Claude
+
+  - [Skill nudge system](home/linux/.claude/skill-nudge-system.md)
+
 ## Extras
 
 ### Fstab
