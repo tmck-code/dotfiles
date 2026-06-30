@@ -245,7 +245,7 @@ exec --no-startup-id pasystray
 exec --no-startup-id google-chrome-stable
 exec --no-startup-id '/home/freman/bin/ts-os set dark'
 
-exec --no-startup-id i3-msg 'exec alacritty -e \'sleep 1 && /home/freman/bin/tmon\' ; move container to workspace "6"'
+exec --no-startup-id i3-msg 'exec alacritty -e /home/freman/bin/tmon'
 
 # default_border pixel 0
 # gaps inner 2
