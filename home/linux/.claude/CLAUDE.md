@@ -3,6 +3,16 @@
 This file applies in every repo. Project-level `CLAUDE.md` files layer on top of
 it and win on any conflict.
 
+## Disabled skills are leased on demand — don't give up, search first
+
+Many skills are disabled by default to keep context lean. Before concluding "I
+can't do X" or working around a missing capability, run the **`skill-overseer`**
+skill: `overseer.py search <query>` to find a disabled skill, then
+`overseer.py enable <skill>` to lease + enable it for this session (if it isn't
+callable yet, read its `SKILL.md` off disk and follow it). `overseer.py release
+<skill>` when done. Run `overseer.py reap` at session start to reclaim skills
+left enabled by sessions that have ended.
+
 ## The main thread is a coordinator, not a worker
 
 Default posture: **route, don't perform.** The things that silently fill the
@@ -29,6 +39,60 @@ absorb the noise.
   the subagent produces it. This holds for any language (py/js/ts/go/…), not just
   scaffolding.
 - **Parallelise independent work** — spawn independent subagents in one message.
+
+## Subagent results go through files, not return messages
+
+A subagent's return message is unreliable — the parent frequently sees only part of
+a long message, or none of it. So **whenever you spawn a subagent, the result is
+handed back through a file, not the return text.**
+
+- When you fork a subagent, give it a **report-file path** up front — a uniquely
+  named markdown file in the scratchpad, named after the task/subagent so siblings
+  never collide (e.g. `<scratchpad>/<agent>-<task>.md`). Tell it to write its full
+  findings/report there **before returning**, and to return only that path.
+- After it returns, **read the file** to learn what happened — don't act on the
+  returned message alone.
+- Pass the convention down every level: a subagent that nests its own children
+  hands each of them a report-file path and reads those back the same way.
+
+A `PreToolUse` hook (`~/.claude/hooks/subagent-file-handoff.py`, on `Agent`/`Task`)
+reinforces this at every spawn and every nesting depth.
+
+## Subagents must not share mutable working files
+
+The report-file convention above scopes *reports* — it says nothing about the
+*working* artifacts agents edit (source files, throwaway scratch scripts). That gap
+is a real footgun: two agents with overlapping missions, or an agent and a child it
+forks, will happily edit the **same file** with no awareness of each other. The
+result is a lost-update race (parallel) or silent re-derivation/overwrite (serial) —
+"multiple subagents wrote to the same file without realising." It is **invisible from
+the coordinator**, because the collision is often a *nested* fork the parent never
+dispatched.
+
+So, alongside the report-file path, every editor agent gets an **ownership boundary**:
+
+- **Sole-writer rule.** Tell each editor agent it is the *only* writer of the files in
+  its brief, and **must not fork a child that edits those same files**. If it needs
+  parallel help, the children write to *separate* files and the parent integrates.
+- **Scope scratch per agent.** Throwaway experiments go in a per-agent subdir
+  (`<scratchpad>/<agent>-<task>/…`), never a shared flat namespace — same discipline
+  as report-file names, applied to working files.
+- **Isolate parallel editors.** If two+ agents must touch the same logical
+  deliverable, give each its own **git worktree** (`isolation: "worktree"` on the
+  Agent tool, or a `Workflow` with per-item worktrees) and review/merge the diffs.
+  Physical isolation beats a prose handoff that invites re-derivation.
+- **Split by file, not by mission.** Don't run two agents both "implement X" against
+  the same files in sequence. Either one agent owns that file end-to-end across
+  iterations, or split ownership by module (agent A owns the impl, agent B owns the
+  eval) so their writes never overlap.
+- **Hand off the file, not a summary.** When work passes serially, the *code on disk*
+  is the source of truth; the report should say "the code is the spec — here's only
+  what's not obvious from it," not re-describe state the next agent will re-derive.
+
+A `PreToolUse` hook (the same `subagent-file-handoff.py`) injects the sole-writer /
+no-nested-same-file-fork reminder on every spawn; a `PostToolUse` detector
+(`~/.claude/hooks/same-file-write-audit.py`, on `Edit`/`Write`) surfaces it when two
+agent-attributed writes hit one path so a collision is never silent again.
 
 ## What the main thread does directly
 
