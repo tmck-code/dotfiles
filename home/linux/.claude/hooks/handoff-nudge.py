@@ -30,9 +30,23 @@ REMINDER = (
 
 def main() -> int:
     try:
-        json.load(sys.stdin)  # parsed for validity; we don't branch on contents
+        data = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError, OSError):
         return 0  # never block on a parse hiccup
+
+    # Only nudge when a real subagent stopped (non-empty agent_type).
+    if not data.get('agent_type'):
+        return 0
+
+    # The harness re-fires SubagentStop for background tasks on every turn.
+    # Throttle to once per (session, agent_id) pair so we nudge only the first time.
+    import pathlib
+    session_id = data.get('session_id', 'unknown')
+    agent_id   = data.get('agent_id', 'unknown')
+    sentinel   = pathlib.Path(f'/tmp/ss-seen-{session_id}-{agent_id}')
+    if sentinel.exists():
+        return 0
+    sentinel.touch()
 
     try:
         json.dump(

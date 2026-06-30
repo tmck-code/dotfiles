@@ -13,6 +13,26 @@
             "command": "python3 \"$HOME/.claude/hooks/nudge-delegate.py\""
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/subagent-file-handoff.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/same-file-write-audit.py\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
