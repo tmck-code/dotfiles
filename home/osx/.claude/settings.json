@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!'"
+            "command": "osascript -e 'display notification \"Claude Code finished!\" with title \"Claude Code\"'"
           }
         ]
       }
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!'"
+            "command": "osascript -e 'display notification \"Claude Code stopped!\" with title \"Claude Code\"'"
           }
         ]
       }
@@ -82,7 +82,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/.python/cpython-3.13-linux-x86_64-gnu/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/claude/statusline_command.py\"",
+    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/.python/cpython-3.15-macos-aarch64-none/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/claude/statusline_command.py\"",
     "padding": 1,
     "refreshInterval": 1
   },
