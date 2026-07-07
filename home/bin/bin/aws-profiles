@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# List available AWS profiles from ~/.aws/credentials
+# Shows active profile if one is set
+
+cred_file="$HOME/.aws/credentials"
+
+if ! [ -f "$cred_file" ]; then
+  echo "No credentials file at $cred_file"
+  exit 1
+fi
+
+active=""
+if [ -f "$HOME/.aws/active-profile" ]; then
+  active="$(grep -oP 'AWS_PROFILE=\K.*' "$HOME/.aws/active-profile" 2>/dev/null)"
+fi
+
+while IFS= read -r profile; do
+  if [[ "$profile" == "$active" ]]; then
+    echo "* $profile"
+  else
+    echo "  $profile"
+  fi
+done < <(grep -oP '^\[\K[^\]]+' "$cred_file")

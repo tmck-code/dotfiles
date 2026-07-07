@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+# Switch active AWS profile
+# Writes ~/.aws/active-profile which is sourced by the shell
+
+if [[ -z "$1" ]]; then
+  echo "Usage: aws-switch <profile-name>"
+  echo ""
+  echo "Available profiles:"
+  aws-profiles
+  exit 1
+fi
+
+profile="$1"
+cred_file="$HOME/.aws/credentials"
+
+if ! grep -q "^\[$profile\]" "$cred_file" 2>/dev/null; then
+  echo "✗ profile [$profile] not found in $cred_file"
+  echo ""
+  echo "Available profiles:"
+  aws-profiles
+  exit 1
+fi
+
+echo "export AWS_PROFILE=$profile" > "$HOME/.aws/active-profile"
+export AWS_PROFILE="$profile"
+echo "✓ switched to [$profile]"
