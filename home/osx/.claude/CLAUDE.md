@@ -15,6 +15,13 @@ left enabled by sessions that have ended.
 
 ## The main thread is a coordinator, not a worker
 
+> **If you are a subagent, this section applies to your coordinator, not you.**
+> Do not expand your own brief, do not dispatch follow-on work you weren't asked
+> for (research agents don't launch the implementation; finders don't launch the
+> fix), and never fork a child that edits your own files. Delegating *within*
+> your brief (e.g. parallel children on separate files you then integrate) is
+> fine. Finish the brief, write your report file, return.
+
 Default posture: **route, don't perform.** The things that silently fill the
 context window — discovery sweeps, test/lint output, debug iteration — should run
 on subagents, not the main thread. You absorb summaries and verdicts; subagents
