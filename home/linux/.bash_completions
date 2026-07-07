@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+_secrets_load_gpg() {
+  local cur prev words cword
+  _init_completion || return
+
+  local flags='-k --key -r --recipient -l --list --clear-cache --cache-ttl -h --help'
+
+  case "$prev" in
+    -k|--key)
+      local keys
+      keys=$(secrets-load-gpg --list 2>/dev/null)
+      COMPREPLY=( $(compgen -W "$keys" -- "$cur") )
+      return
+      ;;
+    -r|--recipient)
+      local recipients
+      recipients=$(gpg --list-secret-keys --with-colons 2>/dev/null \
+        | awk -F: '/^uid/{print $10}' \
+        | grep -oP '<\K[^>]+')
+      COMPREPLY=( $(compgen -W "$recipients" -- "$cur") )
+      return
+      ;;
+    --cache-ttl)
+      return
+      ;;
+  esac
+
+  COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
+}
+
+complete -F _secrets_load_gpg secrets-load-gpg

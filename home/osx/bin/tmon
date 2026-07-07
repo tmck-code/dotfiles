@@ -2,10 +2,11 @@
 
 set -euo pipefail
 
-# This script creates a tmux session with 5 panes:
+# This script creates a tmux session with 6 panes:
 # btop | nvtop
 # -----  | bmon
 # htop   | tty-clock
+# -------------------  (full-width bottom pane)
 
 mon="${1:-btop}"
 case "${mon}" in
@@ -16,7 +17,7 @@ esac
 
 # 1. create a new session
 # (Note the -d flag, we do not want to attach just yet!)
-tmux new-session -s "dev" -n "mon" -d
+tmux new-session -s "dev" -n "mon" -d -x "$(tput cols)" -y "$(tput lines)"
 
 # 2. Create the top-left pane
 tmux send-keys -t dev:mon "${mon_command}" C-j
@@ -45,6 +46,11 @@ tmux send-keys "bmon -p en0 -R 2.0 -o 'curses:diagram=graph;fgchar=N;bgchar= '" 
 tmux split-window -v
 tmux select-pane -t 4
 tmux send-keys "while true; do ~/bin/display-message -d \"\$(date +%H:%M:%S)\" -f 'dos rebel' -s 1234; sleep 1 ; done" C-j
+
+# 7. Create a full-width pane along the bottom (-f spans the whole window)
+tmux split-window -f -v -l 30
+# clear the pane, hide the cursor, and blank the prompt output
+tmux send-keys "PS1=''; clear; printf '\033[?25l'; read" C-j
 
 # finally attach to the session
 tmux attach -t dev:mon

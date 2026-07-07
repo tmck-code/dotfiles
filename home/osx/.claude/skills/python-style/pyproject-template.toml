@@ -1,0 +1,75 @@
+[project]
+name = "REPLACE_ME"
+version = "0.1.0"
+description = "REPLACE_ME"
+readme = "README.md"
+requires-python = ">=3.12"
+
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "ruff",
+    "uv",
+]
+
+[tool.mypy]
+exclude = [
+    ".claude/",
+    ".venv/",
+]
+plugins                 = []
+disallow_untyped_defs   = true   # no functions without type annotations
+warn_return_any         = true   # warn about functions that return Any
+ignore_missing_imports  = true   # ignore imports that can't be resolved
+strict                  = true   # enable all strict type-checking options
+warn_unused_configs     = true
+disallow_subclassing_any = true
+
+[tool.ruff]
+# Exclude dirs that contain vertically-aligned kwargs the formatter would
+# otherwise rewrite. Add any module whose alignment you want preserved.
+exclude = [
+    ".claude/",
+    ".git",
+    ".ruff_cache",
+    ".venv",
+]
+
+line-length    = 140
+indent-width   = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E4",
+    "E7",
+    "E9",
+    "F",
+]
+ignore = [
+    "E401", # multiple imports on one line
+    "E701", # multiple statements on one line
+]
+
+fixable = ["ALL"]
+unfixable = [
+    "E203", # whitespace before ':'
+    "E401",
+    "E701",
+]
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style              = "preserve"  # keep existing quote style
+indent-style             = "space"
+skip-magic-trailing-comma = false
+line-ending              = "auto"
+preview                  = true
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes  = "single"
+inline-quotes     = "single"
+multiline-quotes  = "single"

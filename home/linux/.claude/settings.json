@@ -1,0 +1,135 @@
+{
+  "env": {
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1"
+  },
+  "model": "opus[1m]",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/nudge-delegate.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-file-handoff.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/same-file-write-audit.py\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/docker-skill-nudge.py\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/handoff-nudge.py\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!'"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/.python/cpython-3.13-linux-x86_64-gnu/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/claude/statusline_command.py\"",
+    "padding": 1,
+    "refreshInterval": 1
+  },
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": false,
+    "frontend-design@claude-plugins-official": false,
+    "superpowers@claude-plugins-official": false,
+    "caveman@caveman": false,
+    "feature-dev@claude-plugins-official": false,
+    "claude-code-setup@claude-plugins-official": false,
+    "playground@claude-plugins-official": false,
+    "hookify@claude-plugins-official": false,
+    "huggingface-skills@claude-plugins-official": false,
+    "linear@claude-plugins-official": false,
+    "chrome-devtools-mcp@claude-plugins-official": false,
+    "mintlify@claude-plugins-official": false,
+    "rocky@rocky": false,
+    "playwright@claude-plugins-official": false,
+    "exa@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": false,
+    "pyright-lsp@claude-plugins-official": false,
+    "plugin-dev@claude-plugins-official": false,
+    "yas@yet-another-statusline": false
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "juliusbrussee/caveman"
+      }
+    },
+    "rocky": {
+      "source": {
+        "source": "github",
+        "repo": "hpbyte/rocky"
+      }
+    }
+  },
+  "effortLevel": "medium",
+  "tui": "fullscreen",
+  "autoMemoryEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "remoteControlAtStartup": true
+}

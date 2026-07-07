@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "tool": "Bash",
+      "match": "\\b(pytest|go test|cargo test|make test|make check)\\b|\\b(npm|yarn|pnpm|bun) (run )?test\\b",
+      "hint": "test runs belong in a subagent so their output stays off the main thread"
+    },
+    {
+      "tool": "Bash",
+      "match": "\\b(ruff check|ruff|eslint|golangci-lint|clippy|flake8|mypy|tsc)\\b|\\b(npm|yarn|pnpm|bun) (run )?lint\\b",
+      "hint": "lint/typecheck runs belong in a subagent so their output stays off the main thread"
+    },
+    {
+      "tool": "Write",
+      "match": "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|rb|java|kt|kts|scala|c|cc|cpp|cxx|h|hpp|cs|php|swift|sql|md|json|yaml|yml|toml)$|(^|/)(Dockerfile|\\.dockerignore|docker-compose[^/]*\\.ya?ml|docker-bake\\.hcl|Makefile)$|(^|/)ops/|openspec/|(^|/)docs/|\\.claude/skills/|\\.env$",
+      "hint": "this is an implementation write — most often the research→implementation handover, where the main thread (fresh off a subagent's findings) starts writing the code itself. Delegate the implementation to a subagent: it writes and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception — delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
+    },
+    {
+      "tool": "Edit",
+      "match": "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|rb|java|kt|kts|scala|c|cc|cpp|cxx|h|hpp|cs|php|swift|sql|md|json|yaml|yml|toml)$|(^|/)(Dockerfile|\\.dockerignore|docker-compose[^/]*\\.ya?ml|docker-bake\\.hcl|Makefile)$|(^|/)ops/|openspec/|(^|/)docs/|\\.claude/skills/|\\.env$",
+      "hint": "this is an implementation edit — most often the research→implementation handover, where the main thread (fresh off a subagent's findings) starts editing the code itself. Delegate the implementation to a subagent: it edits and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception — delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
+    }
+  ]
+}
