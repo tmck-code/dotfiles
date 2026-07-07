@@ -52,6 +52,7 @@ export CLAUDE_CODE_TMUX_TRUECOLOR=1
 [ -f "$HOME/.bash_aliases" ] && source "$HOME/.bash_aliases"
 [ -f "$HOME/dev/z/z.sh" ] && source "$HOME/dev/z/z.sh"
 [ -f /usr/share/bash-completion/bash_completion ] && source /usr/share/bash-completion/bash_completion
+[ -f "$HOME/.bash_completions" ] && source "$HOME/.bash_completions"
 
 # NVM lazy-load shim: stub functions source nvm.sh on first use.
 # This allows each pane to start up in <1ms, avoiding the ~500 ms cost to load nvm.sh
@@ -180,7 +181,8 @@ _mk_prompt() {
   sep="∈"
   local exit_colour="${PS1_green}"
   [ "$last_exit" -ne 0 ] && exit_colour='\[\e[1;31m\]'
-  local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset} > \D{%T}")
+  # local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset} > \D{%T}")
+  local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset}") # > \D{%T}")
   # local prefix=("")
   if [ -n "${GIT_BRANCH:-}" ]; then
     prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GIT_BRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
