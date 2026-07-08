@@ -46,6 +46,15 @@ absorb the noise.
   the subagent produces it. This holds for any language (py/js/ts/go/…), not just
   scaffolding.
 - **Parallelise independent work** — spawn independent subagents in one message.
+- **Subagent model policy: never run a subagent on fable.** The main thread may run
+  on `claude-fable-5`, but every delegated agent must use a cheaper model. Always pass
+  an explicit `model` (`opus`, `sonnet`, or `haiku`) on every `Agent` tool call and on
+  every `agent()` call inside `Workflow` scripts — an omitted model inherits the main
+  model, which is fable. Do not use `subagent_type: "fork"` while the main model is
+  fable (forks always inherit the parent model and ignore overrides); spawn a fresh
+  agent with an explicit model instead. A `PreToolUse` hook
+  (`~/.claude/hooks/subagent-file-handoff.py`) enforces this by denying fable-bound
+  spawns.
 
 ## Subagent results go through files, not return messages
 
