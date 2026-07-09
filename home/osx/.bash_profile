@@ -69,3 +69,9 @@ source "$HOME/.bashrc"
 export PATH="$PATH:/Users/tomm/.lmstudio/bin"
 # End of LM Studio CLI section
 
+
+# Claude Code — added by setup script
+export PATH="${HOME}/.claude/bin:${HOME}/.local/bin:${PATH}"
+export AWS_PROFILE="claude-code"
+alias claude-login="aws sso login --profile claude-code"
+alias claude-whoami="aws sts get-caller-identity --profile claude-code"
