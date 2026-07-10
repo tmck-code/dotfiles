@@ -170,12 +170,19 @@ _mk_prompt() {
   fi
   unset _PS0_TIME
 
-  sep="∈"
+  # switch colour based on last exit code (gren for 0, else red)
   local exit_colour="${PS1_green}"
   [ "$last_exit" -ne 0 ] && exit_colour='\[\e[1;31m\]'
-  # local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset} > \D{%T}")
+
+  #  0 [2.27 ms ] ∈ master / 72f6f8c62 ✹
+  #  ^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^
+  #  last cmd     git repo info
+
+  # build the start of the prompt with status & duration of last command
   local prefix=("${exit_colour}${last_exit}${PS1_reset} ${PS1_dim}[${dur_str}]${PS1_reset}") # > \D{%T}")
-  # local prefix=("")
+  local sep="∈"
+
+  # add git repo info to the prompt if a git repo is detected
   if [ -n "${GIT_BRANCH:-}" ]; then
     prefix+=("${PS1_yellow_bg}${sep}${PS1_reset} ${PS1_green}${GIT_BRANCH}${PS1_reset} / ${PS1_purple}${GITCOMMIT}${PS1_reset}")
 
@@ -212,7 +219,6 @@ if [ -z "${SSH_CONNECTION:-}" ]; then
   if test $((RANDOM % 10)) -eq 1; then
     display-message -p "$(date)" -f 'AMC AAA01' | pokesay -uWbCjFI -w 150
   else
-    # fortune | pokesay -jCubFI -w 40
     fortune | pokesay -jCubFI -w 40
   fi
 fi
