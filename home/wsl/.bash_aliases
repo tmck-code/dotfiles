@@ -20,3 +20,7 @@ alias dush="du -sh * | sort -h"
 alias typeperf="typeperf.exe"
 
 alias cpv="cpv -g"
+
+[ -f "$HOME/dev/z/z.sh" ] && source "$HOME/dev/z/z.sh"
+[ -f /usr/share/bash-completion/bash_completion ] && source /usr/share/bash-completion/bash_completion
+[ -f "$HOME/.bash_completions" ] && source "$HOME/.bash_completions"
