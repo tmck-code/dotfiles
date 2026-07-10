@@ -9,10 +9,11 @@ if ! [ -f "$cred_file" ]; then
   echo "No credentials file at $cred_file"
   exit 1
 fi
+command -v ggrep 2>&1 /dev/null && grep_cmd="ggrep" || grep_cmd="grep"
 
 active=""
 if [ -f "$HOME/.aws/active-profile" ]; then
-  active="$(grep -oP 'AWS_PROFILE=\K.*' "$HOME/.aws/active-profile" 2>/dev/null)"
+  active="$($grep_cmd -oP 'AWS_PROFILE=\K.*' "$HOME/.aws/active-profile" 2>/dev/null)"
 fi
 
 while IFS= read -r profile; do
@@ -21,4 +22,4 @@ while IFS= read -r profile; do
   else
     echo "  $profile"
   fi
-done < <(grep -oP '^\[\K[^\]]+' "$cred_file")
+done < <($grep_cmd -oP '^\[\K[^\]]+' "$cred_file")
