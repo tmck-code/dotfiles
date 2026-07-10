@@ -225,3 +225,7 @@ LSC_AUDIO="\
 
 export LS_COLORS="${LSC_MISC}:${LSC_TEXT}:${LSC_ARCHIVES}:${LSC_IMAGES}:${LSC_VIDEOS}:${LSC_AUDIO}"
 alias ls="ls --color=auto"
+
+[ -f "$HOME/dev/z/z.sh" ] && source "$HOME/dev/z/z.sh"
+[ -f /usr/share/bash-completion/bash_completion ] && source /usr/share/bash-completion/bash_completion
+[ -f "$HOME/.bash_completions" ] && source "$HOME/.bash_completions"

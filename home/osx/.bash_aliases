@@ -225,3 +225,22 @@ LSC_AUDIO="\
 
 export LS_COLORS="${LSC_MISC}:${LSC_TEXT}:${LSC_ARCHIVES}:${LSC_IMAGES}:${LSC_VIDEOS}:${LSC_AUDIO}"
 alias ls="ls --color=auto"
+
+# My utils that need to set when using tmux and other tools
+[ -d /opt/homebrew/bin ] && PATH="$PATH:/opt/homebrew/bin"
+[ -d ~/bin ] && PATH="$HOME/bin:$PATH"
+
+export PATH
+
+export PROMPT_DIRTRIM=2
+
+[ -r ~/bin/uptime_tmux ] && source ~/bin/uptime_tmux
+[ -d ~/bin/z ]           && source ~/bin/z/z.sh
+
+export PATH="/opt/homebrew/opt/openjdk/bin:$PATH"
+export PATH="$PATH:/Users/tomm/.lmstudio/bin"
+export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH" # Add homebrew bins
+
+. "$HOME/.local/bin/env"
+. "$HOME/.uvenv/bin/activate"
