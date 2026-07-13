@@ -4,3 +4,4 @@ auto-update-channel = stable
 # theme = ayu
 # theme = dark:Catppuccin Frappe,light:Catppuccin Latte
 theme = dark:Paul Millr,light:Catppuccin Latte
+font-family = "ANSI Combined"
