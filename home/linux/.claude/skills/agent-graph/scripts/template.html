@@ -118,13 +118,14 @@
 
   .node {
     position: absolute; padding: 7px 10px 6px; cursor: pointer;
-    display: flex; flex-direction: column; gap: 1px; overflow: hidden;
+    display: flex; flex-direction: column; gap: 1px; overflow: visible;
   }
   .node .t {
     font-size: 12px; font-weight: 650; line-height: 1.25; color: var(--ink);
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: unset; -webkit-box-orient: vertical; overflow: visible; white-space: normal;
   }
   .node.tight .t { -webkit-line-clamp: 1; font-size: 11.5px; }
+  .node[data-work="orchestration"] .t { -webkit-line-clamp: unset; white-space: normal; word-wrap: break-word; }
   .node .m { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .node .m b { color: var(--nc); font-weight: 650; }
   .node .sk {
@@ -905,6 +906,263 @@ document.getElementById('board').innerHTML =
   `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img"
     aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
 document.getElementById('board').style.width = BOARD_W + 'px';
+
+/* --------------------------------------------------------- expand orchestration nodes --- */
+
+/* After rendering, measure actual content heights of orchestration nodes and expand them
+   if their content exceeds the initial height. This fixes text truncation issues when
+   coordinator titles are long (e.g., "Implement config:3 OpenSpec change..."). */
+function expandOrchestratorNodes() {
+  const board = document.getElementById('board');
+  const nodeEls = [...board.querySelectorAll('.node[data-work="orchestration"]')];
+  if (!nodeEls.length) return;
+
+  const svg = board.querySelector('svg');
+  const expandedIds = new Set();
+  let maxExpansion = 0;
+
+  for (const nodeEl of nodeEls) {
+    const id = nodeEl.dataset.id;
+    if (!id || !AGENTS.find((a) => a.id === id)) continue;
+
+    const a = AGENTS.find((a) => a.id === id);
+    const initialHeight = parseFloat(nodeEl.style.height);
+    const contentHeight = nodeEl.scrollHeight;
+
+    /* if content height exceeds initial height + padding buffer, expand */
+    const buffer = 2;
+    if (contentHeight > initialHeight + buffer) {
+      const expansion = contentHeight - initialHeight;
+      const newHeight = contentHeight;
+
+      /* update node element height */
+      nodeEl.style.height = newHeight + 'px';
+      expandedIds.add(id);
+      maxExpansion = Math.max(maxExpansion, expansion);
+
+      /* update SVG shape paths — each agent has two shapes (fill + stroke).
+         Both need the same new height to stay synchronized with the HTML node. */
+      const y = parseFloat(nodeEl.style.top);
+      const x = parseFloat(nodeEl.style.left);
+      const w = parseFloat(nodeEl.style.width);
+
+      const shapes = svg.querySelectorAll(`path.shape[data-id="${id}"]`);
+      for (const shape of shapes) {
+        shape.setAttribute('d', shapePath(a.work, x, y, w, newHeight));
+      }
+    }
+  }
+
+  /* if any nodes expanded, recalculate BOARD_H for vertical layout to accommodate taller nodes.
+     For horizontal layout, track heights are already calculated per-block, so we only need to
+     expand if this is a vertical layout (ORIENTATION is not 'horizontal'). */
+  if (expandedIds.size > 0 && ORIENTATION !== 'horizontal') {
+    const maxY = Math.max(
+      ...AGENTS.filter((a) => expandedIds.has(a.id)).map((a) => {
+        const nodeEl = board.querySelector(`.node[data-id="${a.id}"]`);
+        if (nodeEl) {
+          return parseFloat(nodeEl.style.top) + parseFloat(nodeEl.style.height);
+        }
+        return 0;
+      })
+    );
+    if (maxY > 0) {
+      const newBoardH = maxY + 46;
+      if (newBoardH > BOARD_H) {
+        svg.setAttribute('height', newBoardH);
+        svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${newBoardH}`);
+        board.style.height = newBoardH + 'px';
+      }
+    }
+  }
+}
+
+/* ============================================ expand horizontal node widths --- */
+
+/* After rendering (horizontal layout only), measure actual content widths of all nodes
+   and expand their visual width to fit full text. This fixes horizontal layout clipping:
+   long node titles like "Bind-mount-volume..." get truncated because width is tied to
+   time duration. We measure, expand, shift downstream nodes, and regenerate affected
+   SVG (shapes, edges, block containers). */
+function expandHorizontalNodeWidths() {
+  if (ORIENTATION !== 'horizontal') return;
+
+  const board = document.getElementById('board');
+  const svg = board.querySelector('svg');
+  const nodeEls = [...board.querySelectorAll('.node[data-id]')];
+
+  if (!nodeEls.length) return;
+
+  const CONTENT_PADDING = 16; // padding around text + margin buffer
+  const widthDeltas = {}; // agentId -> {delta, agent}
+  let totalDelta = 0;
+
+  /* Phase 1: Measure each node's content width and calculate expansion needed */
+  for (const nodeEl of nodeEls) {
+    const id = nodeEl.dataset.id;
+    const a = byId[id];
+    if (!a || !a.parent) continue; // skip root for now
+
+    const contentWidth = nodeEl.scrollWidth;
+    const targetWidth = contentWidth + CONTENT_PADDING;
+    const currentWidth = a.w;
+
+    if (targetWidth > currentWidth) {
+      const delta = targetWidth - currentWidth;
+      widthDeltas[id] = { delta, agent: a };
+      totalDelta = Math.max(totalDelta, delta); // track max delta
+    }
+  }
+
+  /* if no expansions needed, we're done */
+  if (!Object.keys(widthDeltas).length) return;
+
+  /* Phase 2: Update agent widths and shift downstream nodes
+     For each expanded node, push all nodes with x0 >= its x0 + current width to the right.
+     Process in left-to-right order to avoid double-shifting. */
+  const expandedIds = Object.keys(widthDeltas);
+  const sortedByX0 = expandedIds
+    .map(id => ({ id, x0: widthDeltas[id].agent.x0 }))
+    .sort((a, b) => a.x0 - b.x0);
+
+  const shiftMap = {}; // agentId -> cumulative shift amount
+  for (const { id } of sortedByX0) {
+    const { agent, delta } = widthDeltas[id];
+    const expandEnd = agent.x0 + agent.w + delta;
+
+    /* update this agent's width */
+    const priorShift = shiftMap[id] || 0;
+    agent.w += delta;
+    shiftMap[id] = delta;
+
+    /* shift all agents that start at or after this node's original end position */
+    for (const other of AGENTS) {
+      if (other === agent || !other.parent) continue;
+      const otherEnd = other.x0 + other.w;
+      if (other.x0 >= agent.x0 + (agent.w - delta)) {
+        if (!shiftMap[other.id]) shiftMap[other.id] = 0;
+        shiftMap[other.id] += delta;
+        other.x0 += delta;
+      }
+    }
+  }
+
+  /* update root if it was shifted */
+  const rootShift = shiftMap[root.id] || 0;
+  if (rootShift > 0) root.x0 += rootShift;
+
+  /* Phase 3: Update BOARD_W to accommodate rightmost node */
+  const maxRightEdge = Math.max(...AGENTS.map(a => a.x0 + a.w), 0);
+  BOARD_W = maxRightEdge + 30;
+
+  /* Phase 4: Regenerate all SVG elements that depend on node positions
+     We need to rebuild: block containers, main spine, edges, and node HTML positions */
+
+  /* 4a: Clear old SVG paths and regenerate (easier than updating individual paths) */
+  const svgContent = svg.querySelector('defs').outerHTML;
+  svg.innerHTML = svgContent;
+  svgParts.length = 0;
+
+  /* rebuild shapes, block containers, and edges — extract key sections from original logic */
+  const newSvgParts = [];
+  newSvgParts.push(svgContent);
+
+  /* block containers — visual grouping of coordinator + subtree */
+  if (typeof blocks !== 'undefined' && blocks.length) {
+    for (const b of blocks) {
+      const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
+      const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
+      newSvgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
+        fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+    }
+  }
+
+  /* main spine */
+  newSvgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', root.x0, root.y0, root.w, root.h)}"
+    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
+
+  /* edges: dispatch + return + respawn */
+  const edges = [];
+  for (const a of AGENTS) {
+    if (!a.parent) continue;
+    const parent = byId[a.parent];
+    if (!parent) continue;
+
+    const px = a.x0 + 4;
+    const py = a.parent === root.id ? root.y0 + root.h : parent.y0 + parent.h;
+    const cx = px, cy = a.y0;
+    const yk = (py + cy) / 2;
+
+    edges.push({
+      from: a.parent, to: a.id,
+      d: elbowV(px, py, cx, cy, yk, 6),
+      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2
+    });
+
+    if (a.status === 'ok') {
+      const rx = a.x0 + a.w - 4;
+      const ry0 = a.y0 + a.h, ry1 = py + 4;
+      const ryk = (ry0 + ry1) / 2;
+      edges.push({
+        from: a.id, to: a.parent,
+        d: elbowV(rx, ry0, rx, ry1, ryk, 6),
+        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true
+      });
+    }
+
+    if (a.respawnOf && byId[a.respawnOf]) {
+      const dead = byId[a.respawnOf];
+      const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
+      const ay = a.y0 + a.h / 2, ax = a.x0;
+      edges.push({
+        from: dead.id, to: a.id,
+        d: `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
+        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true
+      });
+    }
+  }
+
+  /* render edges to SVG */
+  for (const e of edges) {
+    newSvgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
+      stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
+      ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
+      ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
+    if (e.respawn) {
+      const mid = e.d.match(/M([\d.]+),([\d.]+) C/);
+      if (mid) newSvgParts.push(`<text x="${+mid[1] + 6}" y="${+mid[2] - 8}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
+    }
+  }
+
+  /* update SVG content and viewBox */
+  svg.innerHTML = newSvgParts.join('');
+  svg.setAttribute('width', BOARD_W);
+  svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${BOARD_H}`);
+  board.style.width = BOARD_W + 'px';
+
+  /* Phase 5: Update HTML node positions to match new x0 and w values */
+  for (const nodeEl of nodeEls) {
+    const id = nodeEl.dataset.id;
+    const a = byId[id];
+    if (!a || !a.parent) continue;
+
+    nodeEl.style.left = a.x0 + 'px';
+    nodeEl.style.width = a.w + 'px';
+  }
+
+  /* update root node position (unlikely to have shifted much, but be safe) */
+  const rootNodeEl = board.querySelector(`.node[data-id="${root.id}"]`);
+  if (rootNodeEl) {
+    rootNodeEl.style.left = root.x0 + 'px';
+    rootNodeEl.style.width = root.w + 'px';
+  }
+}
+
+/* invoke expansions after a minimal paint delay to ensure scrollHeight/scrollWidth are accurate */
+requestAnimationFrame(() => {
+  expandOrchestratorNodes();
+  expandHorizontalNodeWidths();
+});
 
 /* ------------------------------------------------------- header/stats --- */
 
