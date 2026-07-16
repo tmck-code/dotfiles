@@ -124,7 +124,12 @@
     font-size: 12px; font-weight: 650; line-height: 1.25; color: var(--ink);
     display: -webkit-box; -webkit-line-clamp: unset; -webkit-box-orient: vertical; overflow: visible; white-space: normal;
   }
-  .node.tight .t { -webkit-line-clamp: 1; font-size: 11.5px; }
+  /* tight nodes only shrink the font — they must NOT line-clamp: with
+     overflow:visible above, a clamp still shrinks the box's layout height to
+     the clamped line count while the wrapped text visually spills past it,
+     so the next flex sibling (.m/.sk) lands on top of that overflow instead
+     of below it. Font-size alone keeps clamp and layout height in sync. */
+  .node.tight .t { font-size: 11.5px; }
   .node[data-work="orchestration"] .t { -webkit-line-clamp: unset; white-space: normal; word-wrap: break-word; }
   /* .m/.sk set overflow:hidden for their ellipsis truncation, which under
      flexbox gives them an "automatic minimum size" of 0 — so instead of the
@@ -133,8 +138,9 @@
      their own natural text height when space is tight, clipping/overlapping
      their glyphs while scrollHeight still reports the constrained (fitting)
      height. Pin them to their natural size so a genuine shortfall shows up
-     as real overflow instead of an invisible squeeze. */
-  .node[data-work="orchestration"] .m, .node[data-work="orchestration"] .sk { flex-shrink: 0; }
+     as real overflow instead of an invisible squeeze. Applies to every work
+     type, not just orchestration — worker titles wrap just as often. */
+  .node .m, .node .sk { flex-shrink: 0; }
   .node .m { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .node .m b { color: var(--nc); font-weight: 650; }
   .node .sk {
@@ -511,6 +517,28 @@ if (ORIENTATION === 'horizontal') {
     a.x0 = xOf(a.t0);
     a.w = Math.max(MIN_W, xOf(a.t1) - a.x0);
   }
+  /* de-duplicate x0 among siblings that start at the exact same instant
+     (e.g. two concurrent Claude Code sessions dispatched off the same
+     prompt). Left tied, their dispatch edges below share an identical
+     px/cx column, so elbowV(px,py,cx,cy,...) degenerates to a plain
+     vertical line for BOTH edges — they become pixel-identical over the
+     shorter edge's whole length. Whichever is appended later in AGENTS
+     order paints its line (and arrowhead) directly on top of the other's,
+     visually erasing the shorter edge's connector even though the node
+     itself renders fine — it just looks disconnected from the spine.
+     Nudging each successive tied sibling a few px right keeps their
+     dispatch lines (and node boxes, block containers, lane packing —
+     everything downstream reads a.x0) visibly distinct. */
+  {
+    const tieCounts = {};
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const key = a.parent + '@' + a.x0;
+      const n = tieCounts[key] || 0;
+      tieCounts[key] = n + 1;
+      if (n > 0) a.x0 += n * 5;
+    }
+  }
   BOARD_W = segs[segs.length - 1].x1 + 30;
 
   /* main-thread markers are laid out first (before H_TOP_Y is fixed) so the
@@ -553,18 +581,31 @@ if (ORIENTATION === 'horizontal') {
     collectSubtree(c.id, set);
     const members = AGENTS.filter((a) => set.has(a.id));
     const descendants = members.filter((a) => a.id !== c.id).sort((x, y) => x.t0 - y.t0);
-    const laneEnds = [];
+    /* pack lanes by rendered PIXEL extent (x0..x0+w), not raw timestamps —
+       MIN_W clamps short tasks to a wide box regardless of real duration,
+       so two agents that don't overlap in time can still overlap on screen
+       once a compressed week-long time scale squeezes their real gap down
+       to a few px. Checking x0/w (already computed above) instead of t0/t1
+       keeps same-lane neighbors from visually colliding. */
+    const LANE_GAP_PX = 6;
+    const laneEndsX = [];
     for (const d of descendants) {
-      let lane = laneEnds.findIndex((endT) => endT <= d.t0);
-      if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
-      laneEnds[lane] = d.t1;
+      let lane = laneEndsX.findIndex((endX) => endX <= d.x0);
+      if (lane === -1) { lane = laneEndsX.length; laneEndsX.push(0); }
+      laneEndsX[lane] = d.x0 + d.w + LANE_GAP_PX;
       d.blockLane = lane;
     }
+    const laneEnds = laneEndsX;
     const numLanes = laneEnds.length;
     const h = H_HEAD_H + (numLanes ? numLanes * (H_LANE_H + H_ROW_GAP) : 0);
     const t0 = c.t0;
     const t1 = Math.max(c.t1, ...members.map((m) => m.t1));
-    return { head: c, members, descendants, numLanes, h, t0, t1 };
+    /* rendered pixel extent of the whole block (coordinator + subtree) —
+       used for track packing below instead of raw t0/t1, for the same
+       MIN_W-clamping reason the lane packing above switched to pixels. */
+    const bx0 = Math.min(...members.map((m) => m.x0));
+    const bx1 = Math.max(...members.map((m) => m.x0 + m.w));
+    return { head: c, members, descendants, numLanes, h, t0, t1, bx0, bx1 };
   });
 
   /* Gantt-style track packing: coordinators are already sorted by start
@@ -572,13 +613,16 @@ if (ORIENTATION === 'horizontal') {
      interval-graph row packing — reuse the first track whose last-placed
      block ends before this block starts, else open a new (lower) track.
      Non-overlapping blocks end up sharing a track (side by side in time);
-     only genuinely overlapping blocks stack. */
+     only genuinely overlapping blocks stack. Packed by rendered pixel
+     extent (bx0/bx1), not raw timestamps — MIN_W-clamped short blocks can
+     still collide on screen even when their real times don't overlap. */
+  const TRACK_GAP_PX = 8;
   hTracks = [];
   for (const b of hBlocks) {
-    let ti = hTracks.findIndex((tr) => tr.endT <= b.t0);
-    if (ti === -1) { ti = hTracks.length; hTracks.push({ endT: -Infinity, blocks: [] }); }
+    let ti = hTracks.findIndex((tr) => tr.endX <= b.bx0);
+    if (ti === -1) { ti = hTracks.length; hTracks.push({ endX: -Infinity, blocks: [] }); }
     hTracks[ti].blocks.push(b);
-    hTracks[ti].endT = Math.max(hTracks[ti].endT, b.t1);
+    hTracks[ti].endX = Math.max(hTracks[ti].endX, b.bx1 + TRACK_GAP_PX);
     b.track = ti;
   }
   hTrackMeta = hTracks.map((tr) => ({ h: Math.max(...tr.blocks.map((b) => b.h)) }));
@@ -749,61 +793,119 @@ if (ORIENTATION === 'horizontal') {
     a.h = Math.max(MIN_H, yOf(a.t1) - a.y0);
   }
 
-  /* lane packing: per group, coordinators then workers get greedy lanes */
-  const groupMeta = GROUPS.map(() => ({ cLanes: 0, wLanes: 0 }));
-  GROUPS.forEach((g, gi) => {
-    const coords = coordinators.filter((c) => g.includes(c.id));
-    const cLanes = [];
-    for (const c of coords) {
-      let lane = cLanes.findIndex((endY) => endY + 8 <= c.y0);
-      if (lane === -1) { lane = cLanes.length; cLanes.push(0); }
-      cLanes[lane] = c.y0 + c.h; c.lane = lane;
+  /* per-session BLOCKS: each depth-1 coordinator (one per aggregated
+     session/tree) plus its full subtree is rendered as one self-contained
+     unit — its own coordinator column and its own worker sub-lanes travel
+     together. This replaces the old design's two GLOBAL flat columns (all
+     coordinators mixed in one strip, all workers mixed in another) which
+     visually merged unrelated sessions together. It reuses the horizontal
+     layout's block/track-packing math (see hBlocks/hTracks/collectSubtree
+     above), transposed: there time is x and blocks pack into horizontal
+     TRACKS by x-extent; here time is y, so blocks pack into vertical
+     COLUMN-TRACKS by y-extent — non-overlapping-in-time blocks share a
+     column (stacked one after another, since their own y-positions from
+     yOf() already keep them apart in time); only genuinely time-overlapping
+     blocks get pushed into a new, further-right column-track. */
+  const childrenOf = {};
+  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
+  function collectSubtree(id, set) {
+    set.add(id);
+    for (const cid of (childrenOf[id] || [])) collectSubtree(cid, set);
+  }
+
+  const COL_GAP = 32;     // gap between a block's own coord column and its worker sub-lanes
+  const TRACK_GAP = 44;   // gap between column-tracks (blocks that DO overlap in time)
+  const LANE_GAP_Y = 16;  // min y-gap enforced between sub-lane occupants
+
+  /* GROUPS (DATA.groups) is still honoured, but composed with the new
+     auto-packer rather than assigning hard columns: coordinators are
+     processed in [group, start-time] order (default: a single group ⇒
+     pure start-time order, unchanged from before) so an explicitly grouped
+     cluster of coordinators tends to land in adjacent column-tracks, while
+     the automatic time-overlap packer still has final say over how many
+     tracks are actually needed — groups is now a soft clustering hint over
+     the auto-layout rather than a hard column assignment. */
+  const orderedCoordinators = coordinators.slice()
+    .sort((x, y) => (groupIndexOfCoord[x.id] ?? 0) - (groupIndexOfCoord[y.id] ?? 0) || x.t0 - y.t0);
+
+  const blocks = orderedCoordinators.map((c) => {
+    const set = new Set();
+    collectSubtree(c.id, set);
+    const descendants = AGENTS.filter((a) => set.has(a.id) && a.id !== c.id).sort((x, y) => x.t0 - y.t0);
+    /* internal sub-lane packing: pack this block's OWN descendants (any
+       depth) into greedy first-fit sub-lanes by y-extent (their rendered
+       y0/h) — the vertical-axis analogue of the horizontal branch's
+       laneEndsX. No cross-block sharing is possible any more (each block
+       only ever looks at its own subtree), so the old sticky
+       coordinator-lane-reuse hack — needed only because unrelated
+       coordinators used to share one global worker-lane pool — is gone:
+       every descendant here already belongs to the same coordinator, so a
+       plain first-fit is enough to keep the block's own cluster tight. */
+    const laneEnds = [];
+    for (const d of descendants) {
+      let lane = laneEnds.findIndex((endY) => endY + LANE_GAP_Y <= d.y0);
+      if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+      laneEnds[lane] = d.y0 + d.h;
+      d.lane = lane;
     }
-    const ws = workers.filter((w) => groupIndexOf(w) === gi).sort((x, y) => x.t0 - y.t0);
-    const wLanes = [];
-    for (const w of ws) {
-      let lane = wLanes.findIndex((endY) => endY + 16 <= w.y0);
-      if (lane === -1) { lane = wLanes.length; wLanes.push(0); }
-      wLanes[lane] = w.y0 + w.h; w.lane = lane;
-    }
-    groupMeta[gi] = { cLanes: Math.max(cLanes.length, 1), wLanes: Math.max(wLanes.length, 1) };
+    const numLanes = laneEnds.length;
+    const width = LANE_W + (numLanes ? COL_GAP + numLanes * (LANE_W + LANE_GAP) - LANE_GAP : 0);
+    const members = [c, ...descendants];
+    const by0 = Math.min(...members.map((m) => m.y0));
+    const by1 = Math.max(...members.map((m) => m.y0 + m.h));
+    return { head: c, descendants, numLanes, width, by0, by1 };
   });
 
-  /* column x positions: [ruler][main] then per-group [coords][workers] */
+  /* column-track packing: classic interval-graph row packing, transposed —
+     reuse the first track whose last-placed block ends (in y) before this
+     block starts, else open a new (further-right) track. Non-overlapping
+     blocks end up sharing a column (stacked in time); only genuinely
+     overlapping blocks stack side by side into separate tracks. */
+  const V_TRACK_GAP_PX = 8;
+  const vTracks = [];
+  for (const b of blocks) {
+    let ti = vTracks.findIndex((tr) => tr.endY <= b.by0);
+    if (ti === -1) { ti = vTracks.length; vTracks.push({ endY: -Infinity, blocks: [] }); }
+    vTracks[ti].blocks.push(b);
+    vTracks[ti].endY = Math.max(vTracks[ti].endY, b.by1 + V_TRACK_GAP_PX);
+    b.track = ti;
+  }
+  const trackMeta = vTracks.map((tr) => ({ w: Math.max(...tr.blocks.map((bl) => bl.width)) }));
+
+  /* column x positions: [ruler][main] then one column per track */
   const MAIN_W = SPINE_W + 174;
-  const COL_GAP = 32;
-  const GROUP_GAP = 44;
-  const colW = (n) => n * (LANE_W + LANE_GAP) - LANE_GAP;
   const X_MAIN = RULER_W + 14;
-  let x = X_MAIN + MAIN_W + COL_GAP;
-  GROUPS.forEach((g, gi) => {
-    if (gi > 0) x += GROUP_GAP;
-    groupMeta[gi].xCoord = x;
-    x += colW(groupMeta[gi].cLanes) + COL_GAP + 4;
-    groupMeta[gi].xWork = x;
-    x += colW(groupMeta[gi].wLanes);
-  });
-  BOARD_W = x + 14;
+  const trackX = [];
+  {
+    let x = X_MAIN + MAIN_W + COL_GAP;
+    trackMeta.forEach((tm, ti) => { trackX[ti] = x; x += tm.w + TRACK_GAP; });
+    BOARD_W = (trackMeta.length ? x - TRACK_GAP : x) + 14;
+  }
+
+  const blockByCoordId = {};
+  blocks.forEach((b) => { b.head.lane = b.track; blockByCoordId[b.head.id] = b; });
 
   function xOf(a) {
     if (a === root) return X_MAIN;
-    const gi = groupIndexOf(a);
-    const gm = groupMeta[gi] || groupMeta[0];
-    const base = coordSet.has(a.id) ? gm.xCoord : gm.xWork;
-    return base + (a.lane || 0) * (LANE_W + LANE_GAP);
+    if (coordSet.has(a.id)) return trackX[blockByCoordId[a.id].track];
+    const b = a.coord != null ? blockByCoordId[a.coord] : blocks[0];
+    if (!b) return X_MAIN + MAIN_W + COL_GAP;
+    return trackX[b.track] + LANE_W + COL_GAP + (a.lane || 0) * (LANE_W + LANE_GAP);
   }
 
-  /* coordinator bands — worker clusters, behind everything */
+  /* per-block bands — coordinator + its own subtree, behind everything.
+     Every block gets one, even a lone coordinator with no workers: the
+     band now marks "this is one self-contained session", not just a
+     worker-cluster grouping like before. */
   let bandNo = 0;
-  for (const c of coordinators) {
-    const boxed = workers.filter((w) => w.coord === c.id);
-    if (!boxed.length) continue;   // guard: coordinator with zero workers
+  for (const b of blocks) {
     bandNo++;
-    const bx0 = Math.min(...boxed.map(xOf)) - 8;
-    const bx1 = Math.max(...boxed.map((a) => xOf(a) + LANE_W)) + 8;
-    const by0 = Math.min(...boxed.map((a) => a.y0)) - 19;
-    const by1 = Math.max(...boxed.map((a) => a.y0 + a.h)) + 5;
-    const label = String(c.title || '').replace(/^Coordinator:\s*/i, '');
+    const members = [b.head, ...b.descendants];
+    const bx0 = Math.min(...members.map(xOf)) - 8;
+    const bx1 = Math.max(...members.map((a) => xOf(a) + LANE_W)) + 8;
+    const by0 = Math.min(...members.map((a) => a.y0)) - 19;
+    const by1 = Math.max(...members.map((a) => a.y0 + a.h)) + 5;
+    const label = String(b.head.title || '').replace(/^Coordinator:\s*/i, '');
     svgParts.push(`<rect x="${bx0}" y="${by0}" width="${bx1 - bx0}" height="${by1 - by0}" rx="13"
       fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
     htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px;">${bandNo} · ${esc(label)}</div>`);
@@ -830,24 +932,24 @@ if (ORIENTATION === 'horizontal') {
     htmlParts.push(`<div class="break-label" style="left:${RULER_W + 22}px; top:${y + 8}px; height:${BREAK_H - 16}px; background:var(--surface); padding:0 10px;">${label}</div>`);
   });
 
-  /* column headers */
-  const heads = [[X_MAIN - 4, MAIN_W, 'main thread', 'level 0 · the session']];
-  GROUPS.forEach((g, gi) => {
-    const gm = groupMeta[gi];
-    const coords = coordinators.filter((c) => g.includes(c.id));
-    const wtypes = [...new Set(workers.filter((w) => groupIndexOf(w) === gi).map((w) => w.type))];
-    heads.push([gm.xCoord - 4, colW(gm.cLanes) + 8, coords.length === 1 ? 'coordinator' : 'coordinators', 'level 1']);
-    heads.push([gm.xWork - 4, colW(gm.wLanes) + 8, 'domain workers', wtypes.length ? 'level 2 · ' + wtypes.join(' / ') : 'level 2']);
-  });
-  heads.forEach(([hx, w, name, meta]) => {
-    htmlParts.push(`<div class="colhead" style="left:${hx}px; width:${w}px;">
-      <span class="name">${esc(name)}</span><span class="meta">${esc(meta)}</span></div>`);
+  /* column headers — one per column-track, naming the session(s) packed
+     into it (sequential/non-overlapping sessions share a track and are
+     listed together, chained left→right by start time within it). Each
+     block's own band-label (above) carries its per-session title, so these
+     headers just orient the reader to "packed column", not a role column. */
+  htmlParts.push(`<div class="colhead" style="left:${X_MAIN - 4}px; width:${MAIN_W}px;">
+    <span class="name">main thread</span><span class="meta">the aggregate session</span></div>`);
+  vTracks.forEach((tr, ti) => {
+    const names = tr.blocks.map((b) => esc(b.head.type)).join(' · ');
+    htmlParts.push(`<div class="colhead" style="left:${trackX[ti] - 4}px; width:${trackMeta[ti].w + 8}px;">
+      <span class="name">${tr.blocks.length > 1 ? tr.blocks.length + ' sessions' : 'session'}</span>
+      <span class="meta">${names}</span></div>`);
   });
 
-  /* dotted separators between groups */
-  GROUPS.forEach((g, gi) => {
-    if (gi === 0) return;
-    const sx = groupMeta[gi].xCoord - GROUP_GAP + 2;
+  /* dotted separators between column-tracks */
+  vTracks.forEach((tr, ti) => {
+    if (ti === 0) return;
+    const sx = trackX[ti] - TRACK_GAP / 2;
     svgParts.push(`<line x1="${sx}" y1="${TOP - 20}" x2="${sx}" y2="${BOARD_H - 20}" stroke="var(--grid)" stroke-dasharray="2 6"/>`);
   });
 
@@ -1016,11 +1118,13 @@ function expandOrchestratorNodes() {
    does a full repaint from current a.x0/a.y0/a.w/a.h. */
 function relayoutHorizontalBlocks() {
   const board = document.getElementById('board');
-  const nodeEls = [...board.querySelectorAll('.node[data-work="orchestration"]')];
+  const nodeEls = [...board.querySelectorAll('.node[data-id]')];
 
-  /* Step 1: measure each orchestration node's actual (wrapped) content
-     height and grow its agent's data-model height (a.h) to fit — not just
-     the DOM style, since the block/track cascade below reads a.h. */
+  /* Step 1: measure every node's actual (wrapped) content height — not just
+     orchestration/coordinator nodes, since worker titles wrap just as often
+     inside their narrower lanes — and grow its agent's data-model height
+     (a.h) to fit — not just the DOM style, since the block/track cascade
+     below reads a.h. */
   let grew = false;
   for (const nodeEl of nodeEls) {
     const id = nodeEl.dataset.id;
