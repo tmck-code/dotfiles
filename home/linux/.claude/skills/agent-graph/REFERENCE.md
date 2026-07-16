@@ -60,12 +60,18 @@ HTML (e.g. `<b>…</b>`). Extract emits real user turns + git commit/push events
 
 ## `groups` semantics
 
-`groups` is an array of arrays of **coordinator ids**. Each inner array becomes
-one `[coordinators | workers]` column pair, laid left→right after the single
-main column, with a dotted separator between pairs. The default (omit/empty) is
-a single group containing every coordinator. Coordinators you leave out of every
-group are appended as a trailing group. Use it to split parallel workstreams
-side-by-side, e.g. `[["coreCoord","movesCoord"], ["corpusCoord"]]`.
+`groups` is an array of arrays of **coordinator ids**, used as a **soft
+ordering hint** in the vertical orientation: coordinators are processed in
+`[group index, start time]` order before block/track packing, so an
+explicitly grouped cluster tends to land in adjacent column-tracks together.
+It no longer assigns a hard column — the automatic time-overlap packer (see
+"vertical" below) always has final say over how many column-tracks are
+actually used. The default (omit/empty) is a single implicit group, i.e. pure
+start-time order. Coordinators left out of every group are treated as
+trailing, lowest-priority order. Use it to nudge related parallel workstreams
+toward sitting next to each other, e.g. `[["coreCoord","movesCoord"],
+["corpusCoord"]]` — it's a hint, not a guarantee of adjacency if the packer
+needs the space elsewhere.
 
 **`groups` only affects the vertical orientation** — the horizontal layout
 (below) ignores it and derives its own arrangement from time + parentage.
@@ -78,9 +84,19 @@ change to switch. Set it via the graph JSON (`"orientation": "horizontal"`) or
 override at build time with `--orientation vertical|horizontal` (the CLI flag
 wins if both are given). Default is `vertical`.
 
-- **`vertical`** (default): time runs top→bottom; x is hand-off depth (main
-  spine, then per-`groups` coordinator/worker columns). This is the original,
-  more heavily used layout.
+- **`vertical`** (default): time runs top→bottom. Every depth-1 coordinator
+  (one per aggregated session/tree) plus its full subtree renders as one
+  self-contained **block** — its own coordinator and worker sub-lanes travel
+  together and never interleave with another coordinator's descendants, same
+  contiguity guarantee as the horizontal layout below. Blocks are packed into
+  vertical **column-tracks**: blocks that don't overlap in time share a
+  column-track (stacked one after another since their own y-positions from
+  time already keep them apart); genuinely time-overlapping blocks get pushed
+  into a new column-track further to the right. `groups` orders the packer's
+  input (see above) but doesn't override its column-count decisions. This
+  replaced an earlier design with two global flat columns (all coordinators
+  in one strip, all workers in another) that visually merged unrelated
+  sessions together — prefer this layout as the default choice.
 - **`horizontal`**: time runs left→right; the main thread is a fixed top row.
   Every depth-1 coordinator gets its own **block** — a head row (the
   coordinator) with its full subtree packed into sub-lanes directly beneath
