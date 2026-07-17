@@ -33,12 +33,30 @@ Exactly **one** agent must be the root (`parent: null`) — it renders as the
 main spine. Its children are **coordinators** (level 1); everything else is a
 **worker** (level 2), attached to its nearest coordinator ancestor. Deeper
 nesting is allowed and lands in that coordinator's worker column (the depth is
-noted in the drawer).
+noted in the drawer). (A single-session document — the `build_spa.py` `validate()`
+path — enforces exactly one root. An aggregated multi-session document has one
+root per session; see below.)
+
+### Multi-session aggregation (`extract.py --multi`)
+
+`--multi` writes one `<session-id>.ndjson` per session and `build_spa.py` on a
+directory flattens every session's `agents` into ONE array. Agent ids are NOT
+unique across sessions — the main thread is always `"main"`, and the 17-hex-char
+subagent ids are reused across sessions — so `extract.py` **namespaces every id
+as `<session-id>:<raw-id>`** in `--multi` mode (the `id`, its `parent`, any
+`respawnOf`, and `groups` entries are all rewritten). This keeps each session's
+parentage self-contained once flattened: every child resolves its parent to its
+OWN session's main, never a foreign one.
+
+Single-session extraction (`extract.py <id>`) is deliberately **left un-namespaced**
+so hand-written curation patches (keyed by raw agent id, see SKILL.md) keep
+working. The renderer treats every parentless agent as a root, so it handles a
+single root (one session) and N roots (N sessions) uniformly.
 
 | field | type | req | notes |
 |-------|------|-----|-------|
-| `id` | string | ✔ | unique; `"main"` for the root by convention |
-| `parent` | string \| null | ✔ | `null` only for the root; else an existing agent id |
+| `id` | string | ✔ | unique **within the document**; `"main"` for the root by convention (single-session). See "Multi-session aggregation" for how `--multi` namespaces ids |
+| `parent` | string \| null | ✔ | `null` for a root; else an existing agent id. A single-session graph has exactly one root; an aggregated multi-session graph has one root **per session** |
 | `type` | string | ✔ | agent/subagent type; drives colour. Root's type takes the first palette slot, then types by first appearance |
 | `model` | string \| null | – | shown in the drawer |
 | `title` | string | ✔ | block heading; a leading `"Coordinator: "` is stripped for band labels |

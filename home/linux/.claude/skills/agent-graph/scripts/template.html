@@ -60,7 +60,17 @@
   }
   .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
 
-  header.page { max-width: 1500px; margin: 0 auto; padding: 36px 28px 8px; }
+  header.page {
+    max-width: 1500px; margin: 0 auto; padding: 36px 28px 8px;
+    display: flex; align-items: flex-start; gap: 16px;
+  }
+  header.page .head-text { flex: 1 1 auto; min-width: 0; }
+  #themeToggle {
+    flex: 0 0 auto; border: 1px solid var(--border);
+    background: none; color: var(--ink-2); border-radius: 7px; width: 28px; height: 28px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  #themeToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 6px;
@@ -159,6 +169,10 @@
 
   .marker-label {
     position: absolute; font-size: 10.5px; line-height: 1.3; color: var(--ink-2);
+    /* Fallback cap only. The horizontal layout sizes labels inline from its own
+       MARKER_LABEL_W (150) and is clipped by this; the vertical layout overrides
+       both width AND max-width inline from V_MARKER_LABEL_W, which is the single
+       source of truth that also sizes its gutter (MAIN_W). */
     max-width: 146px; pointer-events: none;
   }
   .marker-label b { color: var(--ink); font-weight: 650; }
@@ -222,10 +236,24 @@
   }
 </style>
 
+<script>
+/* Applied before render to avoid a flash of the wrong theme. */
+(function () {
+  var KEY = 'agentgraph:theme';
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { /* file:// may throw */ }
+  if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
+  else try { localStorage.removeItem(KEY); } catch (e) {}
+})();
+</script>
+
 <header class="page">
-  <div class="eyebrow" id="eyebrow"></div>
-  <h1 id="title"></h1>
-  <p class="sub" id="subtitle"></p>
+  <div class="head-text">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="sub" id="subtitle"></p>
+  </div>
+  <button id="themeToggle" type="button"></button>
 </header>
 
 <div class="stats" id="stats"></div>
@@ -245,1314 +273,1571 @@
 </aside>
 
 <script>
+/* ------------------------------------------------------- theme toggle --- */
+(function () {
+  var KEY = 'agentgraph:theme';
+  var STATES = ['auto', 'light', 'dark'];
+  var GLYPH = { auto: '◐', light: '☀', dark: '☾' };
+  var LABEL = {
+    auto: 'Theme: auto (follow system) — click for light',
+    light: 'Theme: light — click for dark',
+    dark: 'Theme: dark — click for auto',
+  };
+  var btn = document.getElementById('themeToggle');
+  var current = document.documentElement.dataset.theme;
+  if (STATES.indexOf(current) < 1) current = 'auto';
+
+  function apply(state) {
+    current = state;
+    if (state === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = state;
+    btn.textContent = GLYPH[state];
+    btn.title = LABEL[state];
+    btn.setAttribute('aria-label', LABEL[state]);
+    try {
+      if (state === 'auto') localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, state);
+    } catch (e) { /* file:// may throw */ }
+  }
+
+  btn.addEventListener('click', function () {
+    apply(STATES[(STATES.indexOf(current) + 1) % STATES.length]);
+  });
+  apply(current);
+})();
+</script>
+
+<script>
 'use strict';
 
 /* ---------------------------------------------------------------- data --- */
 
-const DATA = __DATA_JSON__;
+const SESSIONS_DIR = "__SESSIONS_DIR__";
+const DYNAMIC_MODE = __DYNAMIC_MODE__;
 const ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
 
-/* validated categorical palette (dataviz, CVD-checked, both themes) */
-const LIGHT = ['#4a3aa7', '#1baf7a', '#2a78d6', '#eda100', '#e87ba4', '#008300', '#eb6834', '#e34948'];
-const DARK  = ['#9085e9', '#199e70', '#3987e5', '#c98500', '#d55181', '#008300', '#d95926', '#e66767'];
+let DATA = __DATA_JSON__;
 
-const WORK_LABEL = {
-  orchestration: 'orchestration', implementation: 'implementation',
-  testing: 'testing / gates', docs: 'docs', research: 'research',
-};
+// Dynamic loading mode: fetch sessions from directory
+async function loadDynamicSessions() {
+  if (!DYNAMIC_MODE || !SESSIONS_DIR) return DATA;
 
-/* normalise agents (defensive defaults for optional fields) */
-const AGENTS = DATA.agents.map((a) => ({
-  respawnOf: null, parentGuessed: false, model: null, skills: [], status: 'ok',
-  work: 'implementation',
-  ...a,
-  counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
-  skills: Array.isArray(a.skills) ? a.skills : [],
-}));
-const MARKERS = Array.isArray(DATA.markers) ? DATA.markers.slice() : [];
+  try {
+    const indexResp = await fetch(`${SESSIONS_DIR}/index.json`);
+    if (!indexResp.ok) throw new Error(`Failed to load index: ${indexResp.status}`);
+    const index = await indexResp.json();
 
-const byId = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
-const root = AGENTS.find((a) => a.parent == null) || AGENTS[0];
+    const agents = [];
+    const markers = [];
+    const loadedSessions = [];
 
-/* ------------------------------------------------------------- colours --- */
-
-const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
-const typeOrder = [];
-const pushType = (t) => { if (!typeOrder.includes(t)) typeOrder.push(t); };
-pushType(root.type);
-AGENTS.forEach((a) => pushType(a.type));
-
-function cssVars(arr) {
-  return typeOrder.map((t, i) => `--c-${slug(t)}:${arr[i % arr.length]};`).join('');
-}
-const styleEl = document.createElement('style');
-styleEl.textContent = [
-  `:root{${cssVars(LIGHT)}}`,
-  `@media (prefers-color-scheme:dark){:root{${cssVars(DARK)}}}`,
-  `:root[data-theme="dark"]{${cssVars(DARK)}}`,
-  `:root[data-theme="light"]{${cssVars(LIGHT)}}`,
-].join('\n');
-document.head.appendChild(styleEl);
-const cvar = (t) => `var(--c-${slug(t)})`;
-
-/* ------------------------------------------------------- structure/tree --- */
-
-const coordinators = AGENTS.filter((a) => a.parent === root.id).sort((x, y) => T(x.start) - T(y.start));
-const coordSet = new Set(coordinators.map((c) => c.id));
-
-/* nearest coordinator ancestor + depth from root (root=0, coord=1, worker=2, …) */
-function ancestorCoord(a) {
-  let cur = a, guard = 0;
-  while (cur && guard++ < 40) {
-    if (coordSet.has(cur.id)) return cur.id;
-    if (cur.parent == null) return null;
-    cur = byId[cur.parent];
-  }
-  return null;
-}
-function depthOf(a) {
-  let d = 0, cur = a, guard = 0;
-  while (cur && cur.parent != null && guard++ < 40) { d++; cur = byId[cur.parent]; }
-  return d;
-}
-AGENTS.forEach((a) => { a.depth = depthOf(a); a.coord = a === root || coordSet.has(a.id) ? null : ancestorCoord(a); });
-const workers = AGENTS.filter((a) => a !== root && !coordSet.has(a.id));
-
-/* groups: arrays of coordinator ids. default = one group holding every coordinator */
-let GROUPS = (Array.isArray(DATA.groups) && DATA.groups.length)
-  ? DATA.groups.map((g) => g.filter((id) => coordSet.has(id)))
-  : [coordinators.map((c) => c.id)];
-GROUPS = GROUPS.filter((g) => g.length);
-/* any coordinator not placed by DATA.groups → append to a trailing group */
-const placed = new Set(GROUPS.flat());
-const leftovers = coordinators.filter((c) => !placed.has(c.id)).map((c) => c.id);
-if (leftovers.length) GROUPS.push(leftovers);
-if (!GROUPS.length) GROUPS = [[]];
-const groupIndexOfCoord = {};
-GROUPS.forEach((g, gi) => g.forEach((id) => { groupIndexOfCoord[id] = gi; }));
-const groupIndexOf = (a) => a === root ? -1
-  : coordSet.has(a.id) ? groupIndexOfCoord[a.id]
-  : (a.coord != null ? groupIndexOfCoord[a.coord] : 0) ?? 0;
-
-/* ---------------------------------------------------------- shared/time --- */
-
-function T(s) { return new Date(s).getTime(); }
-const MIN = 60000;
-AGENTS.forEach((a) => { a.t0 = T(a.start); a.t1 = T(a.end); if (!(a.t1 > a.t0)) a.t1 = a.t0 + 30000; });
-
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const fmtDur = (ms) => {
-  const m = Math.round(ms / MIN);
-  if (m < 1) return `${Math.round(ms / 1000)}s`;
-  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
-};
-const workLabel = (w) => WORK_LABEL[w] || w;
-
-/* work-type silhouettes */
-function shapePath(work, x, y, w, h) {
-  if (work === 'testing') {
-    const c = 10;
-    return `M${x + c},${y} H${x + w - c} L${x + w},${y + c} V${y + h - c} L${x + w - c},${y + h} H${x + c} L${x},${y + h - c} V${y + c} Z`;
-  }
-  if (work === 'docs') {
-    const f = 14, r = 8;
-    return `M${x + r},${y} H${x + w - f} L${x + w},${y + f} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
-  }
-  if (work === 'orchestration') {
-    const v = 9;
-    return `M${x},${y + v} L${x + w / 2},${y} L${x + w},${y + v} V${y + h - v} L${x + w / 2},${y + h} L${x},${y + h - v} Z`;
-  }
-  const r = 9; // implementation / research / default: rounded rect
-  return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
-}
-
-const STATUS_BADGE = { cutoff: '✕ usage limit', dropped: '✕ connection lost', fault: '✕ harness fault' };
-
-const svgParts = [];
-const htmlParts = [];
-let BOARD_W = 0, BOARD_H = 0;
-
-/* shared (horizontal orientation only): layout state hoisted to top level so
-   the post-paint measurement passes (growOrchestratorHeightsHorizontal,
-   relayoutHorizontalBlocks, expandHorizontalNodeWidths) can read/mutate it —
-   it's assigned inside the horizontal branch below, not re-declared there. */
-let H_HEAD_H = 0, H_LANE_H = 0, H_ROW_GAP = 0, H_TRACK_GAP = 0, H_TOP_Y = 0, H_SPINE_PAD = 0, H_MAIN_ROW_H = 0;
-let hBlocks = [], hTracks = [], hTrackMeta = [];
-/* set by relayoutHorizontalBlocks() when a block/track grew — tells
-   expandHorizontalNodeWidths() it must still do its full repaint even if
-   no node widths changed (heights alone can move BOARD_H/y0s). */
-let H_HEIGHTS_CHANGED = false;
-
-svgParts.push(`<defs>
-  <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-    <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
-  </pattern>
-  <pattern id="breakhatch" width="9" height="9" patternTransform="rotate(-45)" patternUnits="userSpaceOnUse">
-    <line x1="0" y1="0" x2="0" y2="9" stroke="var(--line)" stroke-width="1.4" opacity="0.6"/>
-  </pattern>
-  ${typeOrder.map((t) => `
-  <marker id="arr-${slug(t)}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
-    <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="${cvar(t)}"/>
-  </marker>
-  <marker id="dot-${slug(t)}" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="5" markerHeight="5">
-    <circle cx="3" cy="3" r="2.6" fill="${cvar(t)}"/>
-  </marker>`).join('')}
-  <marker id="arr-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
-    <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="var(--muted)"/>
-  </marker>
-</defs>`);
-
-/* shared: render an edges[] array (dispatch/return/respawn descriptors) as
-   <path> elements — identical for both orientations, only the `d` string's
-   coordinates differ. respawnLabelOffset lets each orientation nudge the
-   "⟳ respawn" text to sit clear of its curve. */
-function pushEdges(edges, respawnLabelOffset) {
-  const [rlx, rly] = respawnLabelOffset || [8, 30];
-  for (const e of edges) {
-    svgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
-      stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
-      ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
-      ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
-    if (e.respawn) {
-      const mid = e.d.match(/M([\d.]+),([\d.]+) C/);
-      if (mid) svgParts.push(`<text x="${+mid[1] + rlx}" y="${+mid[2] + rly}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
+    for (const session of index.sessions) {
+      try {
+        const ndjsonResp = await fetch(`${SESSIONS_DIR}/${session.id}.ndjson`);
+        if (!ndjsonResp.ok) continue;
+        const ndjsonText = await ndjsonResp.text();
+        const sessionData = JSON.parse(ndjsonText.split('\n')[0]);
+        agents.push(...(sessionData.agents || []));
+        markers.push(...(sessionData.markers || []));
+        loadedSessions.push(sessionData);
+      } catch (e) {
+        console.error(`Failed to load session ${session.id}:`, e);
+      }
     }
+
+    return {
+      draft: false,
+      multiSession: loadedSessions.length > 1,
+      sessions: loadedSessions,
+      title: `Agent graph (${loadedSessions.length} sessions)`,
+      eyebrow: 'multi-session view',
+      subtitle: '',
+      footer: '',
+      agents,
+      markers,
+    };
+  } catch (e) {
+    console.error('Failed to load dynamic sessions:', e);
+    return DATA;
   }
 }
 
-/* shared: paint one agent block — surface backing, tinted/hatched shape,
-   and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
-   whichever orientation's coordinate space the caller computed. */
-function paintNode(a, x, y, w, h, pad, tight, skillsFit) {
-  svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
-    fill="var(--surface)" stroke="none"/>`);
-  svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
-    fill="${cvar(a.type)}" fill-opacity="0.13" stroke="${cvar(a.type)}" stroke-width="1.5"
-    ${a.status !== 'ok' ? 'stroke-dasharray="5 3"' : ''}/>`);
-  if (a.status !== 'ok') {
-    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
+// Ensure data is loaded before initialization
+(async () => {
+  if (DYNAMIC_MODE) {
+    DATA = await loadDynamicSessions();
   }
-  htmlParts.push(`<div class="node${tight ? ' tight' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
-    style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};">
-    <span class="t">${esc(a.title)}</span>
-    ${a.status !== 'ok'
-      ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
-      : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
-    ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
-  </div>`);
-}
+  // Fall through to initialization code below
+})().catch(e => console.error('Initialization error:', e));
 
-/* shared (horizontal orientation only): orthogonal V–H–V elbow with rounded
-   corners: vertical out of x1,y1, a single horizontal turn in the channel at
-   yk, vertical into x2,y2 — the rotated analogue of the vertical layout's
-   elbowH. Declared at top level (not inside the horizontal branch below) so
-   expandHorizontalNodeWidths() can also call it during its post-paint
-   re-layout pass. */
-function elbowV(x1, y1, x2, y2, yk, r) {
-  const sIn = Math.sign(yk - y1) || 1;
-  const sH = Math.sign(x2 - x1) || 1;
-  const sOut = Math.sign(y2 - yk) || 1;
-  const rr = Math.max(0, Math.min(r, Math.abs(x2 - x1) / 2, Math.abs(yk - y1), Math.abs(y2 - yk)));
-  return `M${x1},${y1} V${yk - sIn * rr}`
-    + ` Q${x1},${yk} ${x1 + sH * rr},${yk}`
-    + ` H${x2 - sH * rr}`
-    + ` Q${x2},${yk} ${x2},${yk + sOut * rr}`
-    + ` V${y2}`;
-}
 
-if (ORIENTATION === 'horizontal') {
-  /* ============================================== horizontal layout === */
-  /* time runs left→right. Each depth-1 coordinator gets its own BLOCK
-     (head row = the coordinator, sub-lanes below = its full subtree, its
-     own descendants only — never another coordinator's). Blocks that
-     don't overlap in time share a horizontal TRACK, Gantt-style (packed
-     left→right by start time); only time-overlapping blocks drop to a
-     new, lower track. The main thread is always its own fixed top row. */
 
-  const H_LEFT = 190;      // left rail label column width
-  H_MAIN_ROW_H = 34;   // main spine thickness
-  H_SPINE_PAD = 20;    // small gap between the ruler/gridline top and the spine
-  H_TRACK_GAP = 26;    // gap between packed coordinator tracks
-  H_HEAD_H = 64;       // coordinator head-row height within its block (fits 2-line title + meta line)
-  H_LANE_H = 64;       // worker sub-lane height within a block (same wrap risk as the head row)
-  H_ROW_GAP = 8;       // gap between rows within a block
-  const MIN_W = 92;        // min node width
-  const PAD_SEG = 2.5 * MIN;
-  const GAP_MIN = 14 * MIN;
-  const BREAK_W = 64;
+async function initializeGraph() {
+  /* validated categorical palette (dataviz, CVD-checked, both themes) */
+  const LIGHT = ['#4a3aa7', '#1baf7a', '#2a78d6', '#eda100', '#e87ba4', '#008300', '#eb6834', '#e34948'];
+  const DARK  = ['#9085e9', '#199e70', '#3987e5', '#c98500', '#d55181', '#008300', '#d95926', '#e66767'];
+  
+  const WORK_LABEL = {
+    orchestration: 'orchestration', implementation: 'implementation',
+    testing: 'testing / gates', docs: 'docs', research: 'research',
+  };
+  
+  /* normalise agents (defensive defaults for optional fields) */
+  const AGENTS = DATA.agents.map((a) => ({
+    respawnOf: null, parentGuessed: false, model: null, skills: [], status: 'ok',
+    work: 'implementation',
+    ...a,
+    counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
+    skills: Array.isArray(a.skills) ? a.skills : [],
+  }));
+  const MARKERS = Array.isArray(DATA.markers) ? DATA.markers.slice() : [];
+  
+  const byId = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
 
-  /* active segments (merge event times closer than GAP_MIN) — same idea
-     as the vertical layout's time compression, just applied along x */
-  const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
-    .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
-  const rawSegs = [];
-  for (const t of times) {
-    const last = rawSegs[rawSegs.length - 1];
-    if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
-    else rawSegs.push({ start: t, end: t });
+  /* ROOTS, not root. A single-session graph has exactly one parentless agent
+     (its main thread), but an aggregated multi-session graph flattens N
+     sessions into one AGENTS array and so legitimately has N parentless mains
+     — one per session. Every one of them is a real root: it owns its own
+     session's coordinators and its own y/x extent.
+
+     `root` is ONLY the PRIMARY root (earliest-starting), and is used purely
+     for board-level chrome that needs a single representative: the palette
+     seed and the colour of the spine/marker glyphs (every main shares
+     type 'main', so the choice is cosmetic and stable). Anything STRUCTURAL —
+     "is this agent a root?", "is this agent's parent a root?" — must go via
+     isRoot()/byId[a.parent], never `=== root`, or it silently attributes every
+     session's children to one arbitrary session's main thread. */
+  const ROOTS = AGENTS.filter((a) => a.parent == null);
+  if (!ROOTS.length && AGENTS.length) ROOTS.push(AGENTS[0]);
+  const ROOT_IDS = new Set(ROOTS.map((a) => a.id));
+  const isRoot = (a) => !!a && ROOT_IDS.has(a.id);
+  ROOTS.sort((x, y) => T(x.start) - T(y.start));
+  const root = ROOTS[0];
+  
+  /* ------------------------------------------------------------- colours --- */
+  
+  const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+  const typeOrder = [];
+  const pushType = (t) => { if (!typeOrder.includes(t)) typeOrder.push(t); };
+  pushType(root.type);
+  AGENTS.forEach((a) => pushType(a.type));
+  
+  function cssVars(arr) {
+    return typeOrder.map((t, i) => `--c-${slug(t)}:${arr[i % arr.length]};`).join('');
   }
-  if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
-  const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
-  const SCALE_PXPM = Math.min(40, Math.max(10, 6600 / activeMinutes));
-  const SCALE = SCALE_PXPM / MIN;
-
-  let cursorX = H_LEFT + 20;
-  const segs = rawSegs.map((s, i) => {
-    const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
-    if (i > 0) cursorX += BREAK_W;
-    const x0 = cursorX;
-    cursorX += (end - start) * SCALE;
-    return { start, end, x0, x1: cursorX, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
-  });
-
-  function xOf(t) {
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      if (t <= s.end) return t < s.start ? s.x0 : s.x0 + (t - s.start) * SCALE;
+  const styleEl = document.createElement('style');
+  styleEl.textContent = [
+    `:root{${cssVars(LIGHT)}}`,
+    `@media (prefers-color-scheme:dark){:root{${cssVars(DARK)}}}`,
+    `:root[data-theme="dark"]{${cssVars(DARK)}}`,
+    `:root[data-theme="light"]{${cssVars(LIGHT)}}`,
+  ].join('\n');
+  document.head.appendChild(styleEl);
+  const cvar = (t) => `var(--c-${slug(t)})`;
+  
+  /* ------------------------------------------------------- structure/tree --- */
+  
+  /* a coordinator is a child of ANY root (i.e. any session's main thread) */
+  const coordinators = AGENTS.filter((a) => a.parent != null && ROOT_IDS.has(a.parent))
+    .sort((x, y) => T(x.start) - T(y.start));
+  const coordSet = new Set(coordinators.map((c) => c.id));
+  
+  /* nearest coordinator ancestor + depth from root (root=0, coord=1, worker=2, …) */
+  function ancestorCoord(a) {
+    let cur = a, guard = 0;
+    while (cur && guard++ < 40) {
+      if (coordSet.has(cur.id)) return cur.id;
+      if (cur.parent == null) return null;
+      cur = byId[cur.parent];
     }
-    return segs[segs.length - 1].x1;
+    return null;
   }
-  for (const a of AGENTS) {
-    a.x0 = xOf(a.t0);
-    a.w = Math.max(MIN_W, xOf(a.t1) - a.x0);
+  function depthOf(a) {
+    let d = 0, cur = a, guard = 0;
+    while (cur && cur.parent != null && guard++ < 40) { d++; cur = byId[cur.parent]; }
+    return d;
   }
-  /* de-duplicate x0 among siblings that start at the exact same instant
-     (e.g. two concurrent Claude Code sessions dispatched off the same
-     prompt). Left tied, their dispatch edges below share an identical
-     px/cx column, so elbowV(px,py,cx,cy,...) degenerates to a plain
-     vertical line for BOTH edges — they become pixel-identical over the
-     shorter edge's whole length. Whichever is appended later in AGENTS
-     order paints its line (and arrowhead) directly on top of the other's,
-     visually erasing the shorter edge's connector even though the node
-     itself renders fine — it just looks disconnected from the spine.
-     Nudging each successive tied sibling a few px right keeps their
-     dispatch lines (and node boxes, block containers, lane packing —
-     everything downstream reads a.x0) visibly distinct. */
-  {
-    const tieCounts = {};
-    for (const a of AGENTS) {
-      if (!a.parent) continue;
-      const key = a.parent + '@' + a.x0;
-      const n = tieCounts[key] || 0;
-      tieCounts[key] = n + 1;
-      if (n > 0) a.x0 += n * 5;
+  AGENTS.forEach((a) => { a.depth = depthOf(a); a.coord = isRoot(a) || coordSet.has(a.id) ? null : ancestorCoord(a); });
+  const workers = AGENTS.filter((a) => !isRoot(a) && !coordSet.has(a.id));
+  
+  /* groups: arrays of coordinator ids. default = one group holding every coordinator */
+  let GROUPS = (Array.isArray(DATA.groups) && DATA.groups.length)
+    ? DATA.groups.map((g) => g.filter((id) => coordSet.has(id)))
+    : [coordinators.map((c) => c.id)];
+  GROUPS = GROUPS.filter((g) => g.length);
+  /* any coordinator not placed by DATA.groups → append to a trailing group */
+  const placed = new Set(GROUPS.flat());
+  const leftovers = coordinators.filter((c) => !placed.has(c.id)).map((c) => c.id);
+  if (leftovers.length) GROUPS.push(leftovers);
+  if (!GROUPS.length) GROUPS = [[]];
+  const groupIndexOfCoord = {};
+  GROUPS.forEach((g, gi) => g.forEach((id) => { groupIndexOfCoord[id] = gi; }));
+  const groupIndexOf = (a) => isRoot(a) ? -1
+    : coordSet.has(a.id) ? groupIndexOfCoord[a.id]
+    : (a.coord != null ? groupIndexOfCoord[a.coord] : 0) ?? 0;
+  
+  /* ---------------------------------------------------------- shared/time --- */
+  
+  function T(s) { return new Date(s).getTime(); }
+  const MIN = 60000;
+  AGENTS.forEach((a) => { a.t0 = T(a.start); a.t1 = T(a.end); if (!(a.t1 > a.t0)) a.t1 = a.t0 + 30000; });
+  
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const fmtDur = (ms) => {
+    const m = Math.round(ms / MIN);
+    if (m < 1) return `${Math.round(ms / 1000)}s`;
+    return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+  };
+  const workLabel = (w) => WORK_LABEL[w] || w;
+  
+  /* work-type silhouettes */
+  function shapePath(work, x, y, w, h) {
+    if (work === 'testing') {
+      const c = 10;
+      return `M${x + c},${y} H${x + w - c} L${x + w},${y + c} V${y + h - c} L${x + w - c},${y + h} H${x + c} L${x},${y + h - c} V${y + c} Z`;
     }
-  }
-  BOARD_W = segs[segs.length - 1].x1 + 30;
-
-  /* main-thread markers are laid out first (before H_TOP_Y is fixed) so the
-     board reserves exactly as much header room as the stacked rows need —
-     labels draw ABOVE the entire graph (ruler ticks included), each marker
-     greedily assigned to the first row whose last-placed label ends before
-     this one starts, so close-together prompts stack into new rows instead
-     of overlapping or crowding the timeline below. */
-  const MARKER_ROW_H = 15;
-  const MARKER_LABEL_W = 150;
-  const MARKER_MIN_GAP = 10;
-  const sortedMarkers = MARKERS.slice().sort((p, q) => T(p.at) - T(q.at));
-  const markerRowEndX = [];
-  for (const m of sortedMarkers) {
-    m._x = xOf(T(m.at));
-    let row = markerRowEndX.findIndex((endX) => endX <= m._x - MARKER_MIN_GAP);
-    if (row === -1) { row = markerRowEndX.length; markerRowEndX.push(-Infinity); }
-    m._row = row;
-    markerRowEndX[row] = m._x + MARKER_LABEL_W;
-  }
-  const MARKER_ROWS = Math.max(1, markerRowEndX.length);
-  const MARKER_TOP = 10;
-  const MARKER_AREA_H = MARKER_TOP + MARKER_ROWS * MARKER_ROW_H;
-  H_TOP_Y = MARKER_AREA_H + 24;  // top padding above the board (ruler labels), below the marker header
-
-  /* per-coordinator blocks: coordinator + its full subtree, subtree
-     packed into greedy non-overlapping sub-lanes (own descendants only —
-     this is what keeps a coordinator's cluster contiguous: cross-block
-     mixing never happens because each block only ever looks at its own
-     subtree). */
-  const childrenOf = {};
-  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
-  function collectSubtree(id, set) {
-    set.add(id);
-    for (const c of (childrenOf[id] || [])) collectSubtree(c, set);
-  }
-
-  hBlocks = coordinators.map((c) => {
-    const set = new Set();
-    collectSubtree(c.id, set);
-    const members = AGENTS.filter((a) => set.has(a.id));
-    const descendants = members.filter((a) => a.id !== c.id).sort((x, y) => x.t0 - y.t0);
-    /* pack lanes by rendered PIXEL extent (x0..x0+w), not raw timestamps —
-       MIN_W clamps short tasks to a wide box regardless of real duration,
-       so two agents that don't overlap in time can still overlap on screen
-       once a compressed week-long time scale squeezes their real gap down
-       to a few px. Checking x0/w (already computed above) instead of t0/t1
-       keeps same-lane neighbors from visually colliding. */
-    const LANE_GAP_PX = 6;
-    const laneEndsX = [];
-    for (const d of descendants) {
-      let lane = laneEndsX.findIndex((endX) => endX <= d.x0);
-      if (lane === -1) { lane = laneEndsX.length; laneEndsX.push(0); }
-      laneEndsX[lane] = d.x0 + d.w + LANE_GAP_PX;
-      d.blockLane = lane;
+    if (work === 'docs') {
+      const f = 14, r = 8;
+      return `M${x + r},${y} H${x + w - f} L${x + w},${y + f} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
     }
-    const laneEnds = laneEndsX;
-    const numLanes = laneEnds.length;
-    const h = H_HEAD_H + (numLanes ? numLanes * (H_LANE_H + H_ROW_GAP) : 0);
-    const t0 = c.t0;
-    const t1 = Math.max(c.t1, ...members.map((m) => m.t1));
-    /* rendered pixel extent of the whole block (coordinator + subtree) —
-       used for track packing below instead of raw t0/t1, for the same
-       MIN_W-clamping reason the lane packing above switched to pixels. */
-    const bx0 = Math.min(...members.map((m) => m.x0));
-    const bx1 = Math.max(...members.map((m) => m.x0 + m.w));
-    return { head: c, members, descendants, numLanes, h, t0, t1, bx0, bx1 };
-  });
-
-  /* Gantt-style track packing: coordinators are already sorted by start
-     time (`coordinators` sort, above), so this greedy pass is a classic
-     interval-graph row packing — reuse the first track whose last-placed
-     block ends before this block starts, else open a new (lower) track.
-     Non-overlapping blocks end up sharing a track (side by side in time);
-     only genuinely overlapping blocks stack. Packed by rendered pixel
-     extent (bx0/bx1), not raw timestamps — MIN_W-clamped short blocks can
-     still collide on screen even when their real times don't overlap. */
-  const TRACK_GAP_PX = 8;
-  hTracks = [];
-  for (const b of hBlocks) {
-    let ti = hTracks.findIndex((tr) => tr.endX <= b.bx0);
-    if (ti === -1) { ti = hTracks.length; hTracks.push({ endX: -Infinity, blocks: [] }); }
-    hTracks[ti].blocks.push(b);
-    hTracks[ti].endX = Math.max(hTracks[ti].endX, b.bx1 + TRACK_GAP_PX);
-    b.track = ti;
-  }
-  hTrackMeta = hTracks.map((tr) => ({ h: Math.max(...tr.blocks.map((b) => b.h)) }));
-  /* first track starts below: ruler pad, then the marker band (now above
-     the main row), then the main row itself, then the inter-track gap */
-  let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
-  hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
-  BOARD_H = cursorY + 20;
-
-  for (const b of hBlocks) {
-    b.top = hTrackMeta[b.track].top;
-    b.head.y0 = b.top; b.head.h = H_HEAD_H;
-    for (const d of b.descendants) {
-      d.y0 = b.top + H_HEAD_H + H_ROW_GAP + d.blockLane * (H_LANE_H + H_ROW_GAP);
-      d.h = H_LANE_H;
+    if (work === 'orchestration') {
+      const v = 9;
+      return `M${x},${y + v} L${x + w / 2},${y} L${x + w},${y + v} V${y + h - v} L${x + w / 2},${y + h} L${x},${y + h - v} Z`;
     }
+    const r = 9; // implementation / research / default: rounded rect
+    return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
   }
-  root.x0 = xOf(root.t0);
-  root.w = Math.max(MIN_W, xOf(root.t1) - root.x0);
-  root.y0 = H_TOP_Y + H_SPINE_PAD; root.h = H_MAIN_ROW_H;
-
-  /* time ruler + vertical gridlines */
-  for (const s of segs) {
-    const first = Math.ceil(s.start / (15 * MIN)) * 15 * MIN;
-    for (let t = first; t <= s.end; t += 15 * MIN) {
-      const xg = xOf(t);
-      svgParts.push(`<line x1="${xg}" y1="${H_TOP_Y}" x2="${xg}" y2="${BOARD_H - 8}" stroke="var(--grid)" stroke-width="1" opacity="0.5"/>
-        <text x="${xg + 4}" y="${H_TOP_Y - 8}" font-size="10.5" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${fmtT(t)}</text>`);
-    }
-  }
-
-  /* break strips (idle gaps compressed into fixed-width hatched bands) */
-  segs.forEach((s, i) => {
-    if (!segs[i + 1]) return;
-    const xg = s.x1, gap = s.gapAfterMs;
-    svgParts.push(`<rect x="${xg + 6}" y="${H_TOP_Y}" width="${BREAK_W - 12}" height="${BOARD_H - H_TOP_Y - 8}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
-    htmlParts.push(`<div class="break-label mono" style="left:${xg + 6}px; top:${H_TOP_Y + 10}px; width:${BREAK_W - 12}px; font-size:9.5px; text-align:center; color:var(--muted); display:block;">idle<br>${fmtDur(gap)}</div>`);
-  });
-
-  /* per-block dashed containers (visual grouping of a coordinator + its subtree) */
-  for (const b of hBlocks) {
-    const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
-    const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
-    svgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
-      fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-  }
-
-  /* left-rail labels — main thread, then one row per track naming every
-     block on that track (sequential blocks sharing a track are chained) */
-  htmlParts.push(`<div class="colhead" style="left:8px; top:${root.y0}px; width:${H_LEFT - 12}px;">
-    <span class="name">main thread</span><span class="meta">the session</span></div>`);
-  hTrackMeta.forEach((tm, ti) => {
-    const names = hTracks[ti].blocks.map((b) => `${esc(b.head.type)} <span class="mono">(${fmtDur(b.head.t1 - b.head.t0)})</span>`).join(' → ');
-    const topLabel = tm.top + tm.h / 2 - 16;
-    htmlParts.push(`<div class="colhead" style="left:8px; top:${topLabel}px; width:${H_LEFT - 12}px;">
-      <span class="name">track ${ti + 1}</span><span class="meta">${names}</span></div>`);
-  });
-
-  /* main spine */
-  svgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', root.x0, root.y0, root.w, root.h)}"
-    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
-
-  /* edges: dispatch + return + respawn */
-  const edges = [];
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const parent = byId[a.parent];
-    if (!parent) continue;
-    const px = a.x0 + 4;
-    const py = a.parent === root.id ? root.y0 + root.h : parent.y0 + parent.h;
-    const cx = px, cy = a.y0;
-    const yk = (py + cy) / 2;
-    edges.push({ from: a.parent, to: a.id,
-      d: elbowV(px, py, cx, cy, yk, 6),
-      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-    if (a.status === 'ok') {
-      const rx = a.x0 + a.w - 4;
-      const ry0 = a.y0 + a.h, ry1 = py + 4;
-      const ryk = (ry0 + ry1) / 2;
-      edges.push({ from: a.id, to: a.parent,
-        d: elbowV(rx, ry0, rx, ry1, ryk, 6),
-        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
-    }
-    if (a.respawnOf && byId[a.respawnOf]) {
-      const dead = byId[a.respawnOf];
-      const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
-      const ay = a.y0 + a.h / 2, ax = a.x0;
-      edges.push({ from: dead.id, to: a.id, d:
-        `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
-        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
-    }
-  }
-  pushEdges(edges, [6, -8]);
-
-  /* agent blocks */
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const pad = a.work === 'orchestration' ? 8 : 2;
-    const tight = a.w < 140;
-    paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight, a.skills.length && a.w >= 160);
-  }
-
-  /* main-thread markers — labels render as small clickable node-like boxes
-     in a dedicated header ABOVE the entire graph (ruler ticks included),
-     each in the row it was greedily assigned to above (so close-together
-     prompts stack into new rows instead of colliding), with a thin dashed
-     leader line down to a diamond on the spine marking the actual moment.
-     Single-line with an ellipsis if a prompt is unusually long — click (or
-     Enter/Space) opens the drawer with the full, untruncated text. */
-  for (const m of sortedMarkers) {
-    const mxg = m._x;
-    const labelTop = MARKER_TOP + m._row * MARKER_ROW_H;
-    const my = root.y0 + root.h / 2;
-    svgParts.push(`<line x1="${mxg}" y1="${labelTop + MARKER_ROW_H - 2}" x2="${mxg}" y2="${my}" stroke="${cvar(root.type)}" stroke-width="1" stroke-dasharray="2 3" opacity="0.55"/>`);
-    svgParts.push(`<path d="M${mxg - 5.5},${my} l5.5,-5.5 l5.5,5.5 l-5.5,5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
-    const labelX = Math.max(8, Math.min(mxg - 10, BOARD_W - MARKER_LABEL_W - 8));
-    htmlParts.push(`<div class="marker-label row" data-marker="${MARKERS.indexOf(m)}" tabindex="0" role="button"
-      style="left:${labelX}px; top:${labelTop}px; width:${MARKER_LABEL_W}px;" title="${esc(m.label)}">
-      <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${esc(m.label)}
-    </div>`);
-  }
-
-} else {
-  /* ================================================ vertical layout === */
-  const PAD_SEG = 2.5 * MIN;
-  const GAP_MIN = 14 * MIN;
-  const BREAK_H = 64;
-  const TOP = 84;
-  const MIN_H = 52;
-  const LANE_W = 148, LANE_GAP = 16, SPINE_W = 12;
-  const RULER_W = 52;
-
-  /* active segments (merge event times closer than GAP_MIN) */
-  const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
-    .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
-  const rawSegs = [];
-  for (const t of times) {
-    const last = rawSegs[rawSegs.length - 1];
-    if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
-    else rawSegs.push({ start: t, end: t });
-  }
-  if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
-
-  /* adaptive scale from summed active minutes */
-  const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
-  const SCALE_PXPM = Math.min(32, Math.max(4, 3400 / activeMinutes));
-  const SCALE = SCALE_PXPM / MIN;   // px per ms
-
-  let cursor = TOP;
-  const segs = rawSegs.map((s, i) => {
-    const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
-    if (i > 0) cursor += BREAK_H;
-    const y0 = cursor;
-    cursor += (end - start) * SCALE;
-    return { start, end, y0, y1: cursor, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
-  });
-  BOARD_H = cursor + 46;
-
-  function yOf(t) {
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      if (t <= s.end) return t < s.start ? s.y0 : s.y0 + (t - s.start) * SCALE;
-    }
-    return segs[segs.length - 1].y1;
-  }
-  for (const a of AGENTS) {
-    a.y0 = yOf(a.t0);
-    a.h = Math.max(MIN_H, yOf(a.t1) - a.y0);
-  }
-
-  /* per-session BLOCKS: each depth-1 coordinator (one per aggregated
-     session/tree) plus its full subtree is rendered as one self-contained
-     unit — its own coordinator column and its own worker sub-lanes travel
-     together. This replaces the old design's two GLOBAL flat columns (all
-     coordinators mixed in one strip, all workers mixed in another) which
-     visually merged unrelated sessions together. It reuses the horizontal
-     layout's block/track-packing math (see hBlocks/hTracks/collectSubtree
-     above), transposed: there time is x and blocks pack into horizontal
-     TRACKS by x-extent; here time is y, so blocks pack into vertical
-     COLUMN-TRACKS by y-extent — non-overlapping-in-time blocks share a
-     column (stacked one after another, since their own y-positions from
-     yOf() already keep them apart in time); only genuinely time-overlapping
-     blocks get pushed into a new, further-right column-track. */
-  const childrenOf = {};
-  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
-  function collectSubtree(id, set) {
-    set.add(id);
-    for (const cid of (childrenOf[id] || [])) collectSubtree(cid, set);
-  }
-
-  const COL_GAP = 32;     // gap between a block's own coord column and its worker sub-lanes
-  const TRACK_GAP = 44;   // gap between column-tracks (blocks that DO overlap in time)
-  const LANE_GAP_Y = 16;  // min y-gap enforced between sub-lane occupants
-
-  /* GROUPS (DATA.groups) is still honoured, but composed with the new
-     auto-packer rather than assigning hard columns: coordinators are
-     processed in [group, start-time] order (default: a single group ⇒
-     pure start-time order, unchanged from before) so an explicitly grouped
-     cluster of coordinators tends to land in adjacent column-tracks, while
-     the automatic time-overlap packer still has final say over how many
-     tracks are actually needed — groups is now a soft clustering hint over
-     the auto-layout rather than a hard column assignment. */
-  const orderedCoordinators = coordinators.slice()
-    .sort((x, y) => (groupIndexOfCoord[x.id] ?? 0) - (groupIndexOfCoord[y.id] ?? 0) || x.t0 - y.t0);
-
-  const blocks = orderedCoordinators.map((c) => {
-    const set = new Set();
-    collectSubtree(c.id, set);
-    const descendants = AGENTS.filter((a) => set.has(a.id) && a.id !== c.id).sort((x, y) => x.t0 - y.t0);
-    /* internal sub-lane packing: pack this block's OWN descendants (any
-       depth) into greedy first-fit sub-lanes by y-extent (their rendered
-       y0/h) — the vertical-axis analogue of the horizontal branch's
-       laneEndsX. No cross-block sharing is possible any more (each block
-       only ever looks at its own subtree), so the old sticky
-       coordinator-lane-reuse hack — needed only because unrelated
-       coordinators used to share one global worker-lane pool — is gone:
-       every descendant here already belongs to the same coordinator, so a
-       plain first-fit is enough to keep the block's own cluster tight. */
-    const laneEnds = [];
-    for (const d of descendants) {
-      let lane = laneEnds.findIndex((endY) => endY + LANE_GAP_Y <= d.y0);
-      if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
-      laneEnds[lane] = d.y0 + d.h;
-      d.lane = lane;
-    }
-    const numLanes = laneEnds.length;
-    const width = LANE_W + (numLanes ? COL_GAP + numLanes * (LANE_W + LANE_GAP) - LANE_GAP : 0);
-    const members = [c, ...descendants];
-    const by0 = Math.min(...members.map((m) => m.y0));
-    const by1 = Math.max(...members.map((m) => m.y0 + m.h));
-    return { head: c, descendants, numLanes, width, by0, by1 };
-  });
-
-  /* column-track packing: classic interval-graph row packing, transposed —
-     reuse the first track whose last-placed block ends (in y) before this
-     block starts, else open a new (further-right) track. Non-overlapping
-     blocks end up sharing a column (stacked in time); only genuinely
-     overlapping blocks stack side by side into separate tracks. */
-  const V_TRACK_GAP_PX = 8;
-  const vTracks = [];
-  for (const b of blocks) {
-    let ti = vTracks.findIndex((tr) => tr.endY <= b.by0);
-    if (ti === -1) { ti = vTracks.length; vTracks.push({ endY: -Infinity, blocks: [] }); }
-    vTracks[ti].blocks.push(b);
-    vTracks[ti].endY = Math.max(vTracks[ti].endY, b.by1 + V_TRACK_GAP_PX);
-    b.track = ti;
-  }
-  const trackMeta = vTracks.map((tr) => ({ w: Math.max(...tr.blocks.map((bl) => bl.width)) }));
-
-  /* column x positions: [ruler][main] then one column per track */
-  const MAIN_W = SPINE_W + 174;
-  const X_MAIN = RULER_W + 14;
-  const trackX = [];
-  {
-    let x = X_MAIN + MAIN_W + COL_GAP;
-    trackMeta.forEach((tm, ti) => { trackX[ti] = x; x += tm.w + TRACK_GAP; });
-    BOARD_W = (trackMeta.length ? x - TRACK_GAP : x) + 14;
-  }
-
-  const blockByCoordId = {};
-  blocks.forEach((b) => { b.head.lane = b.track; blockByCoordId[b.head.id] = b; });
-
-  function xOf(a) {
-    if (a === root) return X_MAIN;
-    if (coordSet.has(a.id)) return trackX[blockByCoordId[a.id].track];
-    const b = a.coord != null ? blockByCoordId[a.coord] : blocks[0];
-    if (!b) return X_MAIN + MAIN_W + COL_GAP;
-    return trackX[b.track] + LANE_W + COL_GAP + (a.lane || 0) * (LANE_W + LANE_GAP);
-  }
-
-  /* per-block bands — coordinator + its own subtree, behind everything.
-     Every block gets one, even a lone coordinator with no workers: the
-     band now marks "this is one self-contained session", not just a
-     worker-cluster grouping like before. */
-  let bandNo = 0;
-  for (const b of blocks) {
-    bandNo++;
-    const members = [b.head, ...b.descendants];
-    const bx0 = Math.min(...members.map(xOf)) - 8;
-    const bx1 = Math.max(...members.map((a) => xOf(a) + LANE_W)) + 8;
-    const by0 = Math.min(...members.map((a) => a.y0)) - 19;
-    const by1 = Math.max(...members.map((a) => a.y0 + a.h)) + 5;
-    const label = String(b.head.title || '').replace(/^Coordinator:\s*/i, '');
-    svgParts.push(`<rect x="${bx0}" y="${by0}" width="${bx1 - bx0}" height="${by1 - by0}" rx="13"
-      fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-    htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px;">${bandNo} · ${esc(label)}</div>`);
-  }
-
-  /* time ruler + gridlines */
-  for (const s of segs) {
-    const first = Math.ceil(s.start / (15 * MIN)) * 15 * MIN;
-    for (let t = first; t <= s.end; t += 15 * MIN) {
-      const y = yOf(t);
-      svgParts.push(`<line x1="${RULER_W}" y1="${y}" x2="${BOARD_W - 8}" y2="${y}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>
-        <text x="${RULER_W - 8}" y="${y + 3.5}" text-anchor="end" font-size="10.5" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${fmtT(t)}</text>`);
-    }
-  }
-
-  /* break bands */
-  segs.forEach((s, i) => {
-    if (!segs[i + 1]) return;
-    const y = s.y1, gap = s.gapAfterMs;
-    svgParts.push(`<rect x="8" y="${y + 8}" width="${BOARD_W - 16}" height="${BREAK_H - 16}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
-    const label = gap > 3 * 60 * MIN
-      ? `⏸ &nbsp;long pause — <span class="mono">${fmtDur(gap)}</span> idle`
-      : `idle — <span class="mono">${fmtDur(gap)}</span>`;
-    htmlParts.push(`<div class="break-label" style="left:${RULER_W + 22}px; top:${y + 8}px; height:${BREAK_H - 16}px; background:var(--surface); padding:0 10px;">${label}</div>`);
-  });
-
-  /* column headers — one per column-track, naming the session(s) packed
-     into it (sequential/non-overlapping sessions share a track and are
-     listed together, chained left→right by start time within it). Each
-     block's own band-label (above) carries its per-session title, so these
-     headers just orient the reader to "packed column", not a role column. */
-  htmlParts.push(`<div class="colhead" style="left:${X_MAIN - 4}px; width:${MAIN_W}px;">
-    <span class="name">main thread</span><span class="meta">the aggregate session</span></div>`);
-  vTracks.forEach((tr, ti) => {
-    const names = tr.blocks.map((b) => esc(b.head.type)).join(' · ');
-    htmlParts.push(`<div class="colhead" style="left:${trackX[ti] - 4}px; width:${trackMeta[ti].w + 8}px;">
-      <span class="name">${tr.blocks.length > 1 ? tr.blocks.length + ' sessions' : 'session'}</span>
-      <span class="meta">${names}</span></div>`);
-  });
-
-  /* dotted separators between column-tracks */
-  vTracks.forEach((tr, ti) => {
-    if (ti === 0) return;
-    const sx = trackX[ti] - TRACK_GAP / 2;
-    svgParts.push(`<line x1="${sx}" y1="${TOP - 20}" x2="${sx}" y2="${BOARD_H - 20}" stroke="var(--grid)" stroke-dasharray="2 6"/>`);
-  });
-
-  /* main spine */
-  svgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', X_MAIN, root.y0, SPINE_W, root.h)}"
-    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
-
-  /* orthogonal H–V–H elbow with rounded corners: horizontal out of x1,y1,
-     a single vertical turn in the channel at xk, horizontal into x2,y2.
-     The turn always sits in the gutter just outside the target, so the
-     connector never runs through a node body. */
-  function elbowH(x1, y1, x2, y2, xk, r) {
-    const sIn = Math.sign(xk - x1) || 1;    // dir of first horizontal (x1 → xk)
-    const sV = Math.sign(y2 - y1) || 1;     // dir of the vertical leg
-    const sOut = Math.sign(x2 - xk) || 1;   // dir of last horizontal (xk → x2)
-    const rr = Math.max(0, Math.min(r, Math.abs(y2 - y1) / 2, Math.abs(xk - x1), Math.abs(x2 - xk)));
-    return `M${x1},${y1} H${xk - sIn * rr}`
-      + ` Q${xk},${y1} ${xk},${y1 + sV * rr}`
-      + ` V${y2 - sV * rr}`
-      + ` Q${xk},${y2} ${xk + sOut * rr},${y2}`
-      + ` H${x2}`;
-  }
-
-  /* edges: dispatch + return + respawn */
-  const edges = [];
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const parent = byId[a.parent];
-    if (!parent) continue;
-    const px = a.parent === root.id ? X_MAIN + SPINE_W : xOf(parent) + LANE_W;
-    const cx = xOf(a);
-    const yTop = a.y0, yBot = a.y0 + a.h;
-    const xk = cx - 9;                       // vertical turn, in the target's left gutter
-    const off = 13 + (a.lane || 0) * 9;      // per-lane track offset so sibling buses don't overlap
-    /* dispatch: parent's right edge → down the gutter → into the child's left,
-       the long horizontal leg riding above the row */
-    edges.push({ from: a.parent, to: a.id,
-      d: elbowH(px, yTop - off, cx, yTop + 16, xk, 6),
-      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-    if (a.status === 'ok') {
-      /* return: out of the child's lower-left → below the row → back to the spine */
-      edges.push({ from: a.id, to: a.parent,
-        d: elbowH(cx, yBot - 16, px + 2, yBot + off, xk, 6),
-        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
-    }
-    if (a.respawnOf && byId[a.respawnOf]) {
-      const dead = byId[a.respawnOf];
-      const dx = xOf(dead) + LANE_W / 2, dy = dead.y0 + dead.h;
-      const ax = xOf(a) + LANE_W / 2;
-      edges.push({ from: dead.id, to: a.id, d:
-        `M${dx},${dy + 2} C${dx},${dy + 46} ${ax},${a.y0 - 46} ${ax},${a.y0 - 3}`,
-        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
-    }
-  }
-  pushEdges(edges, [8, 30]);
-
-  /* agent blocks */
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const nx = xOf(a);
-    const pad = a.work === 'orchestration' ? 11 : 2;
-    const tight = a.h < 70;
-    paintNode(a, nx, a.y0, LANE_W, a.h, pad, tight, a.skills.length && a.h - pad * 2 >= 84);
-  }
-
-  /* main-thread markers (labels stacked to avoid collisions) */
-  let lastLabelY = -1e9;
-  for (const m of MARKERS.slice().sort((p, q) => T(p.at) - T(q.at))) {
-    const y = yOf(T(m.at));
-    svgParts.push(`<path d="M${X_MAIN + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
-    const labelY = Math.max(y - 8, lastLabelY + 48);
-    lastLabelY = labelY;
-    htmlParts.push(`<div class="marker-label" style="left:${X_MAIN + SPINE_W + 12}px; top:${labelY}px;">
-      <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${m.label}</div>`);
-  }
-}
-
-document.getElementById('board').innerHTML =
-  `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img"
-    aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
-document.getElementById('board').style.width = BOARD_W + 'px';
-
-/* --------------------------------------------------------- expand orchestration nodes --- */
-
-/* After rendering, measure actual content heights of orchestration nodes and expand them
-   if their content exceeds the initial height. This fixes text truncation issues when
-   coordinator titles are long (e.g., "Implement config:3 OpenSpec change..."). */
-function expandOrchestratorNodes() {
-  if (ORIENTATION === 'horizontal') { relayoutHorizontalBlocks(); return; }
-
-  const board = document.getElementById('board');
-  const nodeEls = [...board.querySelectorAll('.node[data-work="orchestration"]')];
-  if (!nodeEls.length) return;
-
-  const svg = board.querySelector('svg');
-  const expandedIds = new Set();
-  let maxExpansion = 0;
-
-  for (const nodeEl of nodeEls) {
-    const id = nodeEl.dataset.id;
-    if (!id || !AGENTS.find((a) => a.id === id)) continue;
-
-    const a = AGENTS.find((a) => a.id === id);
-    const initialHeight = parseFloat(nodeEl.style.height);
-    const contentHeight = nodeEl.scrollHeight;
-
-    /* if content height exceeds initial height + padding buffer, expand */
-    const buffer = 2;
-    if (contentHeight > initialHeight + buffer) {
-      const expansion = contentHeight - initialHeight;
-      const newHeight = contentHeight;
-
-      /* update node element height */
-      nodeEl.style.height = newHeight + 'px';
-      expandedIds.add(id);
-      maxExpansion = Math.max(maxExpansion, expansion);
-
-      /* update SVG shape paths — each agent has two shapes (fill + stroke).
-         Both need the same new height to stay synchronized with the HTML node. */
-      const y = parseFloat(nodeEl.style.top);
-      const x = parseFloat(nodeEl.style.left);
-      const w = parseFloat(nodeEl.style.width);
-
-      const shapes = svg.querySelectorAll(`path.shape[data-id="${id}"]`);
-      for (const shape of shapes) {
-        shape.setAttribute('d', shapePath(a.work, x, y, w, newHeight));
+  
+  const STATUS_BADGE = { cutoff: '✕ usage limit', dropped: '✕ connection lost', fault: '✕ harness fault' };
+  
+  const svgParts = [];
+  const htmlParts = [];
+  let BOARD_W = 0, BOARD_H = 0;
+  
+  /* shared (horizontal orientation only): layout state hoisted to top level so
+     the post-paint measurement passes (growOrchestratorHeightsHorizontal,
+     relayoutHorizontalBlocks, expandHorizontalNodeWidths) can read/mutate it —
+     it's assigned inside the horizontal branch below, not re-declared there. */
+  let H_HEAD_H = 0, H_LANE_H = 0, H_ROW_GAP = 0, H_TRACK_GAP = 0, H_TOP_Y = 0, H_SPINE_PAD = 0, H_MAIN_ROW_H = 0;
+  let hBlocks = [], hTracks = [], hTrackMeta = [];
+  /* set by relayoutHorizontalBlocks() when a block/track grew — tells
+     expandHorizontalNodeWidths() it must still do its full repaint even if
+     no node widths changed (heights alone can move BOARD_H/y0s). */
+  let H_HEIGHTS_CHANGED = false;
+  
+  svgParts.push(`<defs>
+    <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
+    </pattern>
+    <pattern id="breakhatch" width="9" height="9" patternTransform="rotate(-45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="9" stroke="var(--line)" stroke-width="1.4" opacity="0.6"/>
+    </pattern>
+    ${typeOrder.map((t) => `
+    <marker id="arr-${slug(t)}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+      <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="${cvar(t)}"/>
+    </marker>
+    <marker id="dot-${slug(t)}" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="5" markerHeight="5">
+      <circle cx="3" cy="3" r="2.6" fill="${cvar(t)}"/>
+    </marker>`).join('')}
+    <marker id="arr-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+      <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="var(--muted)"/>
+    </marker>
+  </defs>`);
+  
+  /* shared: render an edges[] array (dispatch/return/respawn descriptors) as
+     <path> elements — identical for both orientations, only the `d` string's
+     coordinates differ. respawnLabelOffset lets each orientation nudge the
+     "⟳ respawn" text to sit clear of its curve. */
+  function pushEdges(edges, respawnLabelOffset) {
+    const [rlx, rly] = respawnLabelOffset || [8, 30];
+    for (const e of edges) {
+      svgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
+        stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
+        ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
+        ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
+      if (e.respawn) {
+        /* accepts both the horizontal branch's C(urve) respawn arc and the
+           vertical branch's straight L(ine) one */
+        const mid = e.d.match(/M([\d.]+),([\d.]+) [CL]/);
+        if (mid) svgParts.push(`<text x="${+mid[1] + rlx}" y="${+mid[2] + rly}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
       }
     }
   }
-
-  /* if any nodes expanded, recalculate BOARD_H for vertical layout to accommodate taller nodes.
-     For horizontal layout, track heights are already calculated per-block, so we only need to
-     expand if this is a vertical layout (ORIENTATION is not 'horizontal'). */
-  if (expandedIds.size > 0 && ORIENTATION !== 'horizontal') {
-    const maxY = Math.max(
-      ...AGENTS.filter((a) => expandedIds.has(a.id)).map((a) => {
-        const nodeEl = board.querySelector(`.node[data-id="${a.id}"]`);
-        if (nodeEl) {
-          return parseFloat(nodeEl.style.top) + parseFloat(nodeEl.style.height);
-        }
-        return 0;
-      })
-    );
-    if (maxY > 0) {
-      const newBoardH = maxY + 46;
-      if (newBoardH > BOARD_H) {
-        svg.setAttribute('height', newBoardH);
-        svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${newBoardH}`);
-        board.style.height = newBoardH + 'px';
-      }
-    }
-  }
-}
-
-/* ================================== relayout horizontal blocks/tracks --- */
-
-/* Horizontal-orientation counterpart to the vertical-layout height cascade
-   above. Track/block heights were computed once at initial paint time from
-   the fixed H_HEAD_H/H_LANE_H constants — if a coordinator's (or any
-   orchestration-work descendant's) node grows taller than its allotted row
-   to fit wrapped text, that growth has to cascade: the row's lane height
-   grows, the block's total height grows, the track's height grows, every
-   later track shifts down, and BOARD_H grows to fit. This mutates the DATA
-   MODEL only (a.h / a.y0 / b.top / b.h / BOARD_H) — the actual DOM/SVG
-   repaint happens afterwards in expandHorizontalNodeWidths(), which already
-   does a full repaint from current a.x0/a.y0/a.w/a.h. */
-function relayoutHorizontalBlocks() {
-  const board = document.getElementById('board');
-  const nodeEls = [...board.querySelectorAll('.node[data-id]')];
-
-  /* Step 1: measure every node's actual (wrapped) content height — not just
-     orchestration/coordinator nodes, since worker titles wrap just as often
-     inside their narrower lanes — and grow its agent's data-model height
-     (a.h) to fit — not just the DOM style, since the block/track cascade
-     below reads a.h. */
-  let grew = false;
-  for (const nodeEl of nodeEls) {
-    const id = nodeEl.dataset.id;
-    const a = byId[id];
-    if (!a || !a.parent) continue;
-    const pad = 8; // matches paintNode's orchestration-work pad (see "agent blocks" above)
-    const contentHeight = nodeEl.scrollHeight;
-    const neededH = contentHeight + pad * 2;
-    if (neededH > a.h + 0.5) { a.h = neededH; grew = true; }
-  }
-  if (!grew) return;
-
-  /* Step 2: recompute each block's lane heights (per lane: the tallest
-     current a.h among that lane's descendants, floored at H_LANE_H) and
-     head height (the coordinator's own, possibly-grown a.h, floored at
-     H_HEAD_H), then the block's total height and per-lane y-offsets. */
-  for (const b of hBlocks) {
-    b.head.h = Math.max(H_HEAD_H, b.head.h);
-    const laneHeights = [];
-    for (const d of b.descendants) {
-      const lane = d.blockLane;
-      laneHeights[lane] = Math.max(laneHeights[lane] || H_LANE_H, d.h, H_LANE_H);
-    }
-    const laneOffsets = [];
-    let acc = b.head.h + H_ROW_GAP;
-    for (let i = 0; i < laneHeights.length; i++) {
-      laneOffsets[i] = acc;
-      acc += laneHeights[i] + H_ROW_GAP;
-    }
-    b.laneHeights = laneHeights;
-    b.laneOffsets = laneOffsets;
-    b.h = b.head.h + laneHeights.reduce((sum, lh) => sum + lh + H_ROW_GAP, 0);
-  }
-
-  /* Step 3: cascade block heights up into track heights, then re-stack
-     track tops sequentially — the same cursorY accumulation pattern used
-     at initial layout time, just re-run against the (possibly grown)
-     block heights. */
-  hTrackMeta.forEach((tm, ti) => {
-    tm.h = Math.max(...hTracks[ti].blocks.map((b) => b.h));
-  });
-  let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
-  hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
-  const newBoardH = cursorY + 20;
-  if (newBoardH > BOARD_H) BOARD_H = newBoardH;
-
-  /* Step 4: re-derive every block's top, every coordinator head's y0, and
-     every descendant's y0/h from the new geometry. */
-  for (const b of hBlocks) {
-    b.top = hTrackMeta[b.track].top;
-    b.head.y0 = b.top;
-    for (const d of b.descendants) {
-      d.y0 = b.top + b.laneOffsets[d.blockLane];
-      /* d.h is left as its own (possibly Step-1-grown) height — a lane's
-         row is only as tall as its tallest occupant; shorter siblings in
-         the same lane simply sit within a taller row, they don't stretch. */
-    }
-  }
-
-  H_HEIGHTS_CHANGED = true;
-}
-
-/* ============================================ expand horizontal node widths --- */
-
-/* After rendering (horizontal layout only), measure actual content widths of all nodes
-   and expand their visual width to fit full text. This fixes horizontal layout clipping:
-   long node titles like "Bind-mount-volume..." get truncated because width is tied to
-   time duration. We measure, expand, shift downstream nodes, and regenerate affected
-   SVG (shapes, edges, block containers). */
-function expandHorizontalNodeWidths() {
-  if (ORIENTATION !== 'horizontal') return;
-
-  const board = document.getElementById('board');
-  const svg = board.querySelector('svg');
-  const nodeEls = [...board.querySelectorAll('.node[data-id]')];
-
-  if (!nodeEls.length) return;
-
-  const CONTENT_PADDING = 16; // padding around text + margin buffer
-  const widthDeltas = {}; // agentId -> {delta, agent}
-  let totalDelta = 0;
-
-  /* Phase 1: Measure each node's content width and calculate expansion needed */
-  for (const nodeEl of nodeEls) {
-    const id = nodeEl.dataset.id;
-    const a = byId[id];
-    if (!a || !a.parent) continue; // skip root for now
-
-    const contentWidth = nodeEl.scrollWidth;
-    const targetWidth = contentWidth + CONTENT_PADDING;
-    const currentWidth = a.w;
-
-    if (targetWidth > currentWidth) {
-      const delta = targetWidth - currentWidth;
-      widthDeltas[id] = { delta, agent: a };
-      totalDelta = Math.max(totalDelta, delta); // track max delta
-    }
-  }
-
-  /* if no width expansions AND no height/block relayout happened upstream
-     (relayoutHorizontalBlocks), there's nothing to repaint. */
-  if (!Object.keys(widthDeltas).length && !H_HEIGHTS_CHANGED) return;
-
-  /* Phase 2: Update agent widths and shift downstream nodes
-     For each expanded node, push all nodes with x0 >= its x0 + current width to the right.
-     Process in left-to-right order to avoid double-shifting. */
-  const expandedIds = Object.keys(widthDeltas);
-  const sortedByX0 = expandedIds
-    .map(id => ({ id, x0: widthDeltas[id].agent.x0 }))
-    .sort((a, b) => a.x0 - b.x0);
-
-  const shiftMap = {}; // agentId -> cumulative shift amount
-  for (const { id } of sortedByX0) {
-    const { agent, delta } = widthDeltas[id];
-    const expandEnd = agent.x0 + agent.w + delta;
-
-    /* update this agent's width */
-    const priorShift = shiftMap[id] || 0;
-    agent.w += delta;
-    shiftMap[id] = delta;
-
-    /* shift all agents that start at or after this node's original end position */
-    for (const other of AGENTS) {
-      if (other === agent || !other.parent) continue;
-      const otherEnd = other.x0 + other.w;
-      if (other.x0 >= agent.x0 + (agent.w - delta)) {
-        if (!shiftMap[other.id]) shiftMap[other.id] = 0;
-        shiftMap[other.id] += delta;
-        other.x0 += delta;
-      }
-    }
-  }
-
-  /* update root if it was shifted */
-  const rootShift = shiftMap[root.id] || 0;
-  if (rootShift > 0) root.x0 += rootShift;
-
-  /* Phase 3: Update BOARD_W to accommodate rightmost node */
-  const maxRightEdge = Math.max(...AGENTS.map(a => a.x0 + a.w), 0);
-  BOARD_W = maxRightEdge + 30;
-
-  /* Phase 4: Regenerate all SVG elements that depend on node positions
-     We need to rebuild: block containers, main spine, edges, and node HTML positions */
-
-  /* 4a: Clear old SVG paths and regenerate (easier than updating individual paths) */
-  const svgContent = svg.querySelector('defs').outerHTML;
-  svg.innerHTML = svgContent;
-  svgParts.length = 0;
-
-  /* rebuild shapes, block containers, and edges — extract key sections from original logic */
-  const newSvgParts = [];
-  newSvgParts.push(svgContent);
-
-  /* block containers — visual grouping of coordinator + subtree. hBlocks is
-     the same array of objects built at initial layout and mutated in place
-     by relayoutHorizontalBlocks(), so b.top/b.h already reflect any height
-     relayout by the time we get here. */
-  if (hBlocks.length) {
-    for (const b of hBlocks) {
-      const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
-      const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
-      newSvgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
-        fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-    }
-  }
-
-  /* main spine */
-  newSvgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', root.x0, root.y0, root.w, root.h)}"
-    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
-
-  /* agent node shapes — reprint at each agent's (possibly shifted/widened)
-     x0/w so the coloured/hatched block backing keeps matching the HTML
-     .node label repositioned below in Phase 5. */
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const d = shapePath(a.work, a.x0, a.y0, a.w, a.h);
-    newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}" fill="var(--surface)" stroke="none"/>`);
-    newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}"
+  
+  /* shared: paint one agent block — surface backing, tinted/hatched shape,
+     and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
+     whichever orientation's coordinate space the caller computed. */
+  function paintNode(a, x, y, w, h, pad, tight, skillsFit) {
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
+      fill="var(--surface)" stroke="none"/>`);
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
       fill="${cvar(a.type)}" fill-opacity="0.13" stroke="${cvar(a.type)}" stroke-width="1.5"
       ${a.status !== 'ok' ? 'stroke-dasharray="5 3"' : ''}/>`);
     if (a.status !== 'ok') {
-      newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}" fill="url(#hatch)" pointer-events="none"/>`);
+      svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
     }
+    htmlParts.push(`<div class="node${tight ? ' tight' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+      style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};">
+      <span class="t">${esc(a.title)}</span>
+      ${a.status !== 'ok'
+        ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
+        : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
+      ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
+    </div>`);
   }
-
-  /* edges: dispatch + return + respawn */
-  const edges = [];
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const parent = byId[a.parent];
-    if (!parent) continue;
-
-    const px = a.x0 + 4;
-    const py = a.parent === root.id ? root.y0 + root.h : parent.y0 + parent.h;
-    const cx = px, cy = a.y0;
-    const yk = (py + cy) / 2;
-
-    edges.push({
-      from: a.parent, to: a.id,
-      d: elbowV(px, py, cx, cy, yk, 6),
-      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2
+  
+  /* shared (horizontal orientation only): orthogonal V–H–V elbow with rounded
+     corners: vertical out of x1,y1, a single horizontal turn in the channel at
+     yk, vertical into x2,y2 — the rotated analogue of the vertical layout's
+     elbowH. Declared at top level (not inside the horizontal branch below) so
+     expandHorizontalNodeWidths() can also call it during its post-paint
+     re-layout pass. */
+  function elbowV(x1, y1, x2, y2, yk, r) {
+    const sIn = Math.sign(yk - y1) || 1;
+    const sH = Math.sign(x2 - x1) || 1;
+    const sOut = Math.sign(y2 - yk) || 1;
+    const rr = Math.max(0, Math.min(r, Math.abs(x2 - x1) / 2, Math.abs(yk - y1), Math.abs(y2 - yk)));
+    return `M${x1},${y1} V${yk - sIn * rr}`
+      + ` Q${x1},${yk} ${x1 + sH * rr},${yk}`
+      + ` H${x2 - sH * rr}`
+      + ` Q${x2},${yk} ${x2},${yk + sOut * rr}`
+      + ` V${y2}`;
+  }
+  
+  if (ORIENTATION === 'horizontal') {
+    /* ============================================== horizontal layout === */
+    /* time runs left→right. Each depth-1 coordinator gets its own BLOCK
+       (head row = the coordinator, sub-lanes below = its full subtree, its
+       own descendants only — never another coordinator's). Blocks that
+       don't overlap in time share a horizontal TRACK, Gantt-style (packed
+       left→right by start time); only time-overlapping blocks drop to a
+       new, lower track. The main thread is always its own fixed top row. */
+  
+    const H_LEFT = 190;      // left rail label column width
+    H_MAIN_ROW_H = 34;   // main spine thickness
+    H_SPINE_PAD = 20;    // small gap between the ruler/gridline top and the spine
+    H_TRACK_GAP = 26;    // gap between packed coordinator tracks
+    H_HEAD_H = 80;       // coordinator head-row height within its block (fits 2-line title + meta line)
+    H_LANE_H = 80;       // worker sub-lane height within a block (same wrap risk as the head row)
+    H_ROW_GAP = 16;      // gap between rows within a block
+    const MIN_W = 92;        // min node width
+    const PAD_SEG = 2.5 * MIN;
+    const GAP_MIN = 14 * MIN;
+    const BREAK_W = 64;
+  
+    /* active segments (merge event times closer than GAP_MIN) — same idea
+       as the vertical layout's time compression, just applied along x */
+    const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
+      .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
+    const rawSegs = [];
+    for (const t of times) {
+      const last = rawSegs[rawSegs.length - 1];
+      if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
+      else rawSegs.push({ start: t, end: t });
+    }
+    if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
+    const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
+    const SCALE_PXPM = Math.min(40, Math.max(10, 6600 / activeMinutes));
+    const SCALE = SCALE_PXPM / MIN;
+  
+    let cursorX = H_LEFT + 20;
+    const segs = rawSegs.map((s, i) => {
+      const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
+      if (i > 0) cursorX += BREAK_W;
+      const x0 = cursorX;
+      cursorX += (end - start) * SCALE;
+      return { start, end, x0, x1: cursorX, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
     });
-
-    if (a.status === 'ok') {
-      const rx = a.x0 + a.w - 4;
-      const ry0 = a.y0 + a.h, ry1 = py + 4;
-      const ryk = (ry0 + ry1) / 2;
-      edges.push({
-        from: a.id, to: a.parent,
-        d: elbowV(rx, ry0, rx, ry1, ryk, 6),
-        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true
-      });
+  
+    function xOf(t) {
+      for (let i = 0; i < segs.length; i++) {
+        const s = segs[i];
+        if (t <= s.end) return t < s.start ? s.x0 : s.x0 + (t - s.start) * SCALE;
+      }
+      return segs[segs.length - 1].x1;
     }
-
-    if (a.respawnOf && byId[a.respawnOf]) {
-      const dead = byId[a.respawnOf];
-      const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
-      const ay = a.y0 + a.h / 2, ax = a.x0;
-      edges.push({
-        from: dead.id, to: a.id,
-        d: `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
-        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true
-      });
+    for (const a of AGENTS) {
+      a.x0 = xOf(a.t0);
+      a.w = Math.max(MIN_W, xOf(a.t1) - a.x0);
     }
-  }
-
-  /* render edges to SVG */
-  for (const e of edges) {
-    newSvgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
-      stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
-      ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
-      ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
-    if (e.respawn) {
-      const mid = e.d.match(/M([\d.]+),([\d.]+) C/);
-      if (mid) newSvgParts.push(`<text x="${+mid[1] + 6}" y="${+mid[2] - 8}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
+    /* de-duplicate x0 among siblings that start at the exact same instant
+       (e.g. two concurrent Claude Code sessions dispatched off the same
+       prompt). Left tied, their dispatch edges below share an identical
+       px/cx column, so elbowV(px,py,cx,cy,...) degenerates to a plain
+       vertical line for BOTH edges — they become pixel-identical over the
+       shorter edge's whole length. Whichever is appended later in AGENTS
+       order paints its line (and arrowhead) directly on top of the other's,
+       visually erasing the shorter edge's connector even though the node
+       itself renders fine — it just looks disconnected from the spine.
+       Nudging each successive tied sibling a few px right keeps their
+       dispatch lines (and node boxes, block containers, lane packing —
+       everything downstream reads a.x0) visibly distinct. */
+    {
+      const tieCounts = {};
+      for (const a of AGENTS) {
+        if (!a.parent) continue;
+        const key = a.parent + '@' + a.x0;
+        const n = tieCounts[key] || 0;
+        tieCounts[key] = n + 1;
+        if (n > 0) a.x0 += n * 5;
+      }
     }
-  }
-
-  /* update SVG content and viewBox — BOARD_H may have grown too, via
-     relayoutHorizontalBlocks(), not just BOARD_W */
-  svg.innerHTML = newSvgParts.join('');
-  svg.setAttribute('width', BOARD_W);
-  svg.setAttribute('height', BOARD_H);
-  svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${BOARD_H}`);
-  board.style.width = BOARD_W + 'px';
-  board.style.height = BOARD_H + 'px';
-
-  /* Phase 5: Update HTML node positions to match new x0/w and y0/h values
-     (height relayout can move y0/h just as width expansion moves x0/w) */
-  for (const nodeEl of nodeEls) {
-    const id = nodeEl.dataset.id;
-    const a = byId[id];
-    if (!a || !a.parent) continue;
-
-    const pad = a.work === 'orchestration' ? 8 : 2;
-    nodeEl.style.left = a.x0 + 'px';
-    nodeEl.style.width = a.w + 'px';
-    nodeEl.style.top = (a.y0 + pad) + 'px';
-    nodeEl.style.height = (a.h - pad * 2) + 'px';
-  }
-
-  /* update root node position (unlikely to have shifted much, but be safe) */
-  const rootNodeEl = board.querySelector(`.node[data-id="${root.id}"]`);
-  if (rootNodeEl) {
-    rootNodeEl.style.left = root.x0 + 'px';
-    rootNodeEl.style.width = root.w + 'px';
-  }
-}
-
-/* invoke expansions after a minimal paint delay to ensure scrollHeight/scrollWidth are accurate */
-requestAnimationFrame(() => {
-  expandOrchestratorNodes();
-  expandHorizontalNodeWidths();
-});
-
-/* ------------------------------------------------------- header/stats --- */
-
-document.getElementById('eyebrow').textContent = DATA.eyebrow || '';
-document.getElementById('title').textContent = DATA.title || (DATA.session && DATA.session.id) || 'Agent graph';
-document.getElementById('subtitle').innerHTML = DATA.subtitle || '';
-document.getElementById('footer').innerHTML = DATA.footer
-  || 'Hover or click any node to light up its connections. Solid connectors are dispatches (parent → agent, at the moment of spawn); dotted connectors are results handed back on completion. Hatched blocks were killed mid-flight; dashed ⟳ links show which later agent picked their brief back up.';
-
-const sum = (k) => AGENTS.reduce((n, a) => n + (a.counts[k] || 0), 0);
-const activeRuntime = workers.reduce((n, a) => n + (a.t1 - a.t0), 0);
-const baseStats = [
-  [String(AGENTS.length), 'agents'],
-  [sum('edits'), 'file edits'],
-  [sum('bash'), 'shell runs'],
-  [fmtDur(root.t1 - root.t0), 'wall clock'],
-  [fmtDur(activeRuntime), 'worker runtime'],
-];
-const extraStats = Array.isArray(DATA.extraStats) ? DATA.extraStats : [];
-/* accept either [value, label] pairs or {value/v, label/k/key} objects */
-const statPair = (s) => Array.isArray(s) ? s : [s.value ?? s.v ?? '', s.label ?? s.k ?? s.key ?? ''];
-document.getElementById('stats').innerHTML = [...baseStats, ...extraStats].map(statPair)
-  .map(([v, k]) => `<div class="tile"><div class="v mono">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join('');
-
-const mini = (work) => `<svg width="26" height="16" viewBox="0 0 26 16">
-  <path d="${shapePath(work, 1.5, 1.5, 23, 13)}" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/></svg>`;
-const usedWorks = [...new Set(AGENTS.map((a) => a.work))].filter((w) => WORK_LABEL[w]);
-const hasFate = AGENTS.some((a) => a.status !== 'ok' || a.respawnOf);
-document.getElementById('legend').innerHTML = `
-  <div class="grp"><span class="grp-label">Agent type — colour</span>
-    ${typeOrder.map((t) => `<span class="item"><span class="swatch" style="background:${cvar(t)}"></span>${esc(t)}</span>`).join('')}
-  </div>
-  <div class="grp"><span class="grp-label">Work type — shape</span>
-    ${usedWorks.map((w) => `<span class="item">${mini(w)}${esc(workLabel(w))}</span>`).join('')}
-  </div>
-  ${hasFate ? `<div class="grp"><span class="grp-label">Fate</span>
-    <span class="item"><svg width="26" height="16"><rect x="1.5" y="1.5" width="23" height="13" rx="4" fill="url(#hatch)" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1.3"/></svg>killed mid-flight</span>
-    <span class="item"><svg width="30" height="16"><path d="M2,8 H24" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 4"/><path d="M22,4.5 L27,8 L22,11.5 Z" fill="var(--muted)"/></svg>⟳ respawned as</span>
-  </div>` : ''}`;
-
-/* ---------------------------------------------------------- interaction --- */
-
-const drawer = document.getElementById('drawer');
-const drawerBody = document.getElementById('drawerBody');
-const STATUS_TEXT = {
-  ok: null,
-  cutoff: 'Killed by the usage-limit window.',
-  dropped: 'API connection closed mid-response.',
-  fault: 'Harness fault — tool calls never executed.',
-};
-
-function openDrawer(id) {
-  const a = byId[id];
-  if (!a) return;
-  const c = a.counts;
-  const parent = a.parent ? byId[a.parent] : null;
-  drawerBody.innerHTML = `
-    <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
-    <h2>${esc(a.title)}</h2>
-    <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}</div>
-    ${a.depth > 2 ? `<p class="status-note">Nested at depth ${a.depth} — shown in its nearest coordinator's worker column.</p>` : ''}
-    ${a.parentGuessed ? `<p class="status-note">Parent inferred — the recorded spawn parent could not be resolved.</p>` : ''}
-    ${STATUS_TEXT[a.status] ? `<p class="status-note"><b>${esc(STATUS_BADGE[a.status] || a.status)}</b> — ${STATUS_TEXT[a.status]}</p>` : ''}
-    <h3>Brief</h3><p>${esc(a.brief)}</p>
-    <h3>Outcome</h3><p>${esc(a.outcome)}</p>
-    <h3>Skills loaded</h3>
-    <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
-    <h3>Tool calls</h3>
-    <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>`;
-  drawer.classList.add('open');
-}
-function openMarkerDrawer(idx) {
-  const m = MARKERS[idx];
-  if (!m) return;
-  drawerBody.innerHTML = `
-    <div class="typechip" style="--dc:var(--ink-2)">marker</div>
-    <h2>${esc(m.label)}</h2>
-    <div class="when mono">${fmtT(T(m.at))}</div>`;
-  drawer.classList.add('open');
-}
-document.getElementById('drawerClose').addEventListener('click', () => drawer.classList.remove('open'));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') drawer.classList.remove('open'); });
-
-const board = document.getElementById('board');
-
-/* click-to-isolate: dim everything except the selected node's directed chain —
-   walk UP through its parents to root, and DOWN through its own descendants
-   only. Never flow back down into a parent's other children: if a coordinator
-   spawns 4 subagents and one is selected, its 3 uninvolved siblings stay
-   dimmed. Respawn partners (a real handoff relationship) stay linked. */
-const allEdges = [...document.querySelectorAll('.edge')];
-const allShapes = [...document.querySelectorAll('.shape[data-id]')];
-const allNodeEls = [...document.querySelectorAll('.node[data-id]')];
-const childrenOf = {};
-AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
-function directedChain(id) {
-  const seen = new Set([id]);
-  let cur = byId[id];
-  while (cur && cur.parent && !seen.has(cur.parent)) { seen.add(cur.parent); cur = byId[cur.parent]; }
-  const stack = [id];
-  while (stack.length) {
-    const top = stack.pop();
-    for (const cid of (childrenOf[top] || [])) {
-      if (!seen.has(cid)) { seen.add(cid); stack.push(cid); }
+    BOARD_W = segs[segs.length - 1].x1 + 30;
+  
+    /* main-thread markers are laid out first (before H_TOP_Y is fixed) so the
+       board reserves exactly as much header room as the stacked rows need —
+       labels draw ABOVE the entire graph (ruler ticks included), each marker
+       greedily assigned to the first row whose last-placed label ends before
+       this one starts, so close-together prompts stack into new rows instead
+       of overlapping or crowding the timeline below. */
+    const MARKER_ROW_H = 15;
+    const MARKER_LABEL_W = 150;
+    const MARKER_MIN_GAP = 10;
+    const sortedMarkers = MARKERS.slice().sort((p, q) => T(p.at) - T(q.at));
+    const markerRowEndX = [];
+    for (const m of sortedMarkers) {
+      m._x = xOf(T(m.at));
+      let row = markerRowEndX.findIndex((endX) => endX <= m._x - MARKER_MIN_GAP);
+      if (row === -1) { row = markerRowEndX.length; markerRowEndX.push(-Infinity); }
+      m._row = row;
+      markerRowEndX[row] = m._x + MARKER_LABEL_W;
     }
-  }
-  const sel = byId[id];
-  if (sel && sel.respawnOf) seen.add(sel.respawnOf);
-  AGENTS.forEach((a) => { if (a.respawnOf === id) seen.add(a.id); });
-  return seen;
-}
-let isolated = null, hovered = null;
-function focus(id) {
-  const set = id ? directedChain(id) : null;
-  allShapes.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
-  allNodeEls.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
-  allEdges.forEach((p) => {
-    const inSet = !!set && set.has(p.dataset.from) && set.has(p.dataset.to);
-    p.classList.toggle('dim', !!set && !inSet);
-    p.classList.toggle('hot', inSet);
-  });
-}
-function isolate(id) { isolated = id; focus(id); }
-/* hovering a node previews its connected component (edges lit) without a click;
-   leaving reverts to whatever is click-isolated (if anything) */
-board.addEventListener('mouseover', (e) => {
-  const el = e.target.closest('[data-id]');
-  const id = el ? el.dataset.id : null;
-  if (id === hovered) return;
-  hovered = id;
-  focus(id || isolated);
-});
-board.addEventListener('mouseleave', () => { hovered = null; focus(isolated); });
-board.addEventListener('click', (e) => {
-  const markerEl = e.target.closest('[data-marker]');
-  if (markerEl) { openMarkerDrawer(+markerEl.dataset.marker); return; }
-  const el = e.target.closest('[data-id]');
-  if (el) {
-    openDrawer(el.dataset.id);
-    isolate(isolated === el.dataset.id ? null : el.dataset.id);
+    const MARKER_ROWS = Math.max(1, markerRowEndX.length);
+    const MARKER_TOP = 10;
+    const MARKER_AREA_H = MARKER_TOP + MARKER_ROWS * MARKER_ROW_H;
+    H_TOP_Y = MARKER_AREA_H + 24;  // top padding above the board (ruler labels), below the marker header
+  
+    /* per-coordinator blocks: coordinator + its full subtree, subtree
+       packed into greedy non-overlapping sub-lanes (own descendants only —
+       this is what keeps a coordinator's cluster contiguous: cross-block
+       mixing never happens because each block only ever looks at its own
+       subtree). */
+    const childrenOf = {};
+    AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
+    function collectSubtree(id, set) {
+      set.add(id);
+      for (const c of (childrenOf[id] || [])) collectSubtree(c, set);
+    }
+  
+    hBlocks = coordinators.map((c) => {
+      const set = new Set();
+      collectSubtree(c.id, set);
+      const members = AGENTS.filter((a) => set.has(a.id));
+      const descendants = members.filter((a) => a.id !== c.id).sort((x, y) => x.t0 - y.t0);
+      /* pack lanes by rendered PIXEL extent (x0..x0+w), not raw timestamps —
+         MIN_W clamps short tasks to a wide box regardless of real duration,
+         so two agents that don't overlap in time can still overlap on screen
+         once a compressed week-long time scale squeezes their real gap down
+         to a few px. Checking x0/w (already computed above) instead of t0/t1
+         keeps same-lane neighbors from visually colliding. */
+      const LANE_GAP_PX = 6;
+      const laneEndsX = [];
+      for (const d of descendants) {
+        let lane = laneEndsX.findIndex((endX) => endX <= d.x0);
+        if (lane === -1) { lane = laneEndsX.length; laneEndsX.push(0); }
+        laneEndsX[lane] = d.x0 + d.w + LANE_GAP_PX;
+        d.blockLane = lane;
+      }
+      const laneEnds = laneEndsX;
+      const numLanes = laneEnds.length;
+      const h = H_HEAD_H + (numLanes ? numLanes * (H_LANE_H + H_ROW_GAP) : 0);
+      const t0 = c.t0;
+      const t1 = Math.max(c.t1, ...members.map((m) => m.t1));
+      /* rendered pixel extent of the whole block (coordinator + subtree) —
+         used for track packing below instead of raw t0/t1, for the same
+         MIN_W-clamping reason the lane packing above switched to pixels. */
+      const bx0 = Math.min(...members.map((m) => m.x0));
+      const bx1 = Math.max(...members.map((m) => m.x0 + m.w));
+      return { head: c, members, descendants, numLanes, h, t0, t1, bx0, bx1 };
+    });
+  
+    /* Gantt-style track packing: coordinators are already sorted by start
+       time (`coordinators` sort, above), so this greedy pass is a classic
+       interval-graph row packing — reuse the first track whose last-placed
+       block ends before this block starts, else open a new (lower) track.
+       Non-overlapping blocks end up sharing a track (side by side in time);
+       only genuinely overlapping blocks stack. Packed by rendered pixel
+       extent (bx0/bx1), not raw timestamps — MIN_W-clamped short blocks can
+       still collide on screen even when their real times don't overlap. */
+    const TRACK_GAP_PX = 8;
+    hTracks = [];
+    for (const b of hBlocks) {
+      let ti = hTracks.findIndex((tr) => tr.endX <= b.bx0);
+      if (ti === -1) { ti = hTracks.length; hTracks.push({ endX: -Infinity, blocks: [] }); }
+      hTracks[ti].blocks.push(b);
+      hTracks[ti].endX = Math.max(hTracks[ti].endX, b.bx1 + TRACK_GAP_PX);
+      b.track = ti;
+    }
+    hTrackMeta = hTracks.map((tr) => ({ h: Math.max(...tr.blocks.map((b) => b.h)) }));
+    /* first track starts below: ruler pad, then the marker band (now above
+       the main row), then the main row itself, then the inter-track gap */
+    let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
+    hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
+    BOARD_H = cursorY + 20;
+  
+    for (const b of hBlocks) {
+      b.top = hTrackMeta[b.track].top;
+      b.head.y0 = b.top; b.head.h = H_HEAD_H;
+      for (const d of b.descendants) {
+        d.y0 = b.top + H_HEAD_H + H_ROW_GAP + d.blockLane * (H_LANE_H + H_ROW_GAP);
+        d.h = H_LANE_H;
+      }
+    }
+    /* every session's main thread is a segment on the SAME top row, spanning
+       its own time extent — sessions are disjoint in time, so they lay out
+       side by side rather than overlapping. Each needs real geometry: their
+       children attach to `parent.y0 + parent.h` below. */
+    for (const r of ROOTS) {
+      r.x0 = xOf(r.t0);
+      r.w = Math.max(MIN_W, xOf(r.t1) - r.x0);
+      r.y0 = H_TOP_Y + H_SPINE_PAD; r.h = H_MAIN_ROW_H;
+    }
+  
+    /* time ruler + vertical gridlines */
+    for (const s of segs) {
+      const first = Math.ceil(s.start / (15 * MIN)) * 15 * MIN;
+      for (let t = first; t <= s.end; t += 15 * MIN) {
+        const xg = xOf(t);
+        svgParts.push(`<line x1="${xg}" y1="${H_TOP_Y}" x2="${xg}" y2="${BOARD_H - 8}" stroke="var(--grid)" stroke-width="1" opacity="0.5"/>
+          <text x="${xg + 4}" y="${H_TOP_Y - 8}" font-size="10.5" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${fmtT(t)}</text>`);
+      }
+    }
+  
+    /* break strips (idle gaps compressed into fixed-width hatched bands) */
+    segs.forEach((s, i) => {
+      if (!segs[i + 1]) return;
+      const xg = s.x1, gap = s.gapAfterMs;
+      svgParts.push(`<rect x="${xg + 6}" y="${H_TOP_Y}" width="${BREAK_W - 12}" height="${BOARD_H - H_TOP_Y - 8}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
+      htmlParts.push(`<div class="break-label mono" style="left:${xg + 6}px; top:${H_TOP_Y + 10}px; width:${BREAK_W - 12}px; font-size:9.5px; text-align:center; color:var(--muted); display:block;">idle<br>${fmtDur(gap)}</div>`);
+    });
+  
+    /* per-block dashed containers (visual grouping of a coordinator + its subtree) */
+    for (const b of hBlocks) {
+      const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
+      const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
+      svgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
+        fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+    }
+  
+    /* left-rail labels — main thread, then one row per track naming every
+       block on that track (sequential blocks sharing a track are chained) */
+    htmlParts.push(`<div class="colhead" style="left:8px; top:${root.y0}px; width:${H_LEFT - 12}px;">
+      <span class="name">main thread</span><span class="meta">the session</span></div>`);
+    hTrackMeta.forEach((tm, ti) => {
+      const names = hTracks[ti].blocks.map((b) => `${esc(b.head.type)} <span class="mono">(${fmtDur(b.head.t1 - b.head.t0)})</span>`).join(' → ');
+      const topLabel = tm.top + tm.h / 2 - 16;
+      htmlParts.push(`<div class="colhead" style="left:8px; top:${topLabel}px; width:${H_LEFT - 12}px;">
+        <span class="name">track ${ti + 1}</span><span class="meta">${names}</span></div>`);
+    });
+  
+    /* main spine — one segment per session's main thread */
+    for (const r of ROOTS) {
+      svgParts.push(`<path class="shape" data-id="${esc(r.id)}" d="${shapePath('orchestration', r.x0, r.y0, r.w, r.h)}"
+        fill="${cvar(r.type)}" fill-opacity="0.30" stroke="${cvar(r.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
+    }
+  
+    /* edges: dispatch + return + respawn */
+    const edges = [];
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const parent = byId[a.parent];
+      if (!parent) continue;
+      const px = a.x0 + 4;
+      /* every root now carries real geometry, so the old root special-case
+         (which pinned EVERY session's children to the primary root's row) is
+         just parent.y0 + parent.h */
+      const py = parent.y0 + parent.h;
+      const cx = px, cy = a.y0;
+      const yk = (py + cy) / 2;
+      edges.push({ from: a.parent, to: a.id,
+        d: elbowV(px, py, cx, cy, yk, 6),
+        stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
+      if (a.status === 'ok') {
+        const rx = a.x0 + a.w - 4;
+        const ry0 = a.y0 + a.h, ry1 = py + 4;
+        const ryk = (ry0 + ry1) / 2;
+        edges.push({ from: a.id, to: a.parent,
+          d: elbowV(rx, ry0, rx, ry1, ryk, 6),
+          stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
+      }
+      if (a.respawnOf && byId[a.respawnOf]) {
+        const dead = byId[a.respawnOf];
+        const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
+        const ay = a.y0 + a.h / 2, ax = a.x0;
+        edges.push({ from: dead.id, to: a.id, d:
+          `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
+          stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
+      }
+    }
+    pushEdges(edges, [6, -8]);
+  
+    /* agent blocks */
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const pad = a.work === 'orchestration' ? 8 : 2;
+      const tight = a.w < 140;
+      paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight, a.skills.length && a.w >= 160);
+    }
+  
+    /* main-thread markers — labels render as small clickable node-like boxes
+       in a dedicated header ABOVE the entire graph (ruler ticks included),
+       each in the row it was greedily assigned to above (so close-together
+       prompts stack into new rows instead of colliding), with a thin dashed
+       leader line down to a diamond on the spine marking the actual moment.
+       Single-line with an ellipsis if a prompt is unusually long — click (or
+       Enter/Space) opens the drawer with the full, untruncated text. */
+    for (const m of sortedMarkers) {
+      const mxg = m._x;
+      const labelTop = MARKER_TOP + m._row * MARKER_ROW_H;
+      const my = root.y0 + root.h / 2;
+      svgParts.push(`<line x1="${mxg}" y1="${labelTop + MARKER_ROW_H - 2}" x2="${mxg}" y2="${my}" stroke="${cvar(root.type)}" stroke-width="1" stroke-dasharray="2 3" opacity="0.55"/>`);
+      svgParts.push(`<path d="M${mxg - 5.5},${my} l5.5,-5.5 l5.5,5.5 l-5.5,5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
+      const labelX = Math.max(8, Math.min(mxg - 10, BOARD_W - MARKER_LABEL_W - 8));
+      htmlParts.push(`<div class="marker-label row" data-marker="${MARKERS.indexOf(m)}" tabindex="0" role="button"
+        style="left:${labelX}px; top:${labelTop}px; width:${MARKER_LABEL_W}px;" title="${esc(m.label)}">
+        <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${esc(m.label)}
+      </div>`);
+    }
+  
   } else {
-    isolate(null);
+    /* ================================================ vertical layout === */
+    const PAD_SEG = 2.5 * MIN;
+    const GAP_MIN = 14 * MIN;
+    const BREAK_H = 64;
+    const TOP = 40;   // headroom above the first block: ruler time label + the first band-label
+    const MIN_H = 52;
+    const LANE_W = 148, LANE_GAP = 16, SPINE_W = 12;
+    const RULER_W = 52;
+
+    /* ---- marker label geometry (single source of truth) ----
+       V_MARKER_LABEL_W drives BOTH the label's inline width and the width of
+       the gutter it lives in (MAIN_W, below). Keep them derived, never
+       hand-synced: the label is drawn at x = X_MAIN + SPINE_W + MARKER_LABEL_X,
+       and the first node column starts at X_MAIN + MAIN_W + COL_GAP, so
+       MAIN_W = SPINE_W + MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD
+       guarantees the label's right edge clears the first track by
+       MARKER_LABEL_PAD + COL_GAP px. */
+    const V_MARKER_LABEL_W = 292;   // 2x the old 146
+    const MARKER_LABEL_X   = 12;    // label left offset from the spine's right edge
+    const MARKER_LABEL_PAD = 16;    // slack between label right edge and end of gutter
+
+    /* Estimated rendered height of a marker label, in px. The labels wrap, so a
+       fixed per-label height is wrong (that was the old `+48` bug). We can't
+       measure before layout, so estimate from the text and be deliberately
+       CONSERVATIVE (over-estimate) — an over-estimate only adds whitespace, an
+       under-estimate causes the overlap we're fixing.
+         font-size 10.5px / line-height 1.3 => 13.65px per line.
+       ~6.0px per char is a pessimistic average advance for 10.5px sans (real
+       mixed-case text averages nearer 5.2), so chars-per-line is under-counted
+       and the line count rounds up. */
+    const MARKER_LH        = 13.65;
+    const MARKER_CHAR_W    = 6.0;
+    const MARKER_LABEL_GAP = 8;     // min vertical gap between stacked labels
+    const markerCPL = Math.max(1, Math.floor(V_MARKER_LABEL_W / MARKER_CHAR_W));
+    function markerLabelText(m) {
+      /* what actually renders: "HH:MM · label", tags stripped so markup in
+         m.label isn't counted as visible characters */
+      return `${fmtT(T(m.at))} · ${String(m.label || '').replace(/<[^>]*>/g, '')}`;
+    }
+    function markerLabelH(m) {
+      const lines = Math.max(1, Math.ceil(markerLabelText(m).length / markerCPL));
+      return lines * MARKER_LH + 2;
+    }
+  
+    /* active segments (merge event times closer than GAP_MIN) */
+    const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
+      .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
+    const rawSegs = [];
+    for (const t of times) {
+      const last = rawSegs[rawSegs.length - 1];
+      if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
+      else rawSegs.push({ start: t, end: t });
+    }
+    if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
+  
+    /* adaptive scale from summed active minutes */
+    const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
+    const BASE_PXPM = Math.min(32, Math.max(4, 3400 / activeMinutes));
+
+    /* ---- marker-driven minimum scale ----
+       Labels are stacked with `top = max(diamondY - 8, lastBottom + gap)`, so
+       they never overlap at ANY scale — but if the scale is too tight the
+       push-down drags a label far from its own diamond. So raise the scale
+       until dense marker regions have room for their labels at natural
+       position.
+
+       For every marker window i..j the stack needs sum(labelH + gap) px, and
+       the timeline gives it activeMs(t_i..t_j) * SCALE px (only ACTIVE time
+       maps to px — gaps are collapsed to a fixed BREAK_H, which we ignore:
+       that's conservative). Requiring need <= available for every window and
+       solving for SCALE gives the exact px/min at which no label is pushed off
+       its diamond. Take the worst (densest) window. O(n^2) over markers only. */
+    function activeMsBetween(t0, t1) {
+      let n = 0;
+      for (const s of rawSegs) n += Math.max(0, Math.min(t1, s.end) - Math.max(t0, s.start));
+      return n;
+    }
+    const sortedM = MARKERS.slice().sort((p, q) => T(p.at) - T(q.at))
+      .filter((m) => Number.isFinite(T(m.at)));
+    let markerPxPM = 0;
+    for (let i = 0; i < sortedM.length; i++) {
+      let need = 0;
+      for (let j = i + 1; j < sortedM.length; j++) {
+        need += markerLabelH(sortedM[j - 1]) + MARKER_LABEL_GAP;
+        const ms = activeMsBetween(T(sortedM[i].at), T(sortedM[j].at));
+        if (ms > 0) markerPxPM = Math.max(markerPxPM, need / (ms / MIN));
+      }
+    }
+
+    /* Upper bound. Markers landing at (near) identical timestamps drive the
+       requirement above towards infinity, so clamp. The bound is expressed as a
+       total board height rather than a px/min number: MAX_BOARD_PX is the point
+       past which a scrollable board stops being usable (and browsers start to
+       struggle) — ~40k px is roughly 40 screens at 1000px tall. We never clamp
+       BELOW the old default, so the previous behaviour is a floor. */
+    const MAX_BOARD_PX = 40000;
+    const MAX_PXPM = Math.max(BASE_PXPM, MAX_BOARD_PX / activeMinutes);
+    const SCALE_PXPM = Math.min(MAX_PXPM, Math.max(BASE_PXPM, markerPxPM));
+    const SCALE = SCALE_PXPM / MIN;   // px per ms
+  
+    let cursor = TOP;
+    const segs = rawSegs.map((s, i) => {
+      const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
+      if (i > 0) cursor += BREAK_H;
+      const y0 = cursor;
+      cursor += (end - start) * SCALE;
+      return { start, end, y0, y1: cursor, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
+    });
+    BOARD_H = cursor + 46;
+  
+    function yOf(t) {
+      for (let i = 0; i < segs.length; i++) {
+        const s = segs[i];
+        if (t <= s.end) return t < s.start ? s.y0 : s.y0 + (t - s.start) * SCALE;
+      }
+      return segs[segs.length - 1].y1;
+    }
+    for (const a of AGENTS) {
+      a.y0 = yOf(a.t0);
+      a.h = Math.max(MIN_H, yOf(a.t1) - a.y0);
+    }
+  
+    /* per-session BLOCKS: each depth-1 coordinator (one per aggregated
+       session/tree) plus its full subtree is rendered as one self-contained
+       unit — its own coordinator column and its own worker sub-lanes travel
+       together. This replaces the old design's two GLOBAL flat columns (all
+       coordinators mixed in one strip, all workers mixed in another) which
+       visually merged unrelated sessions together. It reuses the horizontal
+       layout's block/track-packing math (see hBlocks/hTracks/collectSubtree
+       above), transposed: there time is x and blocks pack into horizontal
+       TRACKS by x-extent; here time is y, so blocks pack into vertical
+       COLUMN-TRACKS by y-extent — non-overlapping-in-time blocks share a
+       column (stacked one after another, since their own y-positions from
+       yOf() already keep them apart in time); only genuinely time-overlapping
+       blocks get pushed into a new, further-right column-track. */
+    const childrenOf = {};
+    AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
+    function collectSubtree(id, set) {
+      set.add(id);
+      for (const cid of (childrenOf[id] || [])) collectSubtree(cid, set);
+    }
+  
+    const COL_GAP = 32;     // gap between a block's own coord column and its worker sub-lanes
+    const TRACK_GAP = 44;   // gap between column-tracks (blocks that DO overlap in time)
+    const LANE_GAP_Y = 16;  // min y-gap enforced between sub-lane occupants
+  
+    /* GROUPS (DATA.groups) is still honoured, but composed with the new
+       auto-packer rather than assigning hard columns: coordinators are
+       processed in [group, start-time] order (default: a single group ⇒
+       pure start-time order, unchanged from before) so an explicitly grouped
+       cluster of coordinators tends to land in adjacent column-tracks, while
+       the automatic time-overlap packer still has final say over how many
+       tracks are actually needed — groups is now a soft clustering hint over
+       the auto-layout rather than a hard column assignment. */
+    const orderedCoordinators = coordinators.slice()
+      .sort((x, y) => (groupIndexOfCoord[x.id] ?? 0) - (groupIndexOfCoord[y.id] ?? 0) || x.t0 - y.t0);
+  
+    const blocks = orderedCoordinators.map((c) => {
+      const set = new Set();
+      collectSubtree(c.id, set);
+      const descendants = AGENTS.filter((a) => set.has(a.id) && a.id !== c.id).sort((x, y) => x.t0 - y.t0);
+      /* internal sub-lane packing: pack this block's OWN descendants (any
+         depth) into greedy first-fit sub-lanes by y-extent (their rendered
+         y0/h) — the vertical-axis analogue of the horizontal branch's
+         laneEndsX. No cross-block sharing is possible any more (each block
+         only ever looks at its own subtree), so the old sticky
+         coordinator-lane-reuse hack — needed only because unrelated
+         coordinators used to share one global worker-lane pool — is gone:
+         every descendant here already belongs to the same coordinator, so a
+         plain first-fit is enough to keep the block's own cluster tight. */
+      const laneEnds = [];
+      for (const d of descendants) {
+        let lane = laneEnds.findIndex((endY) => endY + LANE_GAP_Y <= d.y0);
+        if (lane === -1) { lane = laneEnds.length; laneEnds.push(0); }
+        laneEnds[lane] = d.y0 + d.h;
+        d.lane = lane;
+      }
+      const numLanes = laneEnds.length;
+      const width = LANE_W + (numLanes ? COL_GAP + numLanes * (LANE_W + LANE_GAP) - LANE_GAP : 0);
+      const members = [c, ...descendants];
+      const by0 = Math.min(...members.map((m) => m.y0));
+      const by1 = Math.max(...members.map((m) => m.y0 + m.h));
+      return { head: c, descendants, numLanes, width, by0, by1 };
+    });
+  
+    /* skyline packing: each block's x is not a shared fixed-width column, but
+       the actual right edge of whichever already-placed block(s) it overlaps
+       in y, plus TRACK_GAP — so a narrow block sitting next to another narrow
+       block hugs it instead of padding out to the width of the widest block
+       that ever shared its "column". Blocks that don't overlap ANY earlier
+       block in y fall all the way back to the left rail, same as before.
+       Process in y0 order so every "already-placed" block a later one checks
+       against has a final x already. */
+    const V_TRACK_GAP_PX = 8;
+    const MAIN_W = SPINE_W + MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD;
+    const X_MAIN = RULER_W + 14;
+    const BASE_X = X_MAIN + MAIN_W + COL_GAP;
+    const placed = blocks.slice().sort((p, q) => p.by0 - q.by0);
+    for (const b of placed) {
+      let x = BASE_X;
+      for (const other of placed) {
+        if (other === b || other.x == null) continue;
+        if (other.by1 + V_TRACK_GAP_PX <= b.by0 || other.by0 >= b.by1 + V_TRACK_GAP_PX) continue; // no y-overlap
+        x = Math.max(x, other.x + other.width + TRACK_GAP);
+      }
+      b.x = x;
+    }
+    BOARD_W = (blocks.length ? Math.max(...blocks.map((b) => b.x + b.width)) : BASE_X) + 14;
+
+    const blockByCoordId = {};
+    blocks.forEach((b) => { blockByCoordId[b.head.id] = b; });
+
+    function xOf(a) {
+      if (isRoot(a)) return X_MAIN;   // every session's main shares the spine column
+      if (coordSet.has(a.id)) return blockByCoordId[a.id].x;
+      const b = a.coord != null ? blockByCoordId[a.coord] : blocks[0];
+      if (!b) return BASE_X;
+      return b.x + LANE_W + COL_GAP + (a.lane || 0) * (LANE_W + LANE_GAP);
+    }
+  
+    /* per-block bands — coordinator + its own subtree, behind everything.
+       Every block gets one, even a lone coordinator with no workers: the
+       band now marks "this is one self-contained session", not just a
+       worker-cluster grouping like before. */
+    let bandNo = 0;
+    for (const b of blocks) {
+      bandNo++;
+      const members = [b.head, ...b.descendants];
+      const bx0 = Math.min(...members.map(xOf)) - 8;
+      const bx1 = Math.max(...members.map((a) => xOf(a) + LANE_W)) + 8;
+      const by0 = Math.min(...members.map((a) => a.y0)) - 19;
+      const by1 = Math.max(...members.map((a) => a.y0 + a.h)) + 5;
+      const label = String(b.head.title || '').replace(/^Coordinator:\s*/i, '');
+      svgParts.push(`<rect x="${bx0}" y="${by0}" width="${bx1 - bx0}" height="${by1 - by0}" rx="13"
+        fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+      htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px;">${bandNo} · ${esc(label)}</div>`);
+    }
+  
+    /* time ruler + gridlines */
+    for (const s of segs) {
+      const first = Math.ceil(s.start / (15 * MIN)) * 15 * MIN;
+      for (let t = first; t <= s.end; t += 15 * MIN) {
+        const y = yOf(t);
+        svgParts.push(`<line x1="${RULER_W}" y1="${y}" x2="${BOARD_W - 8}" y2="${y}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>
+          <text x="${RULER_W - 8}" y="${y + 3.5}" text-anchor="end" font-size="10.5" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${fmtT(t)}</text>`);
+      }
+    }
+  
+    /* break bands */
+    segs.forEach((s, i) => {
+      if (!segs[i + 1]) return;
+      const y = s.y1, gap = s.gapAfterMs;
+      svgParts.push(`<rect x="8" y="${y + 8}" width="${BOARD_W - 16}" height="${BREAK_H - 16}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
+      const label = gap > 3 * 60 * MIN
+        ? `⏸ &nbsp;long pause — <span class="mono">${fmtDur(gap)}</span> idle`
+        : `idle — <span class="mono">${fmtDur(gap)}</span>`;
+      htmlParts.push(`<div class="break-label" style="left:${RULER_W + 22}px; top:${y + 8}px; height:${BREAK_H - 16}px; background:var(--surface); padding:0 10px;">${label}</div>`);
+    });
+  
+    /* no column headers here: each block's own band-label carries its
+       per-session title, so a header band would only repeat it. */
+
+    /* no dotted column-track separators here: with skyline packing, blocks
+       no longer align into discrete shared-width columns, so there is no
+       fixed boundary line to draw — each block's own dashed band border
+       already marks its extent. */
+
+    /* main spine — one run per session's main thread, all in the X_MAIN
+       column, each spanning only its own session's time extent. Sessions are
+       disjoint in time, so they stack down the column instead of overlapping;
+       clicking any run opens THAT session's main thread in the drawer. */
+    for (const r of ROOTS) {
+      svgParts.push(`<path class="shape" data-id="${esc(r.id)}" d="${shapePath('orchestration', X_MAIN, r.y0, SPINE_W, r.h)}"
+        fill="${cvar(r.type)}" fill-opacity="0.30" stroke="${cvar(r.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
+    }
+  
+    /* edges: dispatch + return + respawn.
+
+       Straight two-point lines only — no elbows. The JOIN POINTS carry the
+       meaning here, so each one is placed at the ACTUAL TIME of the event it
+       represents rather than at whichever box edge happened to be nearby:
+         dispatch : leaves the parent at yOf(child.t0) — the moment of
+                    delegation, NOT the parent's bottom (a long-running parent
+                    that spawns early used to get an edge leaving below its
+                    child's start, i.e. running backwards in time)
+         return   : leaves the child at yOf(child.t1) — the true end, NOT the
+                    box bottom
+       CLAMPING: a node's TOP is time-true (y0 === yOf(t0)) but its BOTTOM is
+       not — h is floored at MIN_H and can be grown further to fit wrapped
+       text — so a time-true y can fall outside the box it must attach to.
+       Each join y is therefore clamped into its OWN node's [y0, y0+h]; where a
+       clamp fires the line still lands on the correct box, at its near edge.
+
+       x: both ends attach on the two boxes' FACING sides, so the connector is
+       a direct hop that never crosses either body. Sub-lanes are packed by
+       y-extent, so a child is usually — but not always — right of its parent.
+       If their columns OVERLAP (the degenerate same-column case) neither box
+       has a facing side; both ends then attach to their right edges and the
+       connector degenerates to a short vertical run alongside them, which is
+       still unambiguous because dispatch (yOf(t0)) and return (yOf(t1)) sit at
+       different heights and carry different markers/dashes. */
+    const edges = [];
+    /* Clamping applies UNIFORMLY, spine included. It used to exempt the root:
+       while every session's main carried the id "main" they all collapsed onto
+       one agent, so a child resolved its parent to a FOREIGN session's main and
+       clamping dragged its dispatch line tens of thousands of px to that
+       session's edge — the exemption hid the symptom. Agent ids are now
+       session-namespaced (extract.py:namespace_graph), so byId[a.parent] is
+       this child's OWN session's main, its y extent is that session's real
+       span, and the child's t0/t1 fall inside it — the clamp is a no-op in the
+       normal case and correct in the MIN_H-floored edge case. */
+    const clampY = (n, y) => Math.max(n.y0, Math.min(n.y0 + n.h, y));
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const parent = byId[a.parent];
+      if (!parent) continue;
+      const pIsRoot = isRoot(parent);
+      const pX = pIsRoot ? X_MAIN : xOf(parent);    // a main thread is drawn as a narrow spine
+      const pW = pIsRoot ? SPINE_W : LANE_W;
+      const cX = xOf(a);
+      let px, cx;
+      if (cX >= pX + pW) { px = pX + pW; cx = cX; }               // child right of parent
+      else if (cX + LANE_W <= pX) { px = pX; cx = cX + LANE_W; }  // child left of parent
+      else { px = pX + pW; cx = cX + LANE_W; }                    // columns overlap
+      const yDisp = yOf(a.t0), yRet = yOf(a.t1);
+      /* dispatch: parent's facing edge → child's facing edge, at the instant
+         of delegation */
+      edges.push({ from: a.parent, to: a.id,
+        d: `M${px},${clampY(parent, yDisp)} L${cx},${clampY(a, yDisp)}`,
+        stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
+      if (a.status === 'ok') {
+        /* return: child's facing edge → parent's facing edge, at the instant
+           the child ended (marker-start ⇒ the dot sits on the child) */
+        edges.push({ from: a.id, to: a.parent,
+          d: `M${cx},${clampY(a, yRet)} L${px},${clampY(parent, yRet)}`,
+          stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
+      }
+      if (a.respawnOf && byId[a.respawnOf]) {
+        const dead = byId[a.respawnOf];
+        const dx = xOf(dead) + LANE_W / 2, dy = dead.y0 + dead.h;
+        const ax = xOf(a) + LANE_W / 2;
+        edges.push({ from: dead.id, to: a.id, d:
+          `M${dx},${dy + 2} L${ax},${a.y0 - 3}`,
+          stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
+      }
+    }
+    pushEdges(edges, [8, 30]);
+  
+    /* agent blocks */
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const nx = xOf(a);
+      const pad = a.work === 'orchestration' ? 11 : 2;
+      const tight = a.h < 70;
+      paintNode(a, nx, a.y0, LANE_W, a.h, pad, tight, a.skills.length && a.h - pad * 2 >= 84);
+    }
+  
+    /* main-thread markers. Labels are stacked against the ESTIMATED height of
+       the preceding label (markerLabelH) rather than a flat 48px, so a label
+       that wraps to 3 lines pushes the next one down by its real extent. The
+       `y - 8` anchor is kept, so a label still starts at its own diamond
+       whenever the previous one has already ended. */
+    let lastLabelBottom = -1e9;
+    for (const m of sortedM) {
+      const y = yOf(T(m.at));
+      svgParts.push(`<path d="M${X_MAIN + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
+      const labelY = Math.max(y - 8, lastLabelBottom + MARKER_LABEL_GAP);
+      lastLabelBottom = labelY + markerLabelH(m);
+      htmlParts.push(`<div class="marker-label" style="left:${X_MAIN + SPINE_W + MARKER_LABEL_X}px; top:${labelY}px; width:${V_MARKER_LABEL_W}px; max-width:${V_MARKER_LABEL_W}px;">
+        <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${m.label}</div>`);
+    }
   }
-});
-board.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  if (e.target.dataset.marker !== undefined) {
-    e.preventDefault();
-    openMarkerDrawer(+e.target.dataset.marker);
-  } else if (e.target.dataset.id) {
-    e.preventDefault();
-    openDrawer(e.target.dataset.id);
-    isolate(isolated === e.target.dataset.id ? null : e.target.dataset.id);
+  
+  document.getElementById('board').innerHTML =
+    `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img"
+      aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
+  document.getElementById('board').style.width = BOARD_W + 'px';
+  
+  /* --------------------------------------------------------- expand orchestration nodes --- */
+  
+  /* After rendering, measure actual content heights of orchestration nodes and expand them
+     if their content exceeds the initial height. This fixes text truncation issues when
+     coordinator titles are long (e.g., "Implement config:3 OpenSpec change..."). */
+  function expandOrchestratorNodes() {
+    if (ORIENTATION === 'horizontal') { relayoutHorizontalBlocks(); return; }
+  
+    const board = document.getElementById('board');
+    const nodeEls = [...board.querySelectorAll('.node[data-work="orchestration"]')];
+    if (!nodeEls.length) return;
+  
+    const svg = board.querySelector('svg');
+    const expandedIds = new Set();
+    let maxExpansion = 0;
+  
+    for (const nodeEl of nodeEls) {
+      const id = nodeEl.dataset.id;
+      if (!id || !AGENTS.find((a) => a.id === id)) continue;
+  
+      const a = AGENTS.find((a) => a.id === id);
+      const initialHeight = parseFloat(nodeEl.style.height);
+      const contentHeight = nodeEl.scrollHeight;
+  
+      /* if content height exceeds initial height + padding buffer, expand */
+      const buffer = 2;
+      if (contentHeight > initialHeight + buffer) {
+        const expansion = contentHeight - initialHeight;
+        const newHeight = contentHeight;
+  
+        /* update node element height */
+        nodeEl.style.height = newHeight + 'px';
+        expandedIds.add(id);
+        maxExpansion = Math.max(maxExpansion, expansion);
+  
+        /* update SVG shape paths — each agent has two shapes (fill + stroke).
+           Both need the same new height to stay synchronized with the HTML node. */
+        const y = parseFloat(nodeEl.style.top);
+        const x = parseFloat(nodeEl.style.left);
+        const w = parseFloat(nodeEl.style.width);
+  
+        const shapes = svg.querySelectorAll(`path.shape[data-id="${id}"]`);
+        for (const shape of shapes) {
+          shape.setAttribute('d', shapePath(a.work, x, y, w, newHeight));
+        }
+      }
+    }
+  
+    /* if any nodes expanded, recalculate BOARD_H for vertical layout to accommodate taller nodes.
+       For horizontal layout, track heights are already calculated per-block, so we only need to
+       expand if this is a vertical layout (ORIENTATION is not 'horizontal'). */
+    if (expandedIds.size > 0 && ORIENTATION !== 'horizontal') {
+      const maxY = Math.max(
+        ...AGENTS.filter((a) => expandedIds.has(a.id)).map((a) => {
+          const nodeEl = board.querySelector(`.node[data-id="${a.id}"]`);
+          if (nodeEl) {
+            return parseFloat(nodeEl.style.top) + parseFloat(nodeEl.style.height);
+          }
+          return 0;
+        })
+      );
+      if (maxY > 0) {
+        const newBoardH = maxY + 46;
+        if (newBoardH > BOARD_H) {
+          svg.setAttribute('height', newBoardH);
+          svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${newBoardH}`);
+          board.style.height = newBoardH + 'px';
+        }
+      }
+    }
   }
-});
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') isolate(null); });
+  
+  /* ================================== relayout horizontal blocks/tracks --- */
+  
+  /* Horizontal-orientation counterpart to the vertical-layout height cascade
+     above. Track/block heights were computed once at initial paint time from
+     the fixed H_HEAD_H/H_LANE_H constants — if a coordinator's (or any
+     orchestration-work descendant's) node grows taller than its allotted row
+     to fit wrapped text, that growth has to cascade: the row's lane height
+     grows, the block's total height grows, the track's height grows, every
+     later track shifts down, and BOARD_H grows to fit. This mutates the DATA
+     MODEL only (a.h / a.y0 / b.top / b.h / BOARD_H) — the actual DOM/SVG
+     repaint happens afterwards in expandHorizontalNodeWidths(), which already
+     does a full repaint from current a.x0/a.y0/a.w/a.h. */
+  function relayoutHorizontalBlocks() {
+    const board = document.getElementById('board');
+    const nodeEls = [...board.querySelectorAll('.node[data-id]')];
+  
+    /* Step 1: measure every node's actual (wrapped) content height — not just
+       orchestration/coordinator nodes, since worker titles wrap just as often
+       inside their narrower lanes — and grow its agent's data-model height
+       (a.h) to fit — not just the DOM style, since the block/track cascade
+       below reads a.h. */
+    let grew = false;
+    for (const nodeEl of nodeEls) {
+      const id = nodeEl.dataset.id;
+      const a = byId[id];
+      if (!a || !a.parent) continue;
+      const pad = 8; // matches paintNode's orchestration-work pad (see "agent blocks" above)
+      const contentHeight = nodeEl.scrollHeight;
+      const neededH = contentHeight + pad * 2;
+      if (neededH > a.h + 0.5) { a.h = neededH; grew = true; }
+    }
+    if (!grew) return;
+  
+    /* Step 2: recompute each block's lane heights (per lane: the tallest
+       current a.h among that lane's descendants, floored at H_LANE_H) and
+       head height (the coordinator's own, possibly-grown a.h, floored at
+       H_HEAD_H), then the block's total height and per-lane y-offsets. */
+    for (const b of hBlocks) {
+      b.head.h = Math.max(H_HEAD_H, b.head.h);
+      const laneHeights = [];
+      for (const d of b.descendants) {
+        const lane = d.blockLane;
+        laneHeights[lane] = Math.max(laneHeights[lane] || H_LANE_H, d.h, H_LANE_H);
+      }
+      const laneOffsets = [];
+      let acc = b.head.h + H_ROW_GAP;
+      for (let i = 0; i < laneHeights.length; i++) {
+        laneOffsets[i] = acc;
+        acc += laneHeights[i] + H_ROW_GAP;
+      }
+      b.laneHeights = laneHeights;
+      b.laneOffsets = laneOffsets;
+      b.h = b.head.h + laneHeights.reduce((sum, lh) => sum + lh + H_ROW_GAP, 0);
+    }
+  
+    /* Step 3: cascade block heights up into track heights, then re-stack
+       track tops sequentially — the same cursorY accumulation pattern used
+       at initial layout time, just re-run against the (possibly grown)
+       block heights. */
+    hTrackMeta.forEach((tm, ti) => {
+      tm.h = Math.max(...hTracks[ti].blocks.map((b) => b.h));
+    });
+    let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
+    hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
+    const newBoardH = cursorY + 20;
+    if (newBoardH > BOARD_H) BOARD_H = newBoardH;
+  
+    /* Step 4: re-derive every block's top, every coordinator head's y0, and
+       every descendant's y0/h from the new geometry. */
+    for (const b of hBlocks) {
+      b.top = hTrackMeta[b.track].top;
+      b.head.y0 = b.top;
+      for (const d of b.descendants) {
+        d.y0 = b.top + b.laneOffsets[d.blockLane];
+        /* d.h is left as its own (possibly Step-1-grown) height — a lane's
+           row is only as tall as its tallest occupant; shorter siblings in
+           the same lane simply sit within a taller row, they don't stretch. */
+      }
+    }
+  
+    H_HEIGHTS_CHANGED = true;
+  }
+  
+  /* ============================================ expand horizontal node widths --- */
+  
+  /* After rendering (horizontal layout only), measure actual content widths of all nodes
+     and expand their visual width to fit full text. This fixes horizontal layout clipping:
+     long node titles like "Bind-mount-volume..." get truncated because width is tied to
+     time duration. We measure, expand, shift downstream nodes, and regenerate affected
+     SVG (shapes, edges, block containers). */
+  function expandHorizontalNodeWidths() {
+    if (ORIENTATION !== 'horizontal') return;
+  
+    const board = document.getElementById('board');
+    const svg = board.querySelector('svg');
+    const nodeEls = [...board.querySelectorAll('.node[data-id]')];
+  
+    if (!nodeEls.length) return;
+  
+    const CONTENT_PADDING = 16; // padding around text + margin buffer
+    const widthDeltas = {}; // agentId -> {delta, agent}
+    let totalDelta = 0;
+  
+    /* Phase 1: Measure each node's content width and calculate expansion needed */
+    for (const nodeEl of nodeEls) {
+      const id = nodeEl.dataset.id;
+      const a = byId[id];
+      if (!a || !a.parent) continue; // skip root for now
+  
+      const contentWidth = nodeEl.scrollWidth;
+      const targetWidth = contentWidth + CONTENT_PADDING;
+      const currentWidth = a.w;
+  
+      if (targetWidth > currentWidth) {
+        const delta = targetWidth - currentWidth;
+        widthDeltas[id] = { delta, agent: a };
+        totalDelta = Math.max(totalDelta, delta); // track max delta
+      }
+    }
+  
+    /* if no width expansions AND no height/block relayout happened upstream
+       (relayoutHorizontalBlocks), there's nothing to repaint. */
+    if (!Object.keys(widthDeltas).length && !H_HEIGHTS_CHANGED) return;
+  
+    /* Phase 2: Update agent widths and shift downstream nodes
+       For each expanded node, push all nodes with x0 >= its x0 + current width to the right.
+       Process in left-to-right order to avoid double-shifting. */
+    const expandedIds = Object.keys(widthDeltas);
+    const sortedByX0 = expandedIds
+      .map(id => ({ id, x0: widthDeltas[id].agent.x0 }))
+      .sort((a, b) => a.x0 - b.x0);
+  
+    const shiftMap = {}; // agentId -> cumulative shift amount
+    for (const { id } of sortedByX0) {
+      const { agent, delta } = widthDeltas[id];
+      const expandEnd = agent.x0 + agent.w + delta;
+  
+      /* update this agent's width */
+      const priorShift = shiftMap[id] || 0;
+      agent.w += delta;
+      shiftMap[id] = delta;
+  
+      /* shift all agents that start at or after this node's original end position */
+      for (const other of AGENTS) {
+        if (other === agent || !other.parent) continue;
+        const otherEnd = other.x0 + other.w;
+        if (other.x0 >= agent.x0 + (agent.w - delta)) {
+          if (!shiftMap[other.id]) shiftMap[other.id] = 0;
+          shiftMap[other.id] += delta;
+          other.x0 += delta;
+        }
+      }
+    }
+  
+    /* update roots if they were shifted */
+    for (const r of ROOTS) {
+      const rootShift = shiftMap[r.id] || 0;
+      if (rootShift > 0) r.x0 += rootShift;
+    }
+  
+    /* Phase 3: Update BOARD_W to accommodate rightmost node */
+    const maxRightEdge = Math.max(...AGENTS.map(a => a.x0 + a.w), 0);
+    BOARD_W = maxRightEdge + 30;
+  
+    /* Phase 4: Regenerate all SVG elements that depend on node positions
+       We need to rebuild: block containers, main spine, edges, and node HTML positions */
+  
+    /* 4a: Clear old SVG paths and regenerate (easier than updating individual paths) */
+    const svgContent = svg.querySelector('defs').outerHTML;
+    svg.innerHTML = svgContent;
+    svgParts.length = 0;
+  
+    /* rebuild shapes, block containers, and edges — extract key sections from original logic */
+    const newSvgParts = [];
+    newSvgParts.push(svgContent);
+  
+    /* block containers — visual grouping of coordinator + subtree. hBlocks is
+       the same array of objects built at initial layout and mutated in place
+       by relayoutHorizontalBlocks(), so b.top/b.h already reflect any height
+       relayout by the time we get here. */
+    if (hBlocks.length) {
+      for (const b of hBlocks) {
+        const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
+        const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
+        newSvgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
+          fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+      }
+    }
+  
+    /* main spine — one segment per session's main thread */
+    for (const r of ROOTS) {
+      newSvgParts.push(`<path class="shape" data-id="${esc(r.id)}" d="${shapePath('orchestration', r.x0, r.y0, r.w, r.h)}"
+        fill="${cvar(r.type)}" fill-opacity="0.30" stroke="${cvar(r.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
+    }
+  
+    /* agent node shapes — reprint at each agent's (possibly shifted/widened)
+       x0/w so the coloured/hatched block backing keeps matching the HTML
+       .node label repositioned below in Phase 5. */
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const d = shapePath(a.work, a.x0, a.y0, a.w, a.h);
+      newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}" fill="var(--surface)" stroke="none"/>`);
+      newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}"
+        fill="${cvar(a.type)}" fill-opacity="0.13" stroke="${cvar(a.type)}" stroke-width="1.5"
+        ${a.status !== 'ok' ? 'stroke-dasharray="5 3"' : ''}/>`);
+      if (a.status !== 'ok') {
+        newSvgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${d}" fill="url(#hatch)" pointer-events="none"/>`);
+      }
+    }
+  
+    /* edges: dispatch + return + respawn */
+    const edges = [];
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const parent = byId[a.parent];
+      if (!parent) continue;
+  
+      const px = a.x0 + 4;
+      const py = parent.y0 + parent.h;   // every root carries real geometry
+      const cx = px, cy = a.y0;
+      const yk = (py + cy) / 2;
+  
+      edges.push({
+        from: a.parent, to: a.id,
+        d: elbowV(px, py, cx, cy, yk, 6),
+        stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2
+      });
+  
+      if (a.status === 'ok') {
+        const rx = a.x0 + a.w - 4;
+        const ry0 = a.y0 + a.h, ry1 = py + 4;
+        const ryk = (ry0 + ry1) / 2;
+        edges.push({
+          from: a.id, to: a.parent,
+          d: elbowV(rx, ry0, rx, ry1, ryk, 6),
+          stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true
+        });
+      }
+  
+      if (a.respawnOf && byId[a.respawnOf]) {
+        const dead = byId[a.respawnOf];
+        const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
+        const ay = a.y0 + a.h / 2, ax = a.x0;
+        edges.push({
+          from: dead.id, to: a.id,
+          d: `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
+          stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true
+        });
+      }
+    }
+  
+    /* render edges to SVG */
+    for (const e of edges) {
+      newSvgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
+        stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
+        ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
+        ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
+      if (e.respawn) {
+        const mid = e.d.match(/M([\d.]+),([\d.]+) C/);
+        if (mid) newSvgParts.push(`<text x="${+mid[1] + 6}" y="${+mid[2] - 8}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
+      }
+    }
+  
+    /* update SVG content and viewBox — BOARD_H may have grown too, via
+       relayoutHorizontalBlocks(), not just BOARD_W */
+    svg.innerHTML = newSvgParts.join('');
+    svg.setAttribute('width', BOARD_W);
+    svg.setAttribute('height', BOARD_H);
+    svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${BOARD_H}`);
+    board.style.width = BOARD_W + 'px';
+    board.style.height = BOARD_H + 'px';
+  
+    /* Phase 5: Update HTML node positions to match new x0/w and y0/h values
+       (height relayout can move y0/h just as width expansion moves x0/w) */
+    for (const nodeEl of nodeEls) {
+      const id = nodeEl.dataset.id;
+      const a = byId[id];
+      if (!a || !a.parent) continue;
+  
+      const pad = a.work === 'orchestration' ? 8 : 2;
+      nodeEl.style.left = a.x0 + 'px';
+      nodeEl.style.width = a.w + 'px';
+      nodeEl.style.top = (a.y0 + pad) + 'px';
+      nodeEl.style.height = (a.h - pad * 2) + 'px';
+    }
+  
+    /* update root node position (unlikely to have shifted much, but be safe) */
+    for (const r of ROOTS) {
+      const rootNodeEl = board.querySelector(`.node[data-id="${r.id}"]`);
+      if (!rootNodeEl) continue;
+      rootNodeEl.style.left = r.x0 + 'px';
+      rootNodeEl.style.width = r.w + 'px';
+    }
+  }
+  
+  /* invoke expansions after a minimal paint delay to ensure scrollHeight/scrollWidth are accurate */
+  requestAnimationFrame(() => {
+    expandOrchestratorNodes();
+    expandHorizontalNodeWidths();
+  });
+  
+  /* ------------------------------------------------------- header/stats --- */
+  
+  document.getElementById('eyebrow').textContent = DATA.eyebrow || '';
+  document.getElementById('title').textContent = DATA.title || (DATA.session && DATA.session.id) || 'Agent graph';
+  document.getElementById('subtitle').innerHTML = DATA.subtitle || '';
+  document.getElementById('footer').innerHTML = DATA.footer
+    || 'Hover or click any node to light up its connections. Solid connectors are dispatches (parent → agent, at the moment of spawn); dotted connectors are results handed back on completion. Hatched blocks were killed mid-flight; dashed ⟳ links show which later agent picked their brief back up.';
+  
+  const sum = (k) => AGENTS.reduce((n, a) => n + (a.counts[k] || 0), 0);
+  const activeRuntime = workers.reduce((n, a) => n + (a.t1 - a.t0), 0);
+  const baseStats = [
+    [String(AGENTS.length), 'agents'],
+    [sum('edits'), 'file edits'],
+    [sum('bash'), 'shell runs'],
+    /* wall clock spans EVERY session's main thread, not just the primary
+       root's — an aggregated graph has one root per session */
+    [fmtDur(Math.max(...ROOTS.map((r) => r.t1)) - Math.min(...ROOTS.map((r) => r.t0))), 'wall clock'],
+    [fmtDur(activeRuntime), 'worker runtime'],
+  ];
+  const extraStats = Array.isArray(DATA.extraStats) ? DATA.extraStats : [];
+  /* accept either [value, label] pairs or {value/v, label/k/key} objects */
+  const statPair = (s) => Array.isArray(s) ? s : [s.value ?? s.v ?? '', s.label ?? s.k ?? s.key ?? ''];
+  document.getElementById('stats').innerHTML = [...baseStats, ...extraStats].map(statPair)
+    .map(([v, k]) => `<div class="tile"><div class="v mono">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join('');
+  
+  const mini = (work) => `<svg width="26" height="16" viewBox="0 0 26 16">
+    <path d="${shapePath(work, 1.5, 1.5, 23, 13)}" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/></svg>`;
+  const usedWorks = [...new Set(AGENTS.map((a) => a.work))].filter((w) => WORK_LABEL[w]);
+  const hasFate = AGENTS.some((a) => a.status !== 'ok' || a.respawnOf);
+  document.getElementById('legend').innerHTML = `
+    <div class="grp"><span class="grp-label">Agent type — colour</span>
+      ${typeOrder.map((t) => `<span class="item"><span class="swatch" style="background:${cvar(t)}"></span>${esc(t)}</span>`).join('')}
+    </div>
+    <div class="grp"><span class="grp-label">Work type — shape</span>
+      ${usedWorks.map((w) => `<span class="item">${mini(w)}${esc(workLabel(w))}</span>`).join('')}
+    </div>
+    ${hasFate ? `<div class="grp"><span class="grp-label">Fate</span>
+      <span class="item"><svg width="26" height="16"><rect x="1.5" y="1.5" width="23" height="13" rx="4" fill="url(#hatch)" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1.3"/></svg>killed mid-flight</span>
+      <span class="item"><svg width="30" height="16"><path d="M2,8 H24" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 4"/><path d="M22,4.5 L27,8 L22,11.5 Z" fill="var(--muted)"/></svg>⟳ respawned as</span>
+    </div>` : ''}`;
+  
+  /* ---------------------------------------------------------- interaction --- */
+  
+  const drawer = document.getElementById('drawer');
+  const drawerBody = document.getElementById('drawerBody');
+  const STATUS_TEXT = {
+    ok: null,
+    cutoff: 'Killed by the usage-limit window.',
+    dropped: 'API connection closed mid-response.',
+    fault: 'Harness fault — tool calls never executed.',
+  };
+  
+  function openDrawer(id) {
+    const a = byId[id];
+    if (!a) return;
+    const c = a.counts;
+    const parent = a.parent ? byId[a.parent] : null;
+    drawerBody.innerHTML = `
+      <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
+      <h2>${esc(a.title)}</h2>
+      <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}</div>
+      ${a.depth > 2 ? `<p class="status-note">Nested at depth ${a.depth} — shown in its nearest coordinator's worker column.</p>` : ''}
+      ${a.parentGuessed ? `<p class="status-note">Parent inferred — the recorded spawn parent could not be resolved.</p>` : ''}
+      ${STATUS_TEXT[a.status] ? `<p class="status-note"><b>${esc(STATUS_BADGE[a.status] || a.status)}</b> — ${STATUS_TEXT[a.status]}</p>` : ''}
+      <h3>Brief</h3><p>${esc(a.brief)}</p>
+      <h3>Outcome</h3><p>${esc(a.outcome)}</p>
+      <h3>Skills loaded</h3>
+      <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
+      <h3>Tool calls</h3>
+      <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>`;
+    drawer.classList.add('open');
+  }
+  function openMarkerDrawer(idx) {
+    const m = MARKERS[idx];
+    if (!m) return;
+    drawerBody.innerHTML = `
+      <div class="typechip" style="--dc:var(--ink-2)">marker</div>
+      <h2>${esc(m.label)}</h2>
+      <div class="when mono">${fmtT(T(m.at))}</div>`;
+    drawer.classList.add('open');
+  }
+  document.getElementById('drawerClose').addEventListener('click', () => drawer.classList.remove('open'));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') drawer.classList.remove('open'); });
+  
+  const board = document.getElementById('board');
+  
+  /* click-to-isolate: dim everything except the selected node's directed chain —
+     walk UP through its parents to root, and DOWN through its own descendants
+     only. Never flow back down into a parent's other children: if a coordinator
+     spawns 4 subagents and one is selected, its 3 uninvolved siblings stay
+     dimmed. Respawn partners (a real handoff relationship) stay linked. */
+  const allEdges = [...document.querySelectorAll('.edge')];
+  const allShapes = [...document.querySelectorAll('.shape[data-id]')];
+  const allNodeEls = [...document.querySelectorAll('.node[data-id]')];
+  const childrenOf = {};
+  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
+  function directedChain(id) {
+    const seen = new Set([id]);
+    let cur = byId[id];
+    while (cur && cur.parent && !seen.has(cur.parent)) { seen.add(cur.parent); cur = byId[cur.parent]; }
+    const stack = [id];
+    while (stack.length) {
+      const top = stack.pop();
+      for (const cid of (childrenOf[top] || [])) {
+        if (!seen.has(cid)) { seen.add(cid); stack.push(cid); }
+      }
+    }
+    const sel = byId[id];
+    if (sel && sel.respawnOf) seen.add(sel.respawnOf);
+    AGENTS.forEach((a) => { if (a.respawnOf === id) seen.add(a.id); });
+    return seen;
+  }
+  let isolated = null, hovered = null;
+  function focus(id) {
+    const set = id ? directedChain(id) : null;
+    allShapes.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
+    allNodeEls.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
+    allEdges.forEach((p) => {
+      const inSet = !!set && set.has(p.dataset.from) && set.has(p.dataset.to);
+      p.classList.toggle('dim', !!set && !inSet);
+      p.classList.toggle('hot', inSet);
+    });
+  }
+  function isolate(id) { isolated = id; focus(id); }
+  /* hovering a node previews its connected component (edges lit) without a click;
+     leaving reverts to whatever is click-isolated (if anything) */
+  board.addEventListener('mouseover', (e) => {
+    const el = e.target.closest('[data-id]');
+    const id = el ? el.dataset.id : null;
+    if (id === hovered) return;
+    hovered = id;
+    focus(id || isolated);
+  });
+  board.addEventListener('mouseleave', () => { hovered = null; focus(isolated); });
+  board.addEventListener('click', (e) => {
+    const markerEl = e.target.closest('[data-marker]');
+    if (markerEl) { openMarkerDrawer(+markerEl.dataset.marker); return; }
+    const el = e.target.closest('[data-id]');
+    if (el) {
+      openDrawer(el.dataset.id);
+      isolate(isolated === el.dataset.id ? null : el.dataset.id);
+    } else {
+      isolate(null);
+    }
+  });
+  board.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.dataset.marker !== undefined) {
+      e.preventDefault();
+      openMarkerDrawer(+e.target.dataset.marker);
+    } else if (e.target.dataset.id) {
+      e.preventDefault();
+      openDrawer(e.target.dataset.id);
+      isolate(isolated === e.target.dataset.id ? null : e.target.dataset.id);
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') isolate(null); });
+  
+}
+
+// Wait for data to load, then initialize
+let lastSessionCount = 0;
+(async () => {
+  if (DYNAMIC_MODE) {
+    DATA = await loadDynamicSessions();
+    lastSessionCount = (DATA.sessions || []).length;
+  }
+  await initializeGraph();
+
+  // In dynamic mode, set up periodic refresh to detect new/deleted sessions
+  if (DYNAMIC_MODE && SESSIONS_DIR) {
+    setInterval(async () => {
+      try {
+        const indexResp = await fetch(`${SESSIONS_DIR}/index.json?t=${Date.now()}`);
+        if (!indexResp.ok) return;
+        const index = await indexResp.json();
+        const newSessionCount = index.sessions.length;
+
+        if (newSessionCount !== lastSessionCount) {
+          console.log(`Session count changed: ${lastSessionCount} → ${newSessionCount}, refreshing...`);
+          location.reload();
+        }
+      } catch (e) {
+        console.debug('Refresh check failed:', e);
+      }
+    }, 5000);  // Check every 5 seconds
+  }
+})().catch(e => console.error('Init error:', e));
 </script>
