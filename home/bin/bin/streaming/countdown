@@ -24,20 +24,21 @@ train.flf"
 
 SECONDS="${1:-10}"
 INTERVAL="${2:-3}"
-
 CHOICE="${3:-}"
 
-SEQ=$(seq "$SECONDS" -"$INTERVAL" 0)
 [ -z "${CHOICE}" ] && CHOICE=$(echo "$CHOICES" | shuf -n 1 -)
+fname=$(ls -1 "$FIGLET_FONTS_DIR" | fzf -f "$CHOICE" | head -n1)
 
-echo "$CHOICE"
+# restore cursor on exit
+function restore_cursor() { echo -e "\033[?25h"; }
+trap restore_cursor EXIT
 
+SEQ=$(seq "$SECONDS" -"$INTERVAL" 0)
 # Print all of the countdown frames
 for i in $SEQ; do
   clear
-  for _ in $(seq 0 $(( $(( $(tput lines) / 2 )) - 5))); do echo ; done
-  fname=$(ls -1 "$FIGLET_FONTS_DIR" | fzf -f "$CHOICE" | head -n1)
+  for _ in $(seq 0 $(($(($(tput lines) / 2)) - 5))); do echo; done
   figlet "$i" -f "$FIGLET_FONTS_DIR/$fname" -w "$(tput cols)" -c | lolcat
+  echo -e "\033[?25l" # hide cursor
   sleep "$INTERVAL"
 done
-
