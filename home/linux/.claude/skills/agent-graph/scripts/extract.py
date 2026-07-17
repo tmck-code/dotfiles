@@ -538,6 +538,39 @@ def build_graph(project_dir, session_id):
     return graph
 
 
+def namespace_graph(graph):
+    """Prefix every agent id in `graph` with its session id, in place.
+
+    Only `--multi` does this. The SPA flattens every session's `agents` into
+    ONE array, and no id in a session graph is unique across sessions:
+    `build_graph` hardcodes the main thread's id as 'main', and the subagent
+    ids (17 hex chars, not uuids) are re-used across sessions in practice.
+    Colliding ids collapse in the renderer's id->agent map, so a child can
+    resolve its parent to a FOREIGN session's main thread.
+
+    Single-session output is deliberately left alone: its ids are already
+    unique within the document, and the curation workflow (see SKILL.md) keys
+    hand-written patches by the raw agent id.
+
+    Runs AFTER build_graph, so parentage is still resolved against the raw
+    `.meta.json` parentAgentId values and every reference is rewritten here in
+    one place.
+    """
+    sid = graph['session']['id']
+
+    def ns(aid):
+        return f'{sid}:{aid}'
+
+    for a in graph['agents']:
+        a['id'] = ns(a['id'])
+        if a['parent'] is not None:
+            a['parent'] = ns(a['parent'])
+        if a.get('respawnOf'):
+            a['respawnOf'] = ns(a['respawnOf'])
+    graph['groups'] = [[ns(cid) for cid in g] for g in (graph.get('groups') or [])]
+    return graph
+
+
 def git_label(cmd):
     if 'git commit' in cmd:
         m = re.search(r'-m\s+["\']?(?:\$\(cat <<[\'"]?EOF[\'"]?\s*\n)?(.+)', cmd)
@@ -562,7 +595,9 @@ def main():
     ap.add_argument('session', nargs='?', help='session id to extract')
     ap.add_argument('--list', action='store_true', help='list sessions with spawns')
     ap.add_argument('--project-dir', help='transcript project dir (default: derive from $PWD)')
-    ap.add_argument('-o', '--output', help='output path (default: stdout)')
+    ap.add_argument('-o', '--output', help='output path (default: stdout); directory for --multi mode')
+    ap.add_argument('--multi', action='store_true',
+                    help='extract multiple sessions into a directory (use with --list filters)')
     # --list filter flags (AND-composed)
     ap.add_argument('--all-projects', action='store_true',
                     help='list across every project dir, not just the cwd one')
@@ -593,8 +628,78 @@ def main():
                 err('--repo only applies with --all-projects; ignoring it')
             cmd_list([project_dir], filters, None, False, f'in {project_dir}')
         return
+
+    if args.multi:
+        if not args.output:
+            die('--multi requires -o/--output (directory path)')
+        if args.session:
+            die('--multi does not accept a session id; provide filters via --grep, --tool, etc.')
+
+        # Collect matching sessions
+        grep_words = [w.lower() for g in (args.grep or []) for w in g.split()]
+        filters = Filters(
+            grep  = grep_words,
+            tool  = args.tool,
+            since = parse_time_bound(args.since) if args.since else None,
+            until = parse_time_bound(args.until) if args.until else None,
+        )
+        if args.all_projects:
+            project_dirs = list(iter_project_dirs())
+        else:
+            project_dirs = [project_dir]
+        rows = collect_rows(project_dirs, filters, args.repo if args.all_projects else None, False)
+
+        if not rows:
+            die(f'no sessions found matching filters')
+
+        # Create output directory
+        os.makedirs(args.output, exist_ok=True)
+
+        # Extract each session
+        graphs = []
+        for row in rows:
+            sid = row['id']
+            try:
+                # Find the correct project directory for this session
+                if args.all_projects:
+                    session_project_dir = next((pd for pd in project_dirs if os.path.exists(os.path.join(pd, f'{sid}.jsonl'))), project_dir)
+                else:
+                    session_project_dir = project_dir
+                graph = namespace_graph(build_graph(session_project_dir, sid))
+                graphs.append(graph)
+                # Write individual .ndjson
+                out_file = os.path.join(args.output, f'{sid}.ndjson')
+                with open(out_file, 'w', encoding='utf-8') as fh:
+                    fh.write(json.dumps(graph, ensure_ascii=False) + '\n')
+            except Exception as e:
+                err(f'failed to extract {sid}: {e}')
+                continue
+
+        # Write index.json
+        index = {
+            'sessions': [
+                {
+                    'id': g['session']['id'],
+                    'title': g['title'],
+                    'startedAt': g['session']['startedAt'],
+                    'endedAt': g['session']['endedAt'],
+                    'agentCount': len(g['agents']),
+                }
+                for g in graphs
+            ],
+            'generatedAt': iso(time.time()),
+        }
+        index_path = os.path.join(args.output, 'index.json')
+        with open(index_path, 'w', encoding='utf-8') as fh:
+            json.dump(index, fh, indent=2, ensure_ascii=False)
+            fh.write('\n')
+
+        err(f'wrote {len(graphs)} sessions to {args.output}')
+        err(f'index: {index_path}')
+        return
+
     if not args.session:
-        die('provide a session id, or use --list')
+        die('provide a session id, or use --list / --multi')
 
     graph = build_graph(project_dir, args.session)
     out = json.dumps(graph, indent=2, ensure_ascii=False)
