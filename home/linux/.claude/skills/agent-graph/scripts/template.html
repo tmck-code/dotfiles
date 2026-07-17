@@ -65,12 +65,15 @@
     display: flex; align-items: flex-start; gap: 16px;
   }
   header.page .head-text { flex: 1 1 auto; min-width: 0; }
-  #themeToggle {
+  header.page .head-actions { flex: 0 0 auto; display: flex; gap: 8px; }
+  #themeToggle, #orientationToggle {
     flex: 0 0 auto; border: 1px solid var(--border);
-    background: none; color: var(--ink-2); border-radius: 7px; width: 28px; height: 28px;
+    background: none; color: var(--ink-2); border-radius: 7px; height: 28px;
     cursor: pointer; font-size: 14px; line-height: 1;
   }
-  #themeToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+  #themeToggle { width: 28px; }
+  #orientationToggle { width: auto; padding: 0 9px; font-size: 12px; font-weight: 650; }
+  #themeToggle:focus-visible, #orientationToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 6px;
@@ -172,7 +175,7 @@
     /* Fallback cap only. The horizontal layout sizes labels inline from its own
        MARKER_LABEL_W (150) and is clipped by this; the vertical layout overrides
        both width AND max-width inline from V_MARKER_LABEL_W, which is the single
-       source of truth that also sizes its gutter (MAIN_W). */
+       source of truth that also sizes its gutter (LABEL_GUTTER_W). */
     max-width: 146px; pointer-events: none;
   }
   .marker-label b { color: var(--ink); font-weight: 650; }
@@ -253,7 +256,10 @@
     <h1 id="title"></h1>
     <p class="sub" id="subtitle"></p>
   </div>
-  <button id="themeToggle" type="button"></button>
+  <div class="head-actions">
+    <button id="orientationToggle" type="button"></button>
+    <button id="themeToggle" type="button"></button>
+  </div>
 </header>
 
 <div class="stats" id="stats"></div>
@@ -305,6 +311,42 @@
   });
   apply(current);
 })();
+
+/* --------------------------------------------------- orientation flip --- */
+/* Layout is computed once at load from a single ORIENTATION value (read in
+   the next script, before initializeGraph runs) — there's no in-place
+   re-layout path, so flipping just persists the choice and reloads. That
+   keeps this button simple and avoids the duplicate-event-listener/stale-
+   closure risk of re-running the whole paint+wiring pipeline in place. */
+(function () {
+  var KEY = 'agentgraph:orientation';
+  var BUILD = "__ORIENTATION__";
+  var GLYPH = { vertical: '↕ vertical', horizontal: '↔ horizontal' };
+  var LABEL = {
+    vertical: 'Layout: vertical (time flows down) — click for horizontal',
+    horizontal: 'Layout: horizontal (time flows right) — click for vertical',
+  };
+  var btn = document.getElementById('orientationToggle');
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { /* file:// may throw */ }
+  var current = (stored === 'vertical' || stored === 'horizontal') ? stored : BUILD;
+
+  function paint(state) {
+    btn.textContent = GLYPH[state];
+    btn.title = LABEL[state];
+    btn.setAttribute('aria-label', LABEL[state]);
+  }
+
+  btn.addEventListener('click', function () {
+    current = current === 'horizontal' ? 'vertical' : 'horizontal';
+    try {
+      if (current === BUILD) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, current);
+    } catch (e) { /* file:// may throw */ }
+    location.reload();
+  });
+  paint(current);
+})();
 </script>
 
 <script>
@@ -314,7 +356,17 @@
 
 const SESSIONS_DIR = "__SESSIONS_DIR__";
 const DYNAMIC_MODE = __DYNAMIC_MODE__;
-const ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
+const BUILD_ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
+/* The flip button (wired below, near themeToggle) persists a per-browser
+   override to localStorage and reloads — see ORIENTATION_KEY there. Reading
+   it here, before layout runs, means a reload lands directly in the chosen
+   orientation instead of flashing the build-time default first. */
+const ORIENTATION_KEY = 'agentgraph:orientation';
+let ORIENTATION = BUILD_ORIENTATION;
+try {
+  const storedOrientation = localStorage.getItem(ORIENTATION_KEY);
+  if (storedOrientation === 'vertical' || storedOrientation === 'horizontal') ORIENTATION = storedOrientation;
+} catch (e) { /* file:// may throw */ }
 
 let DATA = __DATA_JSON__;
 
@@ -911,16 +963,19 @@ async function initializeGraph() {
     const RULER_W = 52;
 
     /* ---- marker label geometry (single source of truth) ----
+       Labels live in a gutter to the LEFT of the spine (between the ruler and
+       X_MAIN), right-aligned so they read INTO the spine's diamond marker.
        V_MARKER_LABEL_W drives BOTH the label's inline width and the width of
-       the gutter it lives in (MAIN_W, below). Keep them derived, never
-       hand-synced: the label is drawn at x = X_MAIN + SPINE_W + MARKER_LABEL_X,
-       and the first node column starts at X_MAIN + MAIN_W + COL_GAP, so
-       MAIN_W = SPINE_W + MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD
-       guarantees the label's right edge clears the first track by
-       MARKER_LABEL_PAD + COL_GAP px. */
+       that gutter (LABEL_GUTTER_W, below). Keep them derived, never
+       hand-synced: the label's right edge sits MARKER_LABEL_X px left of the
+       spine, so X_MAIN = RULER_W + 14 + LABEL_GUTTER_W, where
+       LABEL_GUTTER_W = MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD
+       guarantees the label's left edge clears the ruler by MARKER_LABEL_PAD
+       px. Node columns then start right after the spine, at
+       X_MAIN + SPINE_W + COL_GAP — no gutter needed on that side any more. */
     const V_MARKER_LABEL_W = 292;   // 2x the old 146
-    const MARKER_LABEL_X   = 12;    // label left offset from the spine's right edge
-    const MARKER_LABEL_PAD = 16;    // slack between label right edge and end of gutter
+    const MARKER_LABEL_X   = 12;    // label right offset from the spine's left edge
+    const MARKER_LABEL_PAD = 16;    // slack between label left edge and start of gutter
 
     /* Estimated rendered height of a marker label, in px. The labels wrap, so a
        fixed per-label height is wrong (that was the old `+48` bug). We can't
@@ -1095,9 +1150,9 @@ async function initializeGraph() {
        Process in y0 order so every "already-placed" block a later one checks
        against has a final x already. */
     const V_TRACK_GAP_PX = 8;
-    const MAIN_W = SPINE_W + MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD;
-    const X_MAIN = RULER_W + 14;
-    const BASE_X = X_MAIN + MAIN_W + COL_GAP;
+    const LABEL_GUTTER_W = MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD;
+    const X_MAIN = RULER_W + 14 + LABEL_GUTTER_W;
+    const BASE_X = X_MAIN + SPINE_W + COL_GAP;
     const placed = blocks.slice().sort((p, q) => p.by0 - q.by0);
     for (const b of placed) {
       let x = BASE_X;
@@ -1269,7 +1324,7 @@ async function initializeGraph() {
       svgParts.push(`<path d="M${X_MAIN + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
       const labelY = Math.max(y - 8, lastLabelBottom + MARKER_LABEL_GAP);
       lastLabelBottom = labelY + markerLabelH(m);
-      htmlParts.push(`<div class="marker-label" style="left:${X_MAIN + SPINE_W + MARKER_LABEL_X}px; top:${labelY}px; width:${V_MARKER_LABEL_W}px; max-width:${V_MARKER_LABEL_W}px;">
+      htmlParts.push(`<div class="marker-label" style="left:${X_MAIN - MARKER_LABEL_X - V_MARKER_LABEL_W}px; top:${labelY}px; width:${V_MARKER_LABEL_W}px; max-width:${V_MARKER_LABEL_W}px; text-align:right;">
         <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${m.label}</div>`);
     }
   }
@@ -1281,14 +1336,17 @@ async function initializeGraph() {
   
   /* --------------------------------------------------------- expand orchestration nodes --- */
   
-  /* After rendering, measure actual content heights of orchestration nodes and expand them
-     if their content exceeds the initial height. This fixes text truncation issues when
-     coordinator titles are long (e.g., "Implement config:3 OpenSpec change..."). */
+  /* After rendering, measure actual content heights of EVERY node (not just
+     orchestration ones — worker titles wrap just as often, e.g. "Run full
+     gates for boundary-c-and-morph-axes" under a "gates · 2m" meta line) and
+     expand them if their content exceeds the initial height. This fixes text
+     truncation/overflow issues when a title is long relative to its node's
+     fixed height. */
   function expandOrchestratorNodes() {
     if (ORIENTATION === 'horizontal') { relayoutHorizontalBlocks(); return; }
-  
+
     const board = document.getElementById('board');
-    const nodeEls = [...board.querySelectorAll('.node[data-work="orchestration"]')];
+    const nodeEls = [...board.querySelectorAll('.node[data-id]')];
     if (!nodeEls.length) return;
   
     const svg = board.querySelector('svg');
@@ -1483,19 +1541,27 @@ async function initializeGraph() {
       .map(id => ({ id, x0: widthDeltas[id].agent.x0 }))
       .sort((a, b) => a.x0 - b.x0);
   
+    /* ROOTS are elements of AGENTS (ROOTS = AGENTS.filter(a => a.parent == null)),
+       just with no .parent — so the shift cascade below must NOT exclude them,
+       or a session's main-thread spine silently stops tracking its own
+       (shifted-right) descendants: it neither slides right when something
+       BEFORE it expands, nor stretches when something WITHIN its own span
+       does, leaving dangling edges that rise from a spine segment that's no
+       longer there. */
     const shiftMap = {}; // agentId -> cumulative shift amount
     for (const { id } of sortedByX0) {
       const { agent, delta } = widthDeltas[id];
       const expandEnd = agent.x0 + agent.w + delta;
-  
+
       /* update this agent's width */
       const priorShift = shiftMap[id] || 0;
       agent.w += delta;
       shiftMap[id] = delta;
-  
-      /* shift all agents that start at or after this node's original end position */
+
+      /* shift all agents (ROOTS included) that start at or after this node's
+         original end position */
       for (const other of AGENTS) {
-        if (other === agent || !other.parent) continue;
+        if (other === agent) continue;
         const otherEnd = other.x0 + other.w;
         if (other.x0 >= agent.x0 + (agent.w - delta)) {
           if (!shiftMap[other.id]) shiftMap[other.id] = 0;
@@ -1504,13 +1570,30 @@ async function initializeGraph() {
         }
       }
     }
-  
-    /* update roots if they were shifted */
+
+    /* a ROOT translating right (above) only handles descendants that start
+       AFTER it. A descendant that starts WITHIN the root's own span and then
+       grows/shifts rightward needs the root's own bar to stretch to keep
+       covering it — otherwise the spine visually ends before its shifted
+       children do. Walk each root's subtree and grow r.w to the rightmost
+       edge any of its own descendants now occupies. (childrenOf is rebuilt
+       here rather than reused — the one built during initial layout is
+       block-scoped to the horizontal branch above and isn't visible in this
+       separately-declared function.) */
+    const childrenOfExpand = {};
+    AGENTS.forEach((a) => { if (a.parent) (childrenOfExpand[a.parent] ||= []).push(a.id); });
     for (const r of ROOTS) {
-      const rootShift = shiftMap[r.id] || 0;
-      if (rootShift > 0) r.x0 += rootShift;
+      const stack = [r.id];
+      let maxRight = r.x0 + r.w;
+      while (stack.length) {
+        const cur = stack.pop();
+        const a = byId[cur];
+        if (a && cur !== r.id) maxRight = Math.max(maxRight, a.x0 + a.w);
+        for (const cid of (childrenOfExpand[cur] || [])) stack.push(cid);
+      }
+      if (maxRight > r.x0 + r.w) r.w = maxRight - r.x0;
     }
-  
+
     /* Phase 3: Update BOARD_W to accommodate rightmost node */
     const maxRightEdge = Math.max(...AGENTS.map(a => a.x0 + a.w), 0);
     BOARD_W = maxRightEdge + 30;
