@@ -440,6 +440,8 @@ async function initializeGraph() {
     work: 'implementation',
     ...a,
     counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
+    diff: { added: 0, removed: 0, files: 0, ...(a.diff || {}) },
+    tokens: { in: 0, out: 0, cacheRead: 0, cacheCreate: 0, ...(a.tokens || {}) },
     skills: Array.isArray(a.skills) ? a.skills : [],
   }));
   const MARKERS = Array.isArray(DATA.markers) ? DATA.markers.slice() : [];
@@ -541,6 +543,12 @@ async function initializeGraph() {
     if (m < 1) return `${Math.round(ms / 1000)}s`;
     return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
   };
+  const fmtTokens = (n) => {
+    n = n || 0;
+    if (n < 1000) return `${n}`;
+    if (n < 1e6) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${(n / 1e6).toFixed(2).replace(/\.0+$/, '')}M`;
+  };
   const workLabel = (w) => WORK_LABEL[w] || w;
   
   /* work-type silhouettes */
@@ -617,6 +625,16 @@ async function initializeGraph() {
     }
   }
   
+  /* compact churn + token meta line for a node; '' when nothing to show */
+  function statsMetaLine(a) {
+    const d = a.diff, tk = a.tokens.in + a.tokens.out + a.tokens.cacheRead;
+    if (!d.added && !d.removed && !tk) return '';
+    const parts = [];
+    if (d.added || d.removed) parts.push(`<b>+${d.added}</b> −${d.removed}`);
+    if (tk) parts.push(`${fmtTokens(tk)} tok`);
+    return `<span class="m mono">${parts.join(' · ')}</span>`;
+  }
+
   /* shared: paint one agent block — surface backing, tinted/hatched shape,
      and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
      whichever orientation's coordinate space the caller computed. */
@@ -635,6 +653,7 @@ async function initializeGraph() {
       ${a.status !== 'ok'
         ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
         : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
+      ${(!tight && a.status === 'ok') ? statsMetaLine(a) : ''}
       ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
     </div>`);
   }
@@ -1744,11 +1763,16 @@ async function initializeGraph() {
     || 'Hover or click any node to light up its connections. Solid connectors are dispatches (parent → agent, at the moment of spawn); dotted connectors are results handed back on completion. Hatched blocks were killed mid-flight; dashed ⟳ links show which later agent picked their brief back up.';
   
   const sum = (k) => AGENTS.reduce((n, a) => n + (a.counts[k] || 0), 0);
+  const sumStat = (grp, k) => AGENTS.reduce((n, a) => n + (a[grp][k] || 0), 0);
   const activeRuntime = workers.reduce((n, a) => n + (a.t1 - a.t0), 0);
+  const totalTokens = sumStat('tokens', 'in') + sumStat('tokens', 'out')
+    + sumStat('tokens', 'cacheRead') + sumStat('tokens', 'cacheCreate');
   const baseStats = [
     [String(AGENTS.length), 'agents'],
     [sum('edits'), 'file edits'],
     [sum('bash'), 'shell runs'],
+    [`+${sumStat('diff', 'added')} −${sumStat('diff', 'removed')}`, 'lines changed'],
+    [fmtTokens(totalTokens), 'tokens'],
     /* wall clock spans EVERY session's main thread, not just the primary
        root's — an aggregated graph has one root per session */
     [fmtDur(Math.max(...ROOTS.map((r) => r.t1)) - Math.min(...ROOTS.map((r) => r.t0))), 'wall clock'],
@@ -1792,6 +1816,7 @@ async function initializeGraph() {
     if (!a) return;
     const c = a.counts;
     const parent = a.parent ? byId[a.parent] : null;
+    const sub = a.parent == null ? subtreeTotals(a.id) : null;
     drawerBody.innerHTML = `
       <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
       <h2>${esc(a.title)}</h2>
@@ -1804,8 +1829,50 @@ async function initializeGraph() {
       <h3>Skills loaded</h3>
       <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
       <h3>Tool calls</h3>
-      <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>`;
+      <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>
+      <h3>Code changes</h3>
+      ${diffLine(a.diff)}
+      <h3>Tokens</h3>
+      ${tokensLine(a.tokens)}
+      ${a.parent == null ? `<h3>Session totals</h3>
+        <div class="counts"><span>+${sub.diff.added} −${sub.diff.removed} lines · ${sub.diff.files} files</span></div>
+        ${tokensLine(sub.tokens)}` : ''}`;
     drawer.classList.add('open');
+  }
+
+  /* drawer stat renderers */
+  function diffLine(d) {
+    if (!d.added && !d.removed && !d.files) {
+      return '<div class="counts"><span>no file changes</span></div>';
+    }
+    return `<div class="counts"><span>+${d.added} −${d.removed} lines across ${d.files} files</span></div>`;
+  }
+  function tokensLine(tk) {
+    const total = tk.in + tk.out + tk.cacheRead + tk.cacheCreate;
+    return `<div class="counts"><span>${fmtTokens(tk.in)} input</span><span>${fmtTokens(tk.out)} output</span>`
+      + `<span>${fmtTokens(tk.cacheRead)} cache read</span><span>${fmtTokens(tk.cacheCreate)} cache create</span>`
+      + `<span>${fmtTokens(total)} total</span></div>`;
+  }
+
+  /* element-wise diff+token sum over a root's entire subtree (main + descendants) */
+  function subtreeTotals(rootId) {
+    const kids = {};
+    for (const a of AGENTS) (kids[a.parent] = kids[a.parent] || []).push(a.id);
+    const diff = { added: 0, removed: 0, files: 0 };
+    const tokens = { in: 0, out: 0, cacheRead: 0, cacheCreate: 0 };
+    const stack = [rootId];
+    const seen = new Set();
+    while (stack.length) {
+      const id = stack.pop();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const a = byId[id];
+      if (!a) continue;
+      for (const k in diff) diff[k] += a.diff[k];
+      for (const k in tokens) tokens[k] += a.tokens[k];
+      for (const cid of (kids[id] || [])) stack.push(cid);
+    }
+    return { diff, tokens };
   }
   function openMarkerDrawer(idx) {
     const m = MARKERS[idx];

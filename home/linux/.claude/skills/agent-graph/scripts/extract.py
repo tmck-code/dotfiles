@@ -163,6 +163,39 @@ def count_tools(entries):
     return counts, uniq
 
 
+def count_diff_tokens(entries):
+    """Per-transcript code churn + token spend.
+
+    `diff` sums added/removed lines across every edit's `structuredPatch`
+    (`toolUseResult`, a top-level entry key — not a message content block),
+    with `files` = number of distinct paths touched. `tokens` sums the usage
+    on every assistant message: input, output, cache-read and cache-creation.
+    """
+    diff = {'added': 0, 'removed': 0, 'files': 0}
+    tokens = {'in': 0, 'out': 0, 'cacheRead': 0, 'cacheCreate': 0}
+    touched = set()
+    for e in entries:
+        tur = e.get('toolUseResult')
+        if isinstance(tur, dict) and isinstance(tur.get('structuredPatch'), list):
+            for h in tur['structuredPatch']:
+                for ln in h.get('lines', []):
+                    if ln.startswith('+'):
+                        diff['added'] += 1
+                    elif ln.startswith('-'):
+                        diff['removed'] += 1
+            fp = tur.get('filePath')
+            if fp:
+                touched.add(fp)
+        if e.get('type') == 'assistant':
+            u = e.get('message', {}).get('usage') or {}
+            tokens['in'] += u.get('input_tokens', 0) or 0
+            tokens['out'] += u.get('output_tokens', 0) or 0
+            tokens['cacheRead'] += u.get('cache_read_input_tokens', 0) or 0
+            tokens['cacheCreate'] += u.get('cache_creation_input_tokens', 0) or 0
+    diff['files'] = len(touched)
+    return diff, tokens
+
+
 def last_assistant_text(entries):
     for e in reversed(entries):
         if e.get('type') == 'assistant':
@@ -452,6 +485,7 @@ def build_graph(project_dir, session_id):
 
     # ---- root / main ----
     main_counts, main_skills = count_tools(main_entries)
+    main_diff, main_tokens = count_diff_tokens(main_entries)
     main_final = last_assistant_text(main_entries)
     agents.append({
         'id': 'main',
@@ -465,6 +499,8 @@ def build_graph(project_dir, session_id):
         'work': 'orchestration',
         'skills': main_skills,
         'counts': main_counts,
+        'diff': main_diff,
+        'tokens': main_tokens,
         'brief': trunc(first_user, 350),
         'outcome': trunc(main_final, 350),
     })
@@ -473,6 +509,7 @@ def build_graph(project_dir, session_id):
     for aid, entries, meta in subs:
         s_start, s_end = entry_times(entries)
         counts, skills = count_tools(entries)
+        diff, tokens = count_diff_tokens(entries)
         final = last_assistant_text(entries)
         atype = meta.get('agentType') or 'unknown'
         tool_use_id = meta.get('toolUseId')
@@ -509,6 +546,8 @@ def build_graph(project_dir, session_id):
             'work': work,
             'skills': skills,
             'counts': counts,
+            'diff': diff,
+            'tokens': tokens,
             'brief': trunc(brief_src, 350),
             'outcome': trunc(final, 350),
         }
@@ -531,6 +570,17 @@ def build_graph(project_dir, session_id):
     markers = [m for m in markers if m.get('at')]
     markers.sort(key=lambda m: m['at'])
 
+    # ---- session totals: element-wise sum over every agent (main + subs) ----
+    totals = {
+        'diff':   {'added': 0, 'removed': 0, 'files': 0},
+        'tokens': {'in': 0, 'out': 0, 'cacheRead': 0, 'cacheCreate': 0},
+    }
+    for a in agents:
+        for k in totals['diff']:
+            totals['diff'][k] += a['diff'][k]
+        for k in totals['tokens']:
+            totals['tokens'][k] += a['tokens'][k]
+
     graph = {
         'draft': True,
         'session': {
@@ -538,7 +588,9 @@ def build_graph(project_dir, session_id):
             'startedAt': m_start,
             'endedAt': m_end,
             'firstUserMessage': first_user,
+            'totals': totals,
         },
+        'totals': totals,
         'eyebrow': f'session {session_id[:8]}',
         'title': trunc(first_user, 90) or f'Session {session_id[:8]}',
         'subtitle': '',
