@@ -7,7 +7,7 @@ Claude (curates it), and `build_spa.py` (renders it). One JSON object:
 {
   "draft": true,                       // optional; set by extract, drop after curation
   "session":  { … },                   // optional metadata (see below)
-  "eyebrow":  "audiovis · session fc3ea3f4",   // optional header kicker (plain text)
+  "eyebrow":  "lexer-code · session fc3ea3f4",   // optional header kicker (plain text)
   "title":    "Night shift: three specs…",     // header H1 + <title> (plain text)
   "subtitle": "One overnight run of …",        // optional; inline HTML allowed
   "footer":   "Solid connectors are …",        // optional; inline HTML allowed
@@ -33,30 +33,12 @@ Exactly **one** agent must be the root (`parent: null`) — it renders as the
 main spine. Its children are **coordinators** (level 1); everything else is a
 **worker** (level 2), attached to its nearest coordinator ancestor. Deeper
 nesting is allowed and lands in that coordinator's worker column (the depth is
-noted in the drawer). (A single-session document — the `build_spa.py` `validate()`
-path — enforces exactly one root. An aggregated multi-session document has one
-root per session; see below.)
-
-### Multi-session aggregation (`extract.py --multi`)
-
-`--multi` writes one `<session-id>.ndjson` per session and `build_spa.py` on a
-directory flattens every session's `agents` into ONE array. Agent ids are NOT
-unique across sessions — the main thread is always `"main"`, and the 17-hex-char
-subagent ids are reused across sessions — so `extract.py` **namespaces every id
-as `<session-id>:<raw-id>`** in `--multi` mode (the `id`, its `parent`, any
-`respawnOf`, and `groups` entries are all rewritten). This keeps each session's
-parentage self-contained once flattened: every child resolves its parent to its
-OWN session's main, never a foreign one.
-
-Single-session extraction (`extract.py <id>`) is deliberately **left un-namespaced**
-so hand-written curation patches (keyed by raw agent id, see SKILL.md) keep
-working. The renderer treats every parentless agent as a root, so it handles a
-single root (one session) and N roots (N sessions) uniformly.
+noted in the drawer).
 
 | field | type | req | notes |
 |-------|------|-----|-------|
-| `id` | string | ✔ | unique **within the document**; `"main"` for the root by convention (single-session). See "Multi-session aggregation" for how `--multi` namespaces ids |
-| `parent` | string \| null | ✔ | `null` for a root; else an existing agent id. A single-session graph has exactly one root; an aggregated multi-session graph has one root **per session** |
+| `id` | string | ✔ | unique; `"main"` for the root by convention |
+| `parent` | string \| null | ✔ | `null` only for the root; else an existing agent id |
 | `type` | string | ✔ | agent/subagent type; drives colour. Root's type takes the first palette slot, then types by first appearance |
 | `model` | string \| null | – | shown in the drawer |
 | `title` | string | ✔ | block heading; a leading `"Coordinator: "` is stripped for band labels |
@@ -78,18 +60,12 @@ HTML (e.g. `<b>…</b>`). Extract emits real user turns + git commit/push events
 
 ## `groups` semantics
 
-`groups` is an array of arrays of **coordinator ids**, used as a **soft
-ordering hint** in the vertical orientation: coordinators are processed in
-`[group index, start time]` order before block/track packing, so an
-explicitly grouped cluster tends to land in adjacent column-tracks together.
-It no longer assigns a hard column — the automatic time-overlap packer (see
-"vertical" below) always has final say over how many column-tracks are
-actually used. The default (omit/empty) is a single implicit group, i.e. pure
-start-time order. Coordinators left out of every group are treated as
-trailing, lowest-priority order. Use it to nudge related parallel workstreams
-toward sitting next to each other, e.g. `[["coreCoord","movesCoord"],
-["corpusCoord"]]` — it's a hint, not a guarantee of adjacency if the packer
-needs the space elsewhere.
+`groups` is an array of arrays of **coordinator ids**. Each inner array becomes
+one `[coordinators | workers]` column pair, laid left→right after the single
+main column, with a dotted separator between pairs. The default (omit/empty) is
+a single group containing every coordinator. Coordinators you leave out of every
+group are appended as a trailing group. Use it to split parallel workstreams
+side-by-side, e.g. `[["coreCoord","movesCoord"], ["corpusCoord"]]`.
 
 **`groups` only affects the vertical orientation** — the horizontal layout
 (below) ignores it and derives its own arrangement from time + parentage.
@@ -102,19 +78,9 @@ change to switch. Set it via the graph JSON (`"orientation": "horizontal"`) or
 override at build time with `--orientation vertical|horizontal` (the CLI flag
 wins if both are given). Default is `vertical`.
 
-- **`vertical`** (default): time runs top→bottom. Every depth-1 coordinator
-  (one per aggregated session/tree) plus its full subtree renders as one
-  self-contained **block** — its own coordinator and worker sub-lanes travel
-  together and never interleave with another coordinator's descendants, same
-  contiguity guarantee as the horizontal layout below. Blocks are packed into
-  vertical **column-tracks**: blocks that don't overlap in time share a
-  column-track (stacked one after another since their own y-positions from
-  time already keep them apart); genuinely time-overlapping blocks get pushed
-  into a new column-track further to the right. `groups` orders the packer's
-  input (see above) but doesn't override its column-count decisions. This
-  replaced an earlier design with two global flat columns (all coordinators
-  in one strip, all workers in another) that visually merged unrelated
-  sessions together — prefer this layout as the default choice.
+- **`vertical`** (default): time runs top→bottom; x is hand-off depth (main
+  spine, then per-`groups` coordinator/worker columns). This is the original,
+  more heavily used layout.
 - **`horizontal`**: time runs left→right; the main thread is a fixed top row.
   Every depth-1 coordinator gets its own **block** — a head row (the
   coordinator) with its full subtree packed into sub-lanes directly beneath
@@ -161,3 +127,63 @@ wins if both are given). Default is `vertical`.
 ```
 
 Build it: `python3 scripts/build_spa.py graph.json -o out.html`.
+
+## Directory (multi-session) mode
+
+Pass a directory instead of a file to combine N per-session JSONs into one graph:
+
+```bash
+python3 scripts/build_spa.py sessions/ -o combined.html
+# include only lexerdev sessions (default):
+python3 scripts/build_spa.py sessions/ -o combined.html --org lexerdev
+# change target org:
+python3 scripts/build_spa.py sessions/ -o combined.html --org myorg
+# disable org filtering:
+python3 scripts/build_spa.py sessions/ -o combined.html --any-org
+```
+
+### Org filter
+
+By default dir mode only includes sessions whose repo belongs to the `lexerdev`
+GitHub org. The org is read from `session.org` (recorded by `extract.py` at
+extraction time); if absent, it is resolved live from `session.cwd` via `git
+remote`. Sessions with an unknown/unresolvable org are dropped with a stderr
+warning. Use `--org NAME` to target a different org or `--any-org` to disable
+filtering. These flags have no effect in single-file mode.
+
+### Combine transform
+
+For each `<stem>.json` file (sorted, `_meta.json` skipped, non-matching orgs dropped):
+
+1. **Prefix all ids.** A slug is derived from the filename stem: lowercase,
+   non-alphanumeric runs collapsed to `-`, leading/trailing `-` stripped. If two
+   stems produce the same slug the second gets a `-2` suffix, etc. Every agent's
+   `id` gains `<slug>__` prefix; `parent` and `respawnOf` are remapped identically.
+
+2. **Reparent the session root.** The agent whose original `parent` was `null` gets
+   `parent` set to `"root"` (the synthetic combined root). Its `title` is replaced
+   by a cleaned version of `session.firstUserMessage` (truncated to 50 chars):
+   - `"load skill(s) x, y"` → `"Load x, y"`
+   - Slash commands are kept as-is.
+   - Surrounding quotes are stripped.
+   - Falls back to the existing `title` if `firstUserMessage` is absent.
+
+3. **Synthetic combined root.** One agent with `id="root"`, `parent=null`,
+   `type="main"`, `work="orchestration"`, `title="N sessions"`. Its `start`/`end`
+   span all agent timestamps; `counts.spawns` = number of sessions.
+
+4. **extraStats** are computed: sessions, agents (non-root), file edits, shell runs
+   (summed across all non-root agents).
+
+5. **Auto day markers.** One marker per UTC calendar day in the span
+   (`label="<b>Www Mmm D</b>"`). Single-day spans emit one marker at the session
+   start instead.
+
+6. **Default orientation** is `"horizontal"` in dir mode. Overridden by
+   `--orientation` CLI flag (wins over everything, including `_meta.json`).
+
+### `_meta.json` overrides
+
+Place `<dir>/_meta.json` to override any of these derived fields:
+`title`, `eyebrow`, `subtitle`, `extraStats`, `orientation`, `footer`.
+The CLI `--orientation` flag still beats `_meta.json`.

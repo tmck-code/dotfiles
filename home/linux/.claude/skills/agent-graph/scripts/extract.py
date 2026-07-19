@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -42,12 +43,7 @@ def die(msg, code=1):
 def default_project_dir():
     """Derive the transcript project dir from $PWD (/ -> -)."""
     enc = os.getcwd().replace('/', '-')
-    for base in ('.claude.personal', '.claude'):
-        cand = os.path.join(os.path.expanduser('~'), base, 'projects', enc)
-        if os.path.isdir(cand):
-            return cand
-    # fall back to the personal path even if missing (clearer error later)
-    return os.path.join(os.path.expanduser('~'), '.claude.personal', 'projects', enc)
+    return os.path.join(os.path.expanduser('~'), '.claude', 'projects', enc)
 
 
 def load_jsonl(path):
@@ -163,39 +159,6 @@ def count_tools(entries):
     return counts, uniq
 
 
-def count_diff_tokens(entries):
-    """Per-transcript code churn + token spend.
-
-    `diff` sums added/removed lines across every edit's `structuredPatch`
-    (`toolUseResult`, a top-level entry key — not a message content block),
-    with `files` = number of distinct paths touched. `tokens` sums the usage
-    on every assistant message: input, output, cache-read and cache-creation.
-    """
-    diff = {'added': 0, 'removed': 0, 'files': 0}
-    tokens = {'in': 0, 'out': 0, 'cacheRead': 0, 'cacheCreate': 0}
-    touched = set()
-    for e in entries:
-        tur = e.get('toolUseResult')
-        if isinstance(tur, dict) and isinstance(tur.get('structuredPatch'), list):
-            for h in tur['structuredPatch']:
-                for ln in h.get('lines', []):
-                    if ln.startswith('+'):
-                        diff['added'] += 1
-                    elif ln.startswith('-'):
-                        diff['removed'] += 1
-            fp = tur.get('filePath')
-            if fp:
-                touched.add(fp)
-        if e.get('type') == 'assistant':
-            u = e.get('message', {}).get('usage') or {}
-            tokens['in'] += u.get('input_tokens', 0) or 0
-            tokens['out'] += u.get('output_tokens', 0) or 0
-            tokens['cacheRead'] += u.get('cache_read_input_tokens', 0) or 0
-            tokens['cacheCreate'] += u.get('cache_creation_input_tokens', 0) or 0
-    diff['files'] = len(touched)
-    return diff, tokens
-
-
 def last_assistant_text(entries):
     for e in reversed(entries):
         if e.get('type') == 'assistant':
@@ -251,15 +214,14 @@ class Filters:
 
 
 def iter_project_dirs():
-    'Yield every transcript project dir under the personal + fallback roots.'
-    for base in ('.claude.personal', '.claude'):
-        root = os.path.join(os.path.expanduser('~'), base, 'projects')
-        if not os.path.isdir(root):
-            continue
-        for name in sorted(os.listdir(root)):
-            cand = os.path.join(root, name)
-            if os.path.isdir(cand):
-                yield cand
+    'Yield every transcript project dir under ~/.claude/projects.'
+    root = os.path.join(os.path.expanduser('~'), '.claude', 'projects')
+    if not os.path.isdir(root):
+        return
+    for name in sorted(os.listdir(root)):
+        cand = os.path.join(root, name)
+        if os.path.isdir(cand):
+            yield cand
 
 
 def decode_project_dir(project_dir):
@@ -305,6 +267,7 @@ def scan_session(path, filters):
     'Lazy pass; return a row if the session has spawns and passes grep/tool.'
     spawns = 0
     first_user = ''
+    cwd = None
     grep_need = set(filters.grep)
     want_grep = bool(filters.grep)
     want_tool = filters.tool is not None
@@ -323,6 +286,10 @@ def scan_session(path, filters):
                 e = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            if cwd is None:
+                c = e.get('cwd')
+                if c:
+                    cwd = c
             content = e.get('message', {}).get('content')
             if isinstance(content, list):
                 for b in content:
@@ -356,10 +323,11 @@ def scan_session(path, filters):
         'size': st.st_size,
         'spawns': spawns,
         'first': first_user,
+        'cwd': cwd,
     }
 
 
-def collect_rows(project_dirs, filters, repo_substr, show_repo):
+def collect_rows(project_dirs, filters, repo_substr, show_repo, org_target=None, any_org=False):
     'Scan every session under the given project dirs, applying all filters.'
     rows = []
     for pdir in project_dirs:
@@ -383,6 +351,11 @@ def collect_rows(project_dirs, filters, repo_substr, show_repo):
             row = scan_session(path, filters)
             if row is None:
                 continue
+            org = git_org(row.get('cwd'))
+            row['org'] = org
+            if not any_org:
+                if org is None or org != org_target.lower():
+                    continue
             if show_repo:
                 row['repo'] = repo
             rows.append(row)
@@ -390,8 +363,9 @@ def collect_rows(project_dirs, filters, repo_substr, show_repo):
     return rows
 
 
-def cmd_list(project_dirs, filters, repo_substr, show_repo, label):
-    rows = collect_rows(project_dirs, filters, repo_substr, show_repo)
+def cmd_list(project_dirs, filters, repo_substr, show_repo, label, org_target=None, any_org=False):
+    rows = collect_rows(project_dirs, filters, repo_substr, show_repo,
+                        org_target=org_target, any_org=any_org)
     if not rows:
         print(f'No sessions with agent spawns {label}')
         return
@@ -401,7 +375,7 @@ def cmd_list(project_dirs, filters, repo_substr, show_repo, label):
         size = f'{r["size"] / 1024:.0f}K'
         line = f'  {r["id"]}  {when}  {size:>6}  {r["spawns"]:>2} spawns'
         if show_repo:
-            line += f'  [{r["repo"]}]'
+            line += f'  [{r["repo"]}]  {r.get("org") or "?"}'
         print(line)
         if r['first']:
             print(f'      {trunc(r["first"], 96)}')
@@ -444,33 +418,14 @@ def build_graph(project_dir, session_id):
 
     known_ids = {'main'} | {aid for aid, _, _ in subs}
 
-    # ---- reconstruct parent-child relationships ----
-    # Build a map: toolUseId -> subagent_id (from meta)
-    tool_use_to_subagent = {}
-    for aid, entries, meta in subs:
-        tool_use_id = meta.get('toolUseId')
-        if tool_use_id:
-            tool_use_to_subagent[tool_use_id] = aid
-
-    # For each subagent, determine its actual parent by finding which agent spawned it
-    subagent_parents = {}  # aid -> parent_aid or 'main'
-    for aid, entries, meta in subs:
-        tool_use_id = meta.get('toolUseId')
-        parent = 'main'  # default
-
-        # Check if any other subagent spawned this one
-        if tool_use_id:
-            for other_aid, other_entries, other_meta in subs:
-                if other_aid == aid:
-                    continue
-                # Get all spawns made by this other subagent
-                other_spawns = spawn_uses(other_entries)
-                # If this subagent's toolUseId appears in the other's spawns, it's the parent
-                if tool_use_id in other_spawns:
-                    parent = other_aid
-                    break
-
-        subagent_parents[aid] = parent
+    # ---- session cwd + org (from first entry with a cwd field) ----
+    session_cwd_val = None
+    for e in main_entries:
+        c = e.get('cwd')
+        if c:
+            session_cwd_val = c
+            break
+    session_org = git_org(session_cwd_val)
 
     # ---- first real user message (main) ----
     first_user = ''
@@ -485,7 +440,6 @@ def build_graph(project_dir, session_id):
 
     # ---- root / main ----
     main_counts, main_skills = count_tools(main_entries)
-    main_diff, main_tokens = count_diff_tokens(main_entries)
     main_final = last_assistant_text(main_entries)
     agents.append({
         'id': 'main',
@@ -499,8 +453,6 @@ def build_graph(project_dir, session_id):
         'work': 'orchestration',
         'skills': main_skills,
         'counts': main_counts,
-        'diff': main_diff,
-        'tokens': main_tokens,
         'brief': trunc(first_user, 350),
         'outcome': trunc(main_final, 350),
     })
@@ -509,7 +461,6 @@ def build_graph(project_dir, session_id):
     for aid, entries, meta in subs:
         s_start, s_end = entry_times(entries)
         counts, skills = count_tools(entries)
-        diff, tokens = count_diff_tokens(entries)
         final = last_assistant_text(entries)
         atype = meta.get('agentType') or 'unknown'
         tool_use_id = meta.get('toolUseId')
@@ -528,8 +479,20 @@ def build_graph(project_dir, session_id):
         brief_src = prompt or first_msg
 
         # ---- parentage ----
-        # Use reconstructed parent from spawn analysis
-        parent = subagent_parents.get(aid, 'main')
+        raw_parent = meta.get('parentAgentId')
+        depth = meta.get('spawnDepth')
+        parent_guessed = False
+        if raw_parent and raw_parent in known_ids:
+            parent = raw_parent
+        elif raw_parent:
+            # ghost parent: try to attach to nearest resolvable ancestor, else root
+            parent = 'main'
+            parent_guessed = True
+        elif depth == 1 or depth is None:
+            parent = 'main'
+        else:
+            parent = 'main'
+            parent_guessed = True
 
         status = status_of(final)
         work = work_of(atype, counts, title, brief_src)
@@ -546,11 +509,11 @@ def build_graph(project_dir, session_id):
             'work': work,
             'skills': skills,
             'counts': counts,
-            'diff': diff,
-            'tokens': tokens,
             'brief': trunc(brief_src, 350),
             'outcome': trunc(final, 350),
         }
+        if parent_guessed:
+            agent['parentGuessed'] = True
         agents.append(agent)
 
     # ---- markers from the MAIN transcript ----
@@ -570,17 +533,6 @@ def build_graph(project_dir, session_id):
     markers = [m for m in markers if m.get('at')]
     markers.sort(key=lambda m: m['at'])
 
-    # ---- session totals: element-wise sum over every agent (main + subs) ----
-    totals = {
-        'diff':   {'added': 0, 'removed': 0, 'files': 0},
-        'tokens': {'in': 0, 'out': 0, 'cacheRead': 0, 'cacheCreate': 0},
-    }
-    for a in agents:
-        for k in totals['diff']:
-            totals['diff'][k] += a['diff'][k]
-        for k in totals['tokens']:
-            totals['tokens'][k] += a['tokens'][k]
-
     graph = {
         'draft': True,
         'session': {
@@ -588,9 +540,9 @@ def build_graph(project_dir, session_id):
             'startedAt': m_start,
             'endedAt': m_end,
             'firstUserMessage': first_user,
-            'totals': totals,
+            'cwd': session_cwd_val,
+            'org': session_org,
         },
-        'totals': totals,
         'eyebrow': f'session {session_id[:8]}',
         'title': trunc(first_user, 90) or f'Session {session_id[:8]}',
         'subtitle': '',
@@ -604,37 +556,34 @@ def build_graph(project_dir, session_id):
     return graph
 
 
-def namespace_graph(graph):
-    """Prefix every agent id in `graph` with its session id, in place.
+_git_org_cache: dict = {}
 
-    Only `--multi` does this. The SPA flattens every session's `agents` into
-    ONE array, and no id in a session graph is unique across sessions:
-    `build_graph` hardcodes the main thread's id as 'main', and the subagent
-    ids (17 hex chars, not uuids) are re-used across sessions in practice.
-    Colliding ids collapse in the renderer's id->agent map, so a child can
-    resolve its parent to a FOREIGN session's main thread.
 
-    Single-session output is deliberately left alone: its ids are already
-    unique within the document, and the curation workflow (see SKILL.md) keys
-    hand-written patches by the raw agent id.
-
-    Runs AFTER build_graph, so parentage is still resolved against the raw
-    `.meta.json` parentAgentId values and every reference is rewritten here in
-    one place.
-    """
-    sid = graph['session']['id']
-
-    def ns(aid):
-        return f'{sid}:{aid}'
-
-    for a in graph['agents']:
-        a['id'] = ns(a['id'])
-        if a['parent'] is not None:
-            a['parent'] = ns(a['parent'])
-        if a.get('respawnOf'):
-            a['respawnOf'] = ns(a['respawnOf'])
-    graph['groups'] = [[ns(cid) for cid in g] for g in (graph.get('groups') or [])]
-    return graph
+def git_org(cwd):
+    """Return the lowercased GitHub org for cwd's git remote, or None."""
+    if cwd is None:
+        return None
+    if cwd in _git_org_cache:
+        return _git_org_cache[cwd]
+    result = None
+    try:
+        proc = subprocess.run(
+            ['git', '-C', cwd, 'config', '--get', 'remote.origin.url'],
+            capture_output=True, text=True, timeout=3,
+        )
+        url = (proc.stdout or '').strip()
+        if url:
+            # SSH: git@github.com:ORG/repo.git
+            m = re.match(r'git@github\.com:([^/]+)/', url)
+            if not m:
+                # HTTPS: https://github.com/ORG/repo(.git)
+                m = re.match(r'https?://github\.com/([^/]+)/', url)
+            if m:
+                result = m.group(1).lower()
+    except Exception:
+        pass
+    _git_org_cache[cwd] = result
+    return result
 
 
 def git_label(cmd):
@@ -661,9 +610,7 @@ def main():
     ap.add_argument('session', nargs='?', help='session id to extract')
     ap.add_argument('--list', action='store_true', help='list sessions with spawns')
     ap.add_argument('--project-dir', help='transcript project dir (default: derive from $PWD)')
-    ap.add_argument('-o', '--output', help='output path (default: stdout); directory for --multi mode')
-    ap.add_argument('--multi', action='store_true',
-                    help='extract multiple sessions into a directory (use with --list filters)')
+    ap.add_argument('-o', '--output', help='output path (default: stdout)')
     # --list filter flags (AND-composed)
     ap.add_argument('--all-projects', action='store_true',
                     help='list across every project dir, not just the cwd one')
@@ -675,6 +622,10 @@ def main():
                     help='keep sessions that invoked this tool / skill / slash-command (ci)')
     ap.add_argument('--since', metavar='WHEN', help='keep sessions modified since (ISO date/time or 2d, 12h)')
     ap.add_argument('--until', metavar='WHEN', help='keep sessions modified before (ISO date/time or 1d)')
+    ap.add_argument('--org', metavar='NAME', default='lexerdev',
+                    help='with --list, keep only sessions whose repo belongs to this GitHub org (default: lexerdev)')
+    ap.add_argument('--any-org', action='store_true',
+                    help='with --list, disable org filtering and show all orgs')
     args = ap.parse_args()
 
     project_dir = args.project_dir or default_project_dir()
@@ -687,85 +638,19 @@ def main():
             since = parse_time_bound(args.since) if args.since else None,
             until = parse_time_bound(args.until) if args.until else None,
         )
+        any_org = args.any_org
+        org_target = args.org
         if args.all_projects:
-            cmd_list(list(iter_project_dirs()), filters, args.repo, True, 'across all projects')
+            cmd_list(list(iter_project_dirs()), filters, args.repo, True,
+                     'across all projects', org_target=org_target, any_org=any_org)
         else:
             if args.repo:
                 err('--repo only applies with --all-projects; ignoring it')
-            cmd_list([project_dir], filters, None, False, f'in {project_dir}')
+            cmd_list([project_dir], filters, None, False, f'in {project_dir}',
+                     org_target=org_target, any_org=any_org)
         return
-
-    if args.multi:
-        if not args.output:
-            die('--multi requires -o/--output (directory path)')
-        if args.session:
-            die('--multi does not accept a session id; provide filters via --grep, --tool, etc.')
-
-        # Collect matching sessions
-        grep_words = [w.lower() for g in (args.grep or []) for w in g.split()]
-        filters = Filters(
-            grep  = grep_words,
-            tool  = args.tool,
-            since = parse_time_bound(args.since) if args.since else None,
-            until = parse_time_bound(args.until) if args.until else None,
-        )
-        if args.all_projects:
-            project_dirs = list(iter_project_dirs())
-        else:
-            project_dirs = [project_dir]
-        rows = collect_rows(project_dirs, filters, args.repo if args.all_projects else None, False)
-
-        if not rows:
-            die(f'no sessions found matching filters')
-
-        # Create output directory
-        os.makedirs(args.output, exist_ok=True)
-
-        # Extract each session
-        graphs = []
-        for row in rows:
-            sid = row['id']
-            try:
-                # Find the correct project directory for this session
-                if args.all_projects:
-                    session_project_dir = next((pd for pd in project_dirs if os.path.exists(os.path.join(pd, f'{sid}.jsonl'))), project_dir)
-                else:
-                    session_project_dir = project_dir
-                graph = namespace_graph(build_graph(session_project_dir, sid))
-                graphs.append(graph)
-                # Write individual .ndjson
-                out_file = os.path.join(args.output, f'{sid}.ndjson')
-                with open(out_file, 'w', encoding='utf-8') as fh:
-                    fh.write(json.dumps(graph, ensure_ascii=False) + '\n')
-            except Exception as e:
-                err(f'failed to extract {sid}: {e}')
-                continue
-
-        # Write index.json
-        index = {
-            'sessions': [
-                {
-                    'id': g['session']['id'],
-                    'title': g['title'],
-                    'startedAt': g['session']['startedAt'],
-                    'endedAt': g['session']['endedAt'],
-                    'agentCount': len(g['agents']),
-                }
-                for g in graphs
-            ],
-            'generatedAt': iso(time.time()),
-        }
-        index_path = os.path.join(args.output, 'index.json')
-        with open(index_path, 'w', encoding='utf-8') as fh:
-            json.dump(index, fh, indent=2, ensure_ascii=False)
-            fh.write('\n')
-
-        err(f'wrote {len(graphs)} sessions to {args.output}')
-        err(f'index: {index_path}')
-        return
-
     if not args.session:
-        die('provide a session id, or use --list / --multi')
+        die('provide a session id, or use --list')
 
     graph = build_graph(project_dir, args.session)
     out = json.dumps(graph, indent=2, ensure_ascii=False)
