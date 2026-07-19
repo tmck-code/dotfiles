@@ -2,6 +2,7 @@
 name: spec-author
 description: Authors a new OpenSpec change (the /opsx:propose cycle) — proposal.md, design.md, spec deltas, and tasks.md — for the current repo. Delegate to this agent when the user wants to write/propose/draft a spec or change. It scaffolds via the openspec CLI and does the codebase exploration needed to ground the artifacts in real files, functions, and symbols, writing every artifact apply-ready. It does NOT implement code (that's spec-implementer) and does NOT clarify requirements with the user — hand it an already-clarified intent.
 tools: Read, Write, Edit, Bash, Grep, Glob, Skill
+model: opus[1m]
 ---
 
 # Spec author

@@ -2,6 +2,7 @@
 name: spec-implementer
 description: Implements a single OpenSpec change end-to-end (the /opsx:apply cycle) in the current repo. Delegate to this agent when the user wants to apply/implement one named change from openspec/changes/ — it runs the openspec CLI itself, reads the change's context, builds a task plan, forks nested subagents to implement the tasks (in parallel and/or sequence), and runs the repo's test gate. Do NOT use it to pick between changes, fan out across multiple changes, or archive — keep that on the main thread.
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill, Agent
+model: sonnet[1m]
 ---
 
 # Spec implementer
