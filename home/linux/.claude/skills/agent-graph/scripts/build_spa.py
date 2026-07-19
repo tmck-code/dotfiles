@@ -8,6 +8,7 @@ substitutes the data + title, and writes a single self-contained HTML file.
 import argparse
 import json
 import os
+import shutil
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -66,12 +67,16 @@ def load_sessions_dir(dirpath):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('input', help='graph JSON path or sessions directory')
-    ap.add_argument('-o', '--output', required=True, help='output HTML path')
+    ap.add_argument('-o', '--output', default=None, help='output HTML path (default: ./agent-graph.html in current dir)')
     ap.add_argument(
         '--orientation', choices=['vertical', 'horizontal'], default=None,
         help="layout orientation (default: graph.orientation, else 'vertical')",
     )
     args = ap.parse_args()
+
+    # Default output to current directory
+    if not args.output:
+        args.output = os.path.join(os.getcwd(), 'agent-graph.html')
 
     if not os.path.isfile(TEMPLATE):
         die(f'template not found: {TEMPLATE}')
@@ -101,7 +106,16 @@ def main():
         for sess in sessions:
             graph['agents'].extend(sess.get('agents', []))
             graph['markers'].extend(sess.get('markers', []))
-        sessions_dir = args.input
+
+        # Copy sessions directory to current working directory for easy access
+        sessions_dir = os.path.abspath(args.input)
+        cwd_sessions = os.path.join(os.getcwd(), 'sessions')
+        if sessions_dir != cwd_sessions:
+            if os.path.exists(cwd_sessions):
+                shutil.rmtree(cwd_sessions)
+            shutil.copytree(sessions_dir, cwd_sessions)
+            sessions_dir = cwd_sessions
+            print(f'build_spa: copied sessions to {cwd_sessions}', file=sys.stderr)
     else:
         # Single-session mode: load from file
         try:

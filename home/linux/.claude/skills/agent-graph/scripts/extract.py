@@ -411,6 +411,34 @@ def build_graph(project_dir, session_id):
 
     known_ids = {'main'} | {aid for aid, _, _ in subs}
 
+    # ---- reconstruct parent-child relationships ----
+    # Build a map: toolUseId -> subagent_id (from meta)
+    tool_use_to_subagent = {}
+    for aid, entries, meta in subs:
+        tool_use_id = meta.get('toolUseId')
+        if tool_use_id:
+            tool_use_to_subagent[tool_use_id] = aid
+
+    # For each subagent, determine its actual parent by finding which agent spawned it
+    subagent_parents = {}  # aid -> parent_aid or 'main'
+    for aid, entries, meta in subs:
+        tool_use_id = meta.get('toolUseId')
+        parent = 'main'  # default
+
+        # Check if any other subagent spawned this one
+        if tool_use_id:
+            for other_aid, other_entries, other_meta in subs:
+                if other_aid == aid:
+                    continue
+                # Get all spawns made by this other subagent
+                other_spawns = spawn_uses(other_entries)
+                # If this subagent's toolUseId appears in the other's spawns, it's the parent
+                if tool_use_id in other_spawns:
+                    parent = other_aid
+                    break
+
+        subagent_parents[aid] = parent
+
     # ---- first real user message (main) ----
     first_user = ''
     for e in main_entries:
@@ -463,20 +491,8 @@ def build_graph(project_dir, session_id):
         brief_src = prompt or first_msg
 
         # ---- parentage ----
-        raw_parent = meta.get('parentAgentId')
-        depth = meta.get('spawnDepth')
-        parent_guessed = False
-        if raw_parent and raw_parent in known_ids:
-            parent = raw_parent
-        elif raw_parent:
-            # ghost parent: try to attach to nearest resolvable ancestor, else root
-            parent = 'main'
-            parent_guessed = True
-        elif depth == 1 or depth is None:
-            parent = 'main'
-        else:
-            parent = 'main'
-            parent_guessed = True
+        # Use reconstructed parent from spawn analysis
+        parent = subagent_parents.get(aid, 'main')
 
         status = status_of(final)
         work = work_of(atype, counts, title, brief_src)
@@ -496,8 +512,6 @@ def build_graph(project_dir, session_id):
             'brief': trunc(brief_src, 350),
             'outcome': trunc(final, 350),
         }
-        if parent_guessed:
-            agent['parentGuessed'] = True
         agents.append(agent)
 
     # ---- markers from the MAIN transcript ----
