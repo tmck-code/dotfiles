@@ -1,18 +1,55 @@
 #!/usr/bin/env python3
 """Render a graph JSON into a standalone agent-graph SPA.
 
-Reads a graph document (see REFERENCE.md) and the sibling `template.html`,
-substitutes the data + title, and writes a single self-contained HTML file.
+Single-file mode: reads a graph document (see REFERENCE.md) and the sibling
+`template.html`, substitutes the data + title, and writes a self-contained HTML.
+
+Directory mode: pass a directory instead of a file. Globs all *.json files in
+that directory (sorted), skips _meta.json (reserved for overrides), prefixes
+every agent id with a per-session slug, reparents session roots under a
+synthetic combined root, derives title/eyebrow/subtitle/markers from the
+aggregated data, then runs the same render path. An optional _meta.json may
+override title, eyebrow, subtitle, extraStats, orientation, and footer.
 """
 
 import argparse
+import datetime as dt
+import glob
 import json
 import os
-import shutil
+import re
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, 'template.html')
+
+_git_org_cache: dict = {}
+
+
+def git_org(cwd):
+    """Return the lowercased GitHub org for cwd's git remote, or None."""
+    if cwd is None:
+        return None
+    if cwd in _git_org_cache:
+        return _git_org_cache[cwd]
+    result = None
+    try:
+        proc = subprocess.run(
+            ['git', '-C', cwd, 'config', '--get', 'remote.origin.url'],
+            capture_output=True, text=True, timeout=3,
+        )
+        url = (proc.stdout or '').strip()
+        if url:
+            m = re.match(r'git@github\.com:([^/]+)/', url)
+            if not m:
+                m = re.match(r'https?://github\.com/([^/]+)/', url)
+            if m:
+                result = m.group(1).lower()
+    except Exception:
+        pass
+    _git_org_cache[cwd] = result
+    return result
 
 
 def die(msg):
@@ -41,141 +78,321 @@ def validate(graph):
                 die(f'groups references unknown agent id {cid!r}')
 
 
-def load_sessions_dir(dirpath):
-    """Load all .ndjson session files from a directory."""
-    if not os.path.isdir(dirpath):
-        die(f'sessions directory not found: {dirpath}')
+# ---------------------------------------------------------------------------
+# helpers for dir mode
+# ---------------------------------------------------------------------------
 
-    ndjson_files = sorted([f for f in os.listdir(dirpath) if f.endswith('.ndjson')])
-    if not ndjson_files:
-        die(f'no .ndjson files found in {dirpath}')
-
-    sessions = []
-    for fname in ndjson_files:
-        fpath = os.path.join(dirpath, fname)
-        try:
-            with open(fpath, encoding='utf-8') as fh:
-                line = fh.readline().strip()
-                if line:
-                    sessions.append(json.loads(line))
-        except (OSError, json.JSONDecodeError) as e:
-            die(f'failed to load {fname}: {e}')
-
-    return sessions
+def slugify(s, index=None):
+    """Lowercase, collapse non-alphanumeric runs to '-', strip edges."""
+    slug = re.sub(r'[^a-z0-9]+', '-', s.lower()).strip('-')
+    if not slug:
+        slug = f's{index}' if index is not None else 'session'
+    return slug
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('input', help='graph JSON path or sessions directory')
-    ap.add_argument('-o', '--output', default=None, help='output HTML path (default: ./agent-graph.html in current dir)')
-    ap.add_argument(
-        '--orientation', choices=['vertical', 'horizontal'], default=None,
-        help="layout orientation (default: graph.orientation, else 'vertical')",
+def clean_title(msg):
+    """Derive a short readable title from a raw firstUserMessage."""
+    if not msg:
+        return '(session)'
+    t = ' '.join(msg.split())
+    m = re.match(r'^/?load skills?\s+(.+)', t, re.I)
+    if m:
+        t = 'Load ' + m.group(1)
+    elif t.startswith('/'):
+        pass  # leave slash commands as-is
+    t = t.strip('"\'')
+    if len(t) > 50:
+        t = t[:49].rstrip() + '…'
+    return t
+
+
+def parse_iso(s):
+    return dt.datetime.fromisoformat(s.replace('Z', '+00:00'))
+
+
+def fmt_iso(d):
+    return d.astimezone(dt.timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
+def _collect_timestamps(agents):
+    starts, ends = [], []
+    for a in agents:
+        if a.get('start'):
+            try:
+                starts.append(parse_iso(a['start']))
+            except ValueError:
+                pass
+        if a.get('end'):
+            try:
+                ends.append(parse_iso(a['end']))
+            except ValueError:
+                pass
+    return starts, ends
+
+
+def build_combined_graph(dirpath, cli_orientation, org_target='lexerdev', any_org=False):
+    """Load all *.json session files from dirpath and combine into one graph."""
+    all_files = sorted(
+        f for f in glob.glob(os.path.join(dirpath, '*.json'))
+        if os.path.basename(f) != '_meta.json'
     )
-    args = ap.parse_args()
+    if not all_files:
+        die(f'no *.json session files found in {dirpath}')
 
-    # Default output to current directory
-    if not args.output:
-        args.output = os.path.join(os.getcwd(), 'agent-graph.html')
-
-    if not os.path.isfile(TEMPLATE):
-        die(f'template not found: {TEMPLATE}')
-
-    # Detect if input is a file or directory
-    is_dir = os.path.isdir(args.input)
-    is_file = os.path.isfile(args.input)
-
-    if not is_dir and not is_file:
-        die(f'input not found (not a file or directory): {args.input}')
-
-    if is_dir:
-        # Multi-session mode: load from directory
-        sessions = load_sessions_dir(args.input)
-        graph = {
-            'draft': False,
-            'multiSession': True,
-            'sessions': sessions,
-            'title': f'Agent graph ({len(sessions)} sessions)',
-            'eyebrow': 'multi-session view',
-            'subtitle': '',
-            'footer': '',
-            'agents': [],
-            'markers': [],
-        }
-        # Merge all agents and markers from all sessions
-        for sess in sessions:
-            graph['agents'].extend(sess.get('agents', []))
-            graph['markers'].extend(sess.get('markers', []))
-
-        # Copy sessions directory to current working directory for easy access
-        sessions_dir = os.path.abspath(args.input)
-        cwd_sessions = os.path.join(os.getcwd(), 'sessions')
-        if sessions_dir != cwd_sessions:
-            if os.path.exists(cwd_sessions):
-                shutil.rmtree(cwd_sessions)
-            shutil.copytree(sessions_dir, cwd_sessions)
-            sessions_dir = cwd_sessions
-            print(f'build_spa: copied sessions to {cwd_sessions}', file=sys.stderr)
-    else:
-        # Single-session mode: load from file
+    # --- load sessions, skip bad files ---
+    sessions = []  # list of (stem, graph_dict)
+    for path in all_files:
+        stem = os.path.splitext(os.path.basename(path))[0]
+        fname = os.path.basename(path)
         try:
-            graph = json.load(open(args.input, encoding='utf-8'))
-        except json.JSONDecodeError as e:
-            die(f'invalid JSON: {e}')
-        validate(graph)
-        sessions_dir = None
+            data = json.load(open(path, encoding='utf-8'))
+        except (json.JSONDecodeError, OSError) as e:
+            print(f'build_spa: warning: skipping {fname}: {e}', file=sys.stderr)
+            continue
+        if not isinstance(data.get('agents'), list):
+            print(f'build_spa: warning: skipping {fname}: no agents array', file=sys.stderr)
+            continue
+        part_root = next(
+            (a for a in data['agents'] if a.get('parent') in (None, '', 'null')),
+            None,
+        )
+        if part_root is None:
+            print(f'build_spa: warning: skipping {fname}: no root agent found', file=sys.stderr)
+            continue
 
-    orientation = args.orientation or graph.get('orientation') or 'vertical'
+        # --- org filter (default ON) ---
+        if not any_org:
+            sess_meta = data.get('session') or {}
+            recorded_org = sess_meta.get('org')
+            if recorded_org:
+                file_org = recorded_org.lower() if isinstance(recorded_org, str) else None
+            else:
+                cwd = sess_meta.get('cwd')
+                file_org = git_org(cwd) if cwd else None
+            target_lc = (org_target or 'lexerdev').lower()
+            if file_org is None:
+                print(
+                    f'build_spa: skipping {fname}: org unknown',
+                    file=sys.stderr,
+                )
+                continue
+            if file_org != target_lc:
+                print(
+                    f"build_spa: skipping {fname}: org {file_org!r} != {target_lc!r}",
+                    file=sys.stderr,
+                )
+                continue
+
+        sessions.append((stem, data))
+
+    if not sessions:
+        if any_org:
+            die(f'zero usable session files in {dirpath} (all skipped or invalid)')
+        else:
+            target_lc = (org_target or 'lexerdev').lower()
+            die(
+                f'no {target_lc} sessions found in {dirpath} '
+                f'(use --any-org to include all)'
+            )
+
+    # --- build unique prefixes (detect slug collisions) ---
+    seen_slugs: dict[str, int] = {}
+    prefixes = []
+    for i, (stem, _) in enumerate(sessions):
+        base = slugify(stem, index=i)
+        if base in seen_slugs:
+            seen_slugs[base] += 1
+            slug = f'{base}-{seen_slugs[base]}'
+        else:
+            seen_slugs[base] = 0
+            slug = base
+        prefixes.append(slug + '__')
+
+    # --- prefix agents and reparent ---
+    combined_agents = []
+    all_starts: list[dt.datetime] = []
+    all_ends: list[dt.datetime] = []
+
+    for (stem, data), prefix in zip(sessions, prefixes):
+        agents = data['agents']
+        fum = (data.get('session') or {}).get('firstUserMessage')
+        for a in agents:
+            b = dict(a)
+            b['id'] = prefix + a['id']
+            raw_parent = a.get('parent')
+            if raw_parent in (None, '', 'null'):
+                b['parent'] = 'root'
+                # derive title from firstUserMessage, fall back to existing title
+                b['title'] = clean_title(fum) if fum else a.get('title', stem)
+            else:
+                b['parent'] = prefix + raw_parent
+            if b.get('respawnOf'):
+                b['respawnOf'] = prefix + b['respawnOf']
+            combined_agents.append(b)
+
+        s, e = _collect_timestamps(agents)
+        all_starts.extend(s)
+        all_ends.extend(e)
+
+    # --- synthetic root ---
+    span_start = min(all_starts) if all_starts else dt.datetime.now(dt.timezone.utc)
+    span_end = max(all_ends) if all_ends else span_start
+    n_sessions = len(sessions)
+
+    root_agent = {
+        'id': 'root',
+        'parent': None,
+        'type': 'main',
+        'work': 'orchestration',
+        'title': f'{n_sessions} sessions',
+        'start': fmt_iso(span_start),
+        'end': fmt_iso(span_end),
+        'counts': {'spawns': n_sessions},
+    }
+    all_agents = [root_agent] + combined_agents
+
+    # --- extraStats ---
+    non_root = [a for a in all_agents if a['id'] != 'root']
+    tot_edits = sum(a.get('counts', {}).get('edits', 0) for a in non_root)
+    tot_bash = sum(a.get('counts', {}).get('bash', 0) for a in non_root)
+    n_agents = len(non_root)
+    extra_stats = [
+        [str(n_sessions), 'sessions'],
+        [str(n_agents), 'agents'],
+        [str(tot_edits), 'file edits'],
+        [str(tot_bash), 'shell runs'],
+    ]
+
+    # --- header text ---
+    dirname = os.path.basename(os.path.abspath(dirpath))
+    d0 = span_start.astimezone(dt.timezone.utc).strftime('%Y-%m-%d')
+    d1 = span_end.astimezone(dt.timezone.utc).strftime('%Y-%m-%d')
+    title = f'{n_sessions} sessions'
+    eyebrow = f'{dirname} · {d0} → {d1}'
+    subtitle = (
+        'Combined view of multiple Claude Code sessions. '
+        'Each depth-1 block is one session; workers are its subagents.'
+    )
+
+    # --- auto day markers ---
+    day_start = span_start.astimezone(dt.timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    day_end = span_end.astimezone(dt.timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    markers = []
+    if day_start == day_end:
+        # single day: one marker at the session start
+        markers.append({
+            'at': fmt_iso(span_start),
+            'label': f'<b>{span_start.astimezone(dt.timezone.utc).strftime("%a %b %-d")}</b>',
+        })
+    else:
+        cur = day_start
+        while cur <= day_end:
+            markers.append({
+                'at': fmt_iso(cur),
+                'label': f'<b>{cur.strftime("%a %b %-d")}</b>',
+            })
+            cur += dt.timedelta(days=1)
+
+    graph = {
+        'title': title,
+        'eyebrow': eyebrow,
+        'subtitle': subtitle,
+        'orientation': 'horizontal',
+        'agents': all_agents,
+        'markers': markers,
+        'extraStats': extra_stats,
+    }
+
+    # --- _meta.json overrides ---
+    meta_path = os.path.join(dirpath, '_meta.json')
+    if os.path.isfile(meta_path):
+        try:
+            meta = json.load(open(meta_path, encoding='utf-8'))
+            for key in ('title', 'eyebrow', 'subtitle', 'extraStats', 'orientation', 'footer'):
+                if key in meta:
+                    graph[key] = meta[key]
+        except (json.JSONDecodeError, OSError) as e:
+            print(f'build_spa: warning: could not load _meta.json: {e}', file=sys.stderr)
+
+    # CLI --orientation wins over everything
+    if cli_orientation:
+        graph['orientation'] = cli_orientation
+
+    return graph
+
+
+# ---------------------------------------------------------------------------
+# render
+# ---------------------------------------------------------------------------
+
+def render_graph(graph, output_path):
+    """Validate graph and write the SPA HTML to output_path."""
+    validate(graph)
+
+    orientation = graph.get('orientation') or 'vertical'
     if orientation not in ('vertical', 'horizontal'):
         die(f"graph.orientation must be 'vertical' or 'horizontal', got {orientation!r}")
 
     template = open(TEMPLATE, encoding='utf-8').read()
     title = graph.get('title') or (graph.get('session') or {}).get('id') or 'Agent graph'
+    data_json = json.dumps(graph, ensure_ascii=False)
+    data_json = data_json.replace('</', '<\\/')
 
-    if sessions_dir:
-        # Dynamic mode: embed sessions dir path and empty data, template will fetch
-        data_json = json.dumps({'sessions': []}, ensure_ascii=False)
-        # Convert to relative path: use just the directory name if it's a sibling of output
-        output_dir = os.path.dirname(os.path.abspath(args.output))
-        sessions_abs = os.path.abspath(sessions_dir)
+    html = template.replace('__TITLE__', title.replace('<', '&lt;'))
+    html = html.replace('__DATA_JSON__', data_json)
+    html = html.replace('__ORIENTATION__', orientation)
+
+    with open(output_path, 'w', encoding='utf-8') as fh:
+        fh.write(html)
+    print(
+        f'build_spa: wrote {output_path}  ({len(graph["agents"])} agents)',
+        file=sys.stderr,
+    )
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('graph', help='graph JSON file, or directory of per-session JSON files')
+    ap.add_argument('-o', '--output', required=True, help='output HTML path')
+    ap.add_argument(
+        '--orientation', choices=['vertical', 'horizontal'], default=None,
+        help="layout orientation (default: graph.orientation, else 'vertical'; "
+             "'horizontal' default in dir mode)",
+    )
+    ap.add_argument(
+        '--org', metavar='NAME', default='lexerdev',
+        help='dir mode: keep only sessions whose repo belongs to this GitHub org '
+             '(default: lexerdev); case-insensitive',
+    )
+    ap.add_argument(
+        '--any-org', action='store_true',
+        help='dir mode: disable org filtering and include sessions from any org',
+    )
+    args = ap.parse_args()
+
+    if not os.path.isfile(TEMPLATE):
+        die(f'template not found: {TEMPLATE}')
+
+    if os.path.isdir(args.graph):
+        graph = build_combined_graph(
+            args.graph, args.orientation,
+            org_target=args.org, any_org=args.any_org,
+        )
+    elif os.path.isfile(args.graph):
         try:
-            sessions_rel = os.path.relpath(sessions_abs, output_dir)
-        except ValueError:
-            # On Windows, relpath can fail if on different drives; use absolute
-            sessions_rel = sessions_abs
-        html = template.replace('__TITLE__', title.replace('<', '&lt;'))
-        html = html.replace('__DATA_JSON__', data_json)
-        html = html.replace('__ORIENTATION__', orientation)
-        html = html.replace('__SESSIONS_DIR__', sessions_rel)
-        html = html.replace('__DYNAMIC_MODE__', 'true')
+            graph = json.load(open(args.graph, encoding='utf-8'))
+        except json.JSONDecodeError as e:
+            die(f'invalid JSON: {e}')
+        if args.orientation:
+            graph['orientation'] = args.orientation
     else:
-        # Static mode: embed all data
-        data_json = json.dumps(graph, ensure_ascii=False)
-        # guard against premature </script> termination inside the JSON blob
-        data_json = data_json.replace('</', '<\\/')
+        die(f'graph not found: {args.graph}')
 
-        html = template.replace('__TITLE__', title.replace('<', '&lt;'))
-        html = html.replace('__DATA_JSON__', data_json)
-        html = html.replace('__ORIENTATION__', orientation)
-        html = html.replace('__SESSIONS_DIR__', '')
-        html = html.replace('__DYNAMIC_MODE__', 'false')
-
-    # Wrap in proper HTML structure with charset declaration
-    full_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  {html}
-</head>
-<body>
-</body>
-</html>"""
-
-    with open(args.output, 'w', encoding='utf-8') as fh:
-        fh.write(full_html)
-    agent_count = len(graph.get('agents', []))
-    print(f'build_spa: wrote {args.output}  ({agent_count} agents)', file=sys.stderr)
+    render_graph(graph, args.output)
 
 
 if __name__ == '__main__':

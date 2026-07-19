@@ -5,26 +5,19 @@ description: Reconstruct a past Claude Code session's multi-agent orchestration 
 
 # Agent Graph
 
-Two scripts turn session transcripts into interactive sequence graphs
+Two scripts turn a session transcript into an interactive sequence graph
 (time top→bottom, columns = hand-off levels, colour = agent type, shape =
 work type, block height ∝ runtime, arrows at the moment of each handoff).
 
-**Single session (static):**
 ```
 scripts/extract.py     session .jsonl + subagents/  →  graph.json (draft)
 scripts/build_spa.py   graph.json + template.html   →  standalone .html
 ```
 
-**Multiple sessions (dynamic, auto-refresh on new sessions):**
-```
-scripts/extract.py --multi --list-filters  →  sessions/ (many .ndjson + index.json)
-scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader)
-```
-
 ## Workflow
 
 1. **Find the session.** Transcripts live in
-   `~/.claude.personal/projects/<encoded-cwd>/` (fallback `~/.claude/projects/`);
+   `~/.claude/projects/<encoded-cwd>/`;
    the encoded cwd replaces `/` with `-`. List candidates (sessions with agent
    spawns, newest first):
 
@@ -115,43 +108,37 @@ scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader
 
    Deliver via the Artifact tool (or SendUserFile).
 
-## Multi-session workflow (dynamic mode)
+   ### Directory (multi-session) mode
 
-Extract multiple sessions into a directory, which the SPA dynamically loads.
-The generated HTML auto-refreshes when new sessions are added or deleted.
-
-1. **Extract multiple sessions** into a directory (`sessions/index.json` + one `.ndjson` per session):
+   Pass a **directory** instead of a file to combine many per-session graph JSONs
+   into one SPA:
 
    ```bash
-   # Extract matching sessions to a sessions/ directory
-   python3 scripts/extract.py --multi --list-filters -o sessions/
-   
-   # Examples with filters:
-   python3 scripts/extract.py --multi --all-projects --since 1w -o sessions/
-   python3 scripts/extract.py --multi --grep "openspec" -o sessions/
-   python3 scripts/extract.py --multi --tool opsx:apply -o sessions/
+   python3 scripts/build_spa.py <dir-of-session-jsons>/ -o "$PWD/agent-graph.html"
    ```
 
-2. **Build the dynamic SPA:**
-
-   ```bash
-   # Point build_spa.py to the sessions directory (not a .json file)
-   python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html"
-   # Optionally with orientation:
-   python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html" --orientation horizontal
-   ```
-
-3. **Serve the directory.** The HTML file loads sessions from `index.json` and
-   individual `.ndjson` files. Serve with any HTTP server so fetch() works:
-
-   ```bash
-   python3 -m http.server 8000 --directory "$PWD"
-   # Then open http://localhost:8000/agent-graph.html
-   ```
-
-   The SPA polls `index.json` every 5 seconds and auto-refreshes if the session
-   count changes (new or deleted sessions). Refresh behavior is transparent to the
-   user: the page reloads automatically.
+   - Extract each session individually with `-o <dir>/<session>.json` (files can
+     be written in parallel or incrementally; the directory is assembled lazily).
+   - All `*.json` files in the directory are loaded and combined; `_meta.json` is
+     reserved for overrides (see below) and is skipped.
+   - **Org filter (default ON).** Only sessions whose repo belongs to the
+     `lexerdev` GitHub org are included. The org is read from `session.org` in the
+     graph JSON (recorded by `extract.py`); if absent, it is resolved live from
+     `session.cwd` via `git remote`. Sessions with an unknown org are dropped with
+     a stderr warning. Override with `--org NAME` (change the target org) or
+     `--any-org` (disable filtering entirely). These flags have no effect in
+     single-file mode.
+   - Each session's agents are prefixed with a slug derived from the filename stem
+     (e.g. `abc123__main`) so ids never collide across sessions.
+   - The synthetic combined root has `id="root"` and `parent=null`; each session's
+     own root is reparented to it, with its title replaced by a cleaned version of
+     `session.firstUserMessage`.
+   - Default orientation is `horizontal` (each session reads as a Gantt block);
+     override with `--orientation vertical`.
+   - Auto day-markers are generated at UTC midnight for every day in the span.
+   - Create an optional `<dir>/_meta.json` to override any of: `title`, `eyebrow`,
+     `subtitle`, `extraStats`, `orientation`, `footer`. The CLI `--orientation`
+     flag wins over everything.
 
 ## Notes
 
