@@ -69,6 +69,7 @@ single root (one session) and N roots (N sessions) uniformly.
 | `outcome` | string | – | drawer "Outcome" paragraph |
 | `respawnOf` | string \| null | – | id of a dead sibling this agent re-attempted; draws a dashed ⟳ edge |
 | `parentGuessed` | bool | – | extract sets this when the recorded parent was a ghost id; drawer notes it |
+| `events` | array | – | machine-populated timeline of this agent's OWN tool calls (not its children's), time-ordered. Each entry: `t` (ISO timestamp of the assistant message), `tool` (raw tool name), `target` (file/command/description, truncated to 60 chars), optional `lines` (edit churn or Read line count) and optional `spawned` (child agent id for Agent/Task). Empty `[]` when the agent made no tool calls |
 
 ## `markers` (optional)
 

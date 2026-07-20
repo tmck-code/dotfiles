@@ -66,8 +66,11 @@ scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader
      sentences each) from the raw excerpts. Fix `work` classifications.
    - Add `respawnOf` links (a later agent re-attempting a dead sibling's brief —
      match on similar prompts after a `cutoff`/`dropped` agent).
-   - Trim/merge `markers` to the load-bearing ones; merge markers < 2 min apart.
-   - Set `title`, `eyebrow`, `subtitle`, `footer`, `extraStats`.
+    - Trim/merge `markers` to the load-bearing ones; merge markers < 2 min apart.
+    - Set `title`, `eyebrow`, `subtitle`, `footer`, `extraStats`.
+    - Agents also carry a machine-populated `events` timeline of their own tool
+      calls (rendered as a tick strip on the node bar and a "Tool calls" timeline
+      in the drawer); it can be hand-edited/curated like the rest (optional).
    - Optionally set `groups` (arrays of coordinator ids) to split level-1/level-2
      column pairs side-by-side, e.g. `[["coordA","coordB"],["coordC"]]`.
    - Optionally set `orientation` (or pass `--orientation` at build time) to
@@ -152,6 +155,16 @@ The generated HTML auto-refreshes when new sessions are added or deleted.
    The SPA polls `index.json` every 5 seconds and auto-refreshes if the session
    count changes (new or deleted sessions). Refresh behavior is transparent to the
    user: the page reloads automatically.
+
+### Self-contained variant (`--embed`)
+
+Pass `--embed` to bake every session into one standalone HTML file — openable
+via `file://`, no HTTP server, no `sessions/` copy alongside, but also no
+auto-refresh (rebuild to pick up new sessions):
+
+```bash
+python3 scripts/build_spa.py sessions/ --embed -o "$PWD/agent-graph.html"
+```
 
 ## Notes
 
