@@ -137,6 +137,10 @@
     font-size: 12px; font-weight: 650; line-height: 1.25; color: var(--ink);
     display: -webkit-box; -webkit-line-clamp: unset; -webkit-box-orient: vertical; overflow: visible; white-space: normal;
   }
+  .node.has-tools .t,
+  .node.has-tools .m,
+  .node.has-tools .sk,
+  .node.has-tools .badge { padding-right: 46px; }
   /* tight nodes only shrink the font — they must NOT line-clamp: with
      overflow:visible above, a clamp still shrinks the box's layout height to
      the clamped line count while the wrapped text visually spills past it,
@@ -163,6 +167,52 @@
     overflow: hidden; text-overflow: ellipsis;
   }
   .node .sk::before { content: "⚡ "; color: var(--muted); }
+  .node .toolcol {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 44px;
+    overflow: hidden; pointer-events: none;
+  }
+  .node .toolrow {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    overflow: hidden; pointer-events: none;
+  }
+  .node .toolcol .tburst {
+    position: absolute; width: 8px; height: 8px; pointer-events: auto;
+  }
+  .node .toolrow .tburst {
+    position: absolute; bottom: 2px; width: 8px; height: 8px; pointer-events: auto;
+  }
+  .node .tburst {
+    background: var(--muted); opacity: 0.92; border-radius: 2px;
+  }
+  .node .tburst.more { background: var(--ink-2); opacity: 0.6; border-radius: 50%; }
+  .node .tburst.cat-edit { background: #2a9d8f; }
+  .node .tburst.cat-read { background: #457b9d; }
+  .node .tburst.cat-bash { background: #e9c46a; }
+  .node .tburst.cat-spawn { background: var(--nc); }
+  .node .tburst.cat-skill { background: #9b5de5; }
+  .node .tburst.cat-other { background: var(--muted); }
+  .ev-row {
+    display: flex; align-items: baseline; gap: 8px; padding: 4px 0;
+    border-bottom: 1px solid var(--border); font-size: 12.5px;
+  }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-dot { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; background: var(--muted); margin-top: 3px; }
+  .ev-dot.cat-edit { background: #2a9d8f; }
+  .ev-dot.cat-read { background: #457b9d; }
+  .ev-dot.cat-bash { background: #e9c46a; }
+  .ev-dot.cat-spawn { background: var(--ink-2); }
+  .ev-dot.cat-skill { background: #9b5de5; }
+  .ev-dot.cat-other { background: var(--muted); }
+  .ev-time { color: var(--muted); font-variant-numeric: tabular-nums; font-family: ui-monospace, Menlo, monospace; font-size: 11px; flex: 0 0 auto; }
+  .ev-tool { font-weight: 650; color: var(--ink-2); flex: 0 0 auto; }
+  .ev-target {
+    color: var(--ink); flex: 1 1 auto; min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px;
+  }
+  .ev-target.ev-spawn { color: var(--ink-2); cursor: pointer; text-decoration: underline dotted; }
+  .ev-target.ev-spawn:hover { color: var(--ink); }
+  .ev-lines { color: var(--muted); flex: 0 0 auto; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ev-timeline { max-height: 280px; overflow: auto; margin-top: 4px; }
   .node .badge {
     align-self: flex-start; margin-top: 2px; font-size: 9.5px; font-weight: 700;
     letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2);
@@ -511,6 +561,52 @@ async function initializeGraph() {
     while (cur && cur.parent != null && guard++ < 40) { d++; cur = byId[cur.parent]; }
     return d;
   }
+  function evCat(tool) {
+    if (EDIT_TOOLS.has(tool)) return 'edit';
+    if (tool === 'Read') return 'read';
+    if (tool === 'Bash') return 'bash';
+    if (tool === 'Agent' || tool === 'Task') return 'spawn';
+    if (tool === 'Skill') return 'skill';
+    return 'other';
+  }
+  const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit']);
+  /* one tick per tool call, placed at its TRUE relative time within the agent's
+     own [t0,t1] span. Capped at TOOL_TICK_CAP ticks; overflow collapses into a
+     single trailing "+N" sentinel tick. frac is a 0..1 fraction of the node's
+     own span (NOT the global time scale), so ticks map onto the existing bar
+     and reposition correctly if the node box later grows. Returns
+     [{frac,cat,title}] (+ optional {overflow:N} sentinel). */
+  const TOOL_TICK_CAP = 24;
+  function toolTicks(a, orient) {
+    const evs = a.events;
+    if (!evs || !evs.length) return [];
+    const sorted = evs.slice().sort((x, y) => T(x.t) - T(y.t));
+    const boxDim = orient === 'horizontal' ? a.w : a.h;
+    /* spread ticks across the WHOLE node box by their position in the agent's
+       own time span (frac of [t0,t1]). This fills the box even for short
+       coordinators whose drawn height is MIN_H-inflated above their true time
+       span (raw yOf-based offsets would bunch them in the top time-band). When
+       the box height equals the time span — the common case for long
+       coordinators with distinct spawn/return waves — frac maps 1:1 onto the
+       timeline, so a call between the last return and the next launch lines up
+       with that gap. */
+    const span = Math.max(1, a.t1 - a.t0);
+    const shown = sorted.slice(0, TOOL_TICK_CAP);
+    const ticks = shown.map((ev) => {
+      const frac = Math.max(0, Math.min(1, (T(ev.t) - a.t0) / span));
+      const off = Math.max(0, Math.min(boxDim, frac * boxDim));
+      const cat = evCat(ev.tool);
+      const tgt = ev.target ? String(ev.target) : '';
+      const tgtShort = tgt.length > 48 ? tgt.slice(0, 47) + '…' : tgt;
+      const title = `${fmtT(T(ev.t))} · ${ev.tool}${tgtShort ? ' · ' + tgtShort : ''}`;
+      return { off, cat, title };
+    });
+    if (sorted.length > TOOL_TICK_CAP) {
+      const lastOff = ticks.length ? ticks[ticks.length - 1].off : boxDim - 6;
+      ticks.push({ off: Math.min(boxDim - 6, lastOff), cat: 'other', overflow: sorted.length - TOOL_TICK_CAP });
+    }
+    return ticks;
+  }
   AGENTS.forEach((a) => { a.depth = depthOf(a); a.coord = isRoot(a) || coordSet.has(a.id) ? null : ancestorCoord(a); });
   const workers = AGENTS.filter((a) => !isRoot(a) && !coordSet.has(a.id));
   
@@ -574,6 +670,12 @@ async function initializeGraph() {
   const svgParts = [];
   const htmlParts = [];
   let BOARD_W = 0, BOARD_H = 0;
+
+  /* Height added to a horizontal node that has tool events, to reserve visual
+     room for the inline tool-tick row pinned to the node's bottom edge. Width
+     stays a.w, so board packing/time-scale are unchanged. Vertical renders the
+     ticks as a right-side overlay column and needs no growth (see call sites). */
+  const H_TOOL_H = 22;
   
   /* shared (horizontal orientation only): layout state hoisted to top level so
      the post-paint measurement passes (growOrchestratorHeightsHorizontal,
@@ -647,7 +749,7 @@ async function initializeGraph() {
     if (a.status !== 'ok') {
       svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
     }
-    htmlParts.push(`<div class="node${tight ? ' tight' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+    htmlParts.push(`<div class="node${tight ? ' tight' : ''}${(a.events && a.events.length && ORIENTATION !== 'horizontal') ? ' has-tools' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
       style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};">
       <span class="t">${esc(a.title)}</span>
       ${a.status !== 'ok'
@@ -655,7 +757,45 @@ async function initializeGraph() {
         : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
       ${(!tight && a.status === 'ok') ? statsMetaLine(a) : ''}
       ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
+      ${toolChipRegion(a, ORIENTATION)}
     </div>`);
+  }
+  /* Inline tool-tick region: one absolutely-positioned tick per tool call,
+      spread across the node box by its position in the agent's own time span
+      (frac of [t0,t1] * boxDim). Vertical = a column pinned to the right edge,
+      ticks top→bottom by time; horizontal = a row pinned to the bottom edge,
+      ticks left→right by time. Returns '' when there are no events so nodes
+      without tool data render exactly as before. */
+  function toolChipRegion(a, orient) {
+    const ticks = toolTicks(a, orient);
+    if (!ticks.length) return '';
+    if (orient === 'horizontal') {
+      const chips = ticks.map((k) => {
+        if (k.overflow) return `<span class="tburst more" title="+${k.overflow} more tool calls" style="left:${k.off}px"></span>`;
+        return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="left:${k.off}px"></span>`;
+      }).join('');
+      return `<div class="toolrow">${chips}</div>`;
+    }
+    /* vertical: the RHS tool column is wide enough for a few side-by-side
+       sub-columns. Ticks keep their time-frac vertical position (top = off);
+       when several land at the same height they wrap into the next sub-column
+       instead of overlapping in one line. Greedy first-fit: each sub-column
+       remembers the last top it used; a tick goes in the first column whose
+       last top is far enough (>= TICK_STEP) from this tick's off. */
+    const TICK_STEP = 11;
+    const COL_W = 14;
+    const colLast = [];
+    const chips = ticks.map((k) => {
+      if (k.overflow) {
+        return `<span class="tburst more" title="+${k.overflow} more tool calls" style="top:${k.off}px; left:2px"></span>`;
+      }
+      let col = 0;
+      while (col < colLast.length && colLast[col] > k.off - TICK_STEP) col++;
+      colLast[col] = k.off;
+      const left = 2 + col * COL_W;
+      return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="top:${k.off}px; left:${left}px"></span>`;
+    }).join('');
+    return `<div class="toolcol">${chips}</div>`;
   }
   
   /* shared (horizontal orientation only): orthogonal V–H–V elbow with rounded
@@ -947,8 +1087,11 @@ async function initializeGraph() {
     for (const a of AGENTS) {
       if (!a.parent) continue;
       const pad = a.work === 'orchestration' ? 8 : 2;
+      /* grow height to fit the inline tool-tick row. Width stays a.w so the
+         time scale / packing are untouched. */
+      const extra = (a.events && a.events.length) ? H_TOOL_H : 0;
       const tight = a.w < 140;
-      paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight, a.skills.length && a.w >= 160);
+      paintNode(a, a.x0, a.y0, a.w, a.h + extra, pad, tight, a.skills.length && a.w >= 160);
     }
   
     /* main-thread markers — labels render as small clickable node-like boxes
@@ -1328,6 +1471,9 @@ async function initializeGraph() {
       if (!a.parent) continue;
       const nx = xOf(a);
       const pad = a.work === 'orchestration' ? 11 : 2;
+      /* tool-tick region is a right-side overlay column mapped onto the node's
+         own span by fraction, so no height growth is needed — the ticks land on
+         the existing bar and width stays LANE_W (column packing untouched). */
       const tight = a.h < 70;
       paintNode(a, nx, a.y0, LANE_W, a.h, pad, tight, a.skills.length && a.h - pad * 2 >= 84);
     }
@@ -1830,6 +1976,7 @@ async function initializeGraph() {
       <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
       <h3>Tool calls</h3>
       <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>
+      ${eventsHtml(a)}
       <h3>Code changes</h3>
       ${diffLine(a.diff)}
       <h3>Tokens</h3>
@@ -1852,6 +1999,30 @@ async function initializeGraph() {
     return `<div class="counts"><span>${fmtTokens(tk.in)} input</span><span>${fmtTokens(tk.out)} output</span>`
       + `<span>${fmtTokens(tk.cacheRead)} cache read</span><span>${fmtTokens(tk.cacheCreate)} cache create</span>`
       + `<span>${fmtTokens(total)} total</span></div>`;
+  }
+  /* chronological timeline of the agent's OWN tool calls (not its children's) */
+  function eventsHtml(a) {
+    const evs = a.events;
+    if (!evs || !evs.length) return '';
+    const rows = evs.map((ev) => {
+      const cat = evCat(ev.tool);
+      const tgt = ev.target
+        ? (ev.spawned
+            ? `<span class="ev-target ev-spawn" data-goto="${esc(ev.spawned)}" title="open ${esc(ev.spawned)}">${esc(ev.target)}</span>`
+            : `<span class="ev-target">${esc(ev.target)}</span>`)
+        : '<span class="ev-target"></span>';
+      let ln = '';
+      if (ev.lines != null) {
+        ln = ev.tool === 'Read'
+          ? `<span class="ev-lines">${ev.lines} lines</span>`
+          : `<span class="ev-lines">+${ev.lines}</span>`;
+      }
+      return `<div class="ev-row"><span class="ev-dot cat-${cat}"></span>`
+        + `<span class="ev-time">${fmtT(T(ev.t))}</span>`
+        + `<span class="ev-tool">${esc(ev.tool)}</span>`
+        + tgt + ln + '</div>';
+    }).join('');
+    return `<div class="ev-timeline">${rows}</div>`;
   }
 
   /* element-wise diff+token sum over a root's entire subtree (main + descendants) */
@@ -1884,6 +2055,13 @@ async function initializeGraph() {
     drawer.classList.add('open');
   }
   document.getElementById('drawerClose').addEventListener('click', () => drawer.classList.remove('open'));
+  drawerBody.addEventListener('click', (e) => {
+    const spawn = e.target.closest('.ev-spawn');
+    if (spawn) {
+      const id = spawn.dataset.goto;
+      if (byId[id]) { openDrawer(id); isolate(id); }
+    }
+  });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') drawer.classList.remove('open'); });
   
   const board = document.getElementById('board');

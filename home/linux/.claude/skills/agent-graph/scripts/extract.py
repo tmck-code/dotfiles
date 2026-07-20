@@ -196,6 +196,113 @@ def count_diff_tokens(entries):
     return diff, tokens
 
 
+def tool_category(name):
+    if name in EDIT_TOOLS:
+        return 'edit'
+    if name == 'Read':
+        return 'read'
+    if name == 'Bash':
+        return 'bash'
+    if name in SPAWN_TOOLS:
+        return 'spawn'
+    if name == 'Skill':
+        return 'skill'
+    return 'other'
+
+
+def diff_line_count(tur):
+    n = 0
+    if isinstance(tur, dict) and isinstance(tur.get('structuredPatch'), list):
+        for h in tur['structuredPatch']:
+            for ln in h.get('lines', []):
+                if ln.startswith('+') or ln.startswith('-'):
+                    n += 1
+    return n
+
+
+def read_line_count(tur):
+    if isinstance(tur, dict):
+        res = tur.get('result')
+        if isinstance(res, str):
+            return res.count('\n')
+    return None
+
+
+def result_by_block(entries):
+    """Map a tool_use block id -> its toolUseResult dict.
+
+    In CC transcripts the `toolUseResult` lives on a SEPARATE `user` entry (the
+    tool_result message), keyed by `message.content[].tool_use_id`, not on the
+    assistant entry that holds the `tool_use` block. So build the lookup here
+    once per transcript rather than reading `e.get('toolUseResult')` off the
+    assistant entry that carries the block.
+    """
+    out = {}
+    for e in entries:
+        tur = e.get('toolUseResult')
+        if not isinstance(tur, dict):
+            continue
+        c = e.get('message', {}).get('content')
+        ids = [b.get('tool_use_id') for b in c if isinstance(b, dict) and b.get('tool_use_id')]
+        if not ids:
+            continue
+        for i in ids:
+            out[i] = tur
+    return out
+
+
+def extract_events(entries, block_to_child, all_spawns, tool_use_to_subagent):
+    rb = result_by_block(entries)
+    events = []
+    for e in entries:
+        ts = e.get('timestamp')
+        for b in blocks(e):
+            if b.get('type') != 'tool_use':
+                continue
+            name = b.get('name', '')
+            inp = b.get('input', {}) or {}
+            bid = b.get('id')
+            tur = rb.get(bid)
+            cat = tool_category(name)
+            target = ''
+            spawned = None
+            lines = None
+            if cat == 'edit':
+                target = inp.get('file_path', '') or ''
+                lines = diff_line_count(tur)
+            elif name == 'Read':
+                target = inp.get('file_path', '') or ''
+                rc = read_line_count(tur)
+                if rc is not None:
+                    lines = rc
+            elif cat == 'bash':
+                target = trunc(inp.get('command', '') or '', 60)
+            elif cat == 'spawn':
+                child = block_to_child.get(bid)
+                if child:
+                    spawned = child
+                    mm = tool_use_to_subagent.get(child)
+                    if mm:
+                        target = trunc(mm.get('description') or mm.get('prompt') or '', 60)
+                if not target:
+                    target = trunc(inp.get('description') or inp.get('prompt') or '', 60)
+                sp = all_spawns.get(bid, {})
+                if not target and sp:
+                    target = trunc(sp.get('description') or sp.get('prompt') or '', 60)
+            elif cat == 'skill':
+                target = inp.get('skill') or inp.get('name') or ''
+            else:
+                target = ''
+            ev = {'t': iso(ts), 'tool': name, 'target': target}
+            if lines is not None:
+                ev['lines'] = lines
+            if spawned is not None:
+                ev['spawned'] = spawned
+            events.append(ev)
+    events.sort(key=lambda ev: ev.get('t') or '')
+    return events
+
+
 def last_assistant_text(entries):
     for e in reversed(entries):
         if e.get('type') == 'assistant':
@@ -452,6 +559,11 @@ def build_graph(project_dir, session_id):
         if tool_use_id:
             tool_use_to_subagent[tool_use_id] = aid
 
+    # global map: spawn tool_use block id -> child agent id (raw, namespace later).
+    # A spawn tool_use block's id equals its child's meta toolUseId, so the
+    # tool_use_to_subagent map already provides the resolution.
+    block_to_child = dict(tool_use_to_subagent)
+
     # For each subagent, determine its actual parent by finding which agent spawned it
     subagent_parents = {}  # aid -> parent_aid or 'main'
     for aid, entries, meta in subs:
@@ -503,6 +615,7 @@ def build_graph(project_dir, session_id):
         'tokens': main_tokens,
         'brief': trunc(first_user, 350),
         'outcome': trunc(main_final, 350),
+        'events': extract_events(main_entries, block_to_child, all_spawns, tool_use_to_subagent),
     })
 
     # ---- subagents ----
@@ -550,6 +663,7 @@ def build_graph(project_dir, session_id):
             'tokens': tokens,
             'brief': trunc(brief_src, 350),
             'outcome': trunc(final, 350),
+            'events': extract_events(entries, block_to_child, all_spawns, tool_use_to_subagent),
         }
         agents.append(agent)
 
@@ -633,6 +747,9 @@ def namespace_graph(graph):
             a['parent'] = ns(a['parent'])
         if a.get('respawnOf'):
             a['respawnOf'] = ns(a['respawnOf'])
+        for ev in (a.get('events') or []):
+            if ev.get('spawned'):
+                ev['spawned'] = ns(ev['spawned'])
     graph['groups'] = [[ns(cid) for cid in g] for g in (graph.get('groups') or [])]
     return graph
 
