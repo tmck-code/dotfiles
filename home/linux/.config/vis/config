@@ -1,5 +1,5 @@
 ##Refresh rate of the visualizers. A really high refresh rate may cause screen tearing. Default is 20.
-visualizer.fps=60
+visualizer.fps=30
 
 ##Sets the audio sources to use.
 ##Currently available ones are "mpd", "pulse", "shmem", and "alsa". Defaults to "pulse".
@@ -56,7 +56,7 @@ visualizer.spectrum.falloff.mode=fill
 
 ##Configures how fast the falloff character falls. This is an exponential falloff so values usually look
 ##best 0.9+ and small changes in this value can have a large effect. Defaults to 0.95
-visualizer.spectrum.falloff.weight=0.98
+visualizer.spectrum.falloff.weight=1.0
 
 ##Margins in percent of total screen for spectrum visualizer. All margins default to 0
 visualizer.spectrum.top.margin=0.25
