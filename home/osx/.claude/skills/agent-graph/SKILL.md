@@ -5,13 +5,20 @@ description: Reconstruct a past Claude Code session's multi-agent orchestration 
 
 # Agent Graph
 
-Two scripts turn a session transcript into an interactive sequence graph
+Two scripts turn session transcripts into interactive sequence graphs
 (time top→bottom, columns = hand-off levels, colour = agent type, shape =
 work type, block height ∝ runtime, arrows at the moment of each handoff).
 
+**Single session (static):**
 ```
 scripts/extract.py     session .jsonl + subagents/  →  graph.json (draft)
 scripts/build_spa.py   graph.json + template.html   →  standalone .html
+```
+
+**Multiple sessions (dynamic, auto-refresh on new sessions):**
+```
+scripts/extract.py --multi --list-filters  →  sessions/ (many .ndjson + index.json)
+scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader)
 ```
 
 ## Workflow
@@ -59,8 +66,11 @@ scripts/build_spa.py   graph.json + template.html   →  standalone .html
      sentences each) from the raw excerpts. Fix `work` classifications.
    - Add `respawnOf` links (a later agent re-attempting a dead sibling's brief —
      match on similar prompts after a `cutoff`/`dropped` agent).
-   - Trim/merge `markers` to the load-bearing ones; merge markers < 2 min apart.
-   - Set `title`, `eyebrow`, `subtitle`, `footer`, `extraStats`.
+    - Trim/merge `markers` to the load-bearing ones; merge markers < 2 min apart.
+    - Set `title`, `eyebrow`, `subtitle`, `footer`, `extraStats`.
+    - Agents also carry a machine-populated `events` timeline of their own tool
+      calls (rendered as a tick strip on the node bar and a "Tool calls" timeline
+      in the drawer); it can be hand-edited/curated like the rest (optional).
    - Optionally set `groups` (arrays of coordinator ids) to split level-1/level-2
      column pairs side-by-side, e.g. `[["coordA","coordB"],["coordC"]]`.
    - Optionally set `orientation` (or pass `--orientation` at build time) to
@@ -107,6 +117,54 @@ scripts/build_spa.py   graph.json + template.html   →  standalone .html
    ```
 
    Deliver via the Artifact tool (or SendUserFile).
+
+## Multi-session workflow (dynamic mode)
+
+Extract multiple sessions into a directory, which the SPA dynamically loads.
+The generated HTML auto-refreshes when new sessions are added or deleted.
+
+1. **Extract multiple sessions** into a directory (`sessions/index.json` + one `.ndjson` per session):
+
+   ```bash
+   # Extract matching sessions to a sessions/ directory
+   python3 scripts/extract.py --multi --list-filters -o sessions/
+   
+   # Examples with filters:
+   python3 scripts/extract.py --multi --all-projects --since 1w -o sessions/
+   python3 scripts/extract.py --multi --grep "openspec" -o sessions/
+   python3 scripts/extract.py --multi --tool opsx:apply -o sessions/
+   ```
+
+2. **Build the dynamic SPA:**
+
+   ```bash
+   # Point build_spa.py to the sessions directory (not a .json file)
+   python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html"
+   # Optionally with orientation:
+   python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html" --orientation horizontal
+   ```
+
+3. **Serve the directory.** The HTML file loads sessions from `index.json` and
+   individual `.ndjson` files. Serve with any HTTP server so fetch() works:
+
+   ```bash
+   python3 -m http.server 8000 --directory "$PWD"
+   # Then open http://localhost:8000/agent-graph.html
+   ```
+
+   The SPA polls `index.json` every 5 seconds and auto-refreshes if the session
+   count changes (new or deleted sessions). Refresh behavior is transparent to the
+   user: the page reloads automatically.
+
+### Self-contained variant (`--embed`)
+
+Pass `--embed` to bake every session into one standalone HTML file — openable
+via `file://`, no HTTP server, no `sessions/` copy alongside, but also no
+auto-refresh (rebuild to pick up new sessions):
+
+```bash
+python3 scripts/build_spa.py sessions/ --embed -o "$PWD/agent-graph.html"
+```
 
 ## Notes
 

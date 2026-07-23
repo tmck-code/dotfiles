@@ -33,12 +33,30 @@ Exactly **one** agent must be the root (`parent: null`) — it renders as the
 main spine. Its children are **coordinators** (level 1); everything else is a
 **worker** (level 2), attached to its nearest coordinator ancestor. Deeper
 nesting is allowed and lands in that coordinator's worker column (the depth is
-noted in the drawer).
+noted in the drawer). (A single-session document — the `build_spa.py` `validate()`
+path — enforces exactly one root. An aggregated multi-session document has one
+root per session; see below.)
+
+### Multi-session aggregation (`extract.py --multi`)
+
+`--multi` writes one `<session-id>.ndjson` per session and `build_spa.py` on a
+directory flattens every session's `agents` into ONE array. Agent ids are NOT
+unique across sessions — the main thread is always `"main"`, and the 17-hex-char
+subagent ids are reused across sessions — so `extract.py` **namespaces every id
+as `<session-id>:<raw-id>`** in `--multi` mode (the `id`, its `parent`, any
+`respawnOf`, and `groups` entries are all rewritten). This keeps each session's
+parentage self-contained once flattened: every child resolves its parent to its
+OWN session's main, never a foreign one.
+
+Single-session extraction (`extract.py <id>`) is deliberately **left un-namespaced**
+so hand-written curation patches (keyed by raw agent id, see SKILL.md) keep
+working. The renderer treats every parentless agent as a root, so it handles a
+single root (one session) and N roots (N sessions) uniformly.
 
 | field | type | req | notes |
 |-------|------|-----|-------|
-| `id` | string | ✔ | unique; `"main"` for the root by convention |
-| `parent` | string \| null | ✔ | `null` only for the root; else an existing agent id |
+| `id` | string | ✔ | unique **within the document**; `"main"` for the root by convention (single-session). See "Multi-session aggregation" for how `--multi` namespaces ids |
+| `parent` | string \| null | ✔ | `null` for a root; else an existing agent id. A single-session graph has exactly one root; an aggregated multi-session graph has one root **per session** |
 | `type` | string | ✔ | agent/subagent type; drives colour. Root's type takes the first palette slot, then types by first appearance |
 | `model` | string \| null | – | shown in the drawer |
 | `title` | string | ✔ | block heading; a leading `"Coordinator: "` is stripped for band labels |
@@ -51,6 +69,7 @@ noted in the drawer).
 | `outcome` | string | – | drawer "Outcome" paragraph |
 | `respawnOf` | string \| null | – | id of a dead sibling this agent re-attempted; draws a dashed ⟳ edge |
 | `parentGuessed` | bool | – | extract sets this when the recorded parent was a ghost id; drawer notes it |
+| `events` | array | – | machine-populated timeline of this agent's OWN tool calls (not its children's), time-ordered. Each entry: `t` (ISO timestamp of the assistant message), `tool` (raw tool name), `target` (file/command/description, truncated to 60 chars), optional `lines` (edit churn or Read line count) and optional `spawned` (child agent id for Agent/Task). Empty `[]` when the agent made no tool calls |
 
 ## `markers` (optional)
 
@@ -60,12 +79,18 @@ HTML (e.g. `<b>…</b>`). Extract emits real user turns + git commit/push events
 
 ## `groups` semantics
 
-`groups` is an array of arrays of **coordinator ids**. Each inner array becomes
-one `[coordinators | workers]` column pair, laid left→right after the single
-main column, with a dotted separator between pairs. The default (omit/empty) is
-a single group containing every coordinator. Coordinators you leave out of every
-group are appended as a trailing group. Use it to split parallel workstreams
-side-by-side, e.g. `[["coreCoord","movesCoord"], ["corpusCoord"]]`.
+`groups` is an array of arrays of **coordinator ids**, used as a **soft
+ordering hint** in the vertical orientation: coordinators are processed in
+`[group index, start time]` order before block/track packing, so an
+explicitly grouped cluster tends to land in adjacent column-tracks together.
+It no longer assigns a hard column — the automatic time-overlap packer (see
+"vertical" below) always has final say over how many column-tracks are
+actually used. The default (omit/empty) is a single implicit group, i.e. pure
+start-time order. Coordinators left out of every group are treated as
+trailing, lowest-priority order. Use it to nudge related parallel workstreams
+toward sitting next to each other, e.g. `[["coreCoord","movesCoord"],
+["corpusCoord"]]` — it's a hint, not a guarantee of adjacency if the packer
+needs the space elsewhere.
 
 **`groups` only affects the vertical orientation** — the horizontal layout
 (below) ignores it and derives its own arrangement from time + parentage.
@@ -78,9 +103,19 @@ change to switch. Set it via the graph JSON (`"orientation": "horizontal"`) or
 override at build time with `--orientation vertical|horizontal` (the CLI flag
 wins if both are given). Default is `vertical`.
 
-- **`vertical`** (default): time runs top→bottom; x is hand-off depth (main
-  spine, then per-`groups` coordinator/worker columns). This is the original,
-  more heavily used layout.
+- **`vertical`** (default): time runs top→bottom. Every depth-1 coordinator
+  (one per aggregated session/tree) plus its full subtree renders as one
+  self-contained **block** — its own coordinator and worker sub-lanes travel
+  together and never interleave with another coordinator's descendants, same
+  contiguity guarantee as the horizontal layout below. Blocks are packed into
+  vertical **column-tracks**: blocks that don't overlap in time share a
+  column-track (stacked one after another since their own y-positions from
+  time already keep them apart); genuinely time-overlapping blocks get pushed
+  into a new column-track further to the right. `groups` orders the packer's
+  input (see above) but doesn't override its column-count decisions. This
+  replaced an earlier design with two global flat columns (all coordinators
+  in one strip, all workers in another) that visually merged unrelated
+  sessions together — prefer this layout as the default choice.
 - **`horizontal`**: time runs left→right; the main thread is a fixed top row.
   Every depth-1 coordinator gets its own **block** — a head row (the
   coordinator) with its full subtree packed into sub-lanes directly beneath
