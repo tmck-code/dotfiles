@@ -73,27 +73,19 @@ job).
 
 ## Reporting through files, not return messages
 
-Returned subagent messages are unreliable — the parent often sees only part of a
-long message, or none of it. So **every subagent you fork must write its full
-report to a uniquely-named markdown file in the scratchpad, and return only that
-file path.** Then you read the file back rather than trusting the returned text.
-
-- Give each subagent a distinct path up front, e.g.
-  `<scratchpad>/spec-impl-<change>-<task-id>.md` — derive the name from the change
-  and the task(s) it owns so two siblings never collide.
-- Tell the subagent to write the report **before** it returns: tasks done, gate
-  result, files touched, and anything it paused on.
-- After each wave, **read** those files to learn what happened; don't act on the
-  returned message alone.
-- Pass this same convention down: any subagent that itself nests children hands
-  *them* their own report-file paths and reads them back the same way.
+Follow the global report-file-handoff convention (write full report to a
+scratchpad file, return only the path, read the file back rather than trusting
+the returned text; pass the same convention down to any nested forks). Give each
+subagent a distinct path up front, e.g. `<scratchpad>/spec-impl-<change>-<task-id>.md`,
+and tell it to include: tasks done, gate result, files touched, anything it
+paused on. Read each wave's report files before starting the next wave.
 
 ## Ticking subtasks — as soon as they're done
 
 Every subagent (and any subagent it nests) flips its own `- [ ]` → `- [x]` in
 `tasks.md` **immediately** when a subtask is genuinely done **and its targeted gate
-passes** — never batch the ticks, never tick ahead of a passing gate. This keeps
-the checklist a live progress signal while waves are still running. Instruct each
+passes**. This keeps the checklist a live progress signal while waves are still
+running. Instruct each
 forked subagent of this explicitly; it is not optional. The tasks are written with
 exact file/line/function detail — follow them literally, and if a task's
 instruction contradicts the code reality, pause and report rather than guessing.
@@ -112,10 +104,9 @@ instruction contradicts the code reality, pause and report rather than guessing.
 
 ## Reporting back
 
-Apply the same file convention upward: **write your final report to the
-markdown report-file path the main agent gave you** (or, if it gave none, to a
-uniquely-named file in the scratchpad) and return only that path. Report
-concisely, never raw file or test dumps:
+Same convention upward: write your final report to the report-file path the main
+agent gave you (or a uniquely-named scratchpad file if it gave none), and return
+only that path. Report concisely, never raw file or test dumps:
 - tasks completed (N/M) and any left unticked + why,
 - how you fanned out (waves / which tasks ran in parallel vs sequence),
 - before/after test pass counts,
