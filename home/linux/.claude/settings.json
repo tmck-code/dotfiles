@@ -1,6 +1,7 @@
 {
   "env": {
-    "CLAUDE_CODE_TMUX_TRUECOLOR": "1"
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
   },
   "model": "opus[1m]",
   "hooks": {
@@ -52,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/docker-skill-nudge.py\""
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/skill-nudge.py\""
           }
         ]
       }

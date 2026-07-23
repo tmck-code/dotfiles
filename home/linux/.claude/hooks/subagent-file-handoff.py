@@ -32,18 +32,11 @@ def main() -> int:
         return 0
 
     nudge = (
-        'Subagent-handoff reminder: report-file capture now happens automatically — '
-        'the SubagentStop hook mechanically writes this subagent\'s final message to '
-        'a scratchpad report file regardless of cooperation, and announces its path '
-        'via additionalContext after the agent stops. Look for that notice and READ '
-        'the file instead of acting on the returned text; no need to pre-arrange a '
-        'report-file path yourself. '
-        'Sole-writer reminder: if this agent EDITS files, tell it that it is the only '
-        'writer of the files in its brief and MUST NOT fork a child that edits those '
-        'same files — a nested same-file fork is the classic silent lost-update race. '
-        'Parallel children write to SEPARATE files (or their own git worktree) and the '
-        'parent integrates; scope throwaway scratch to a per-agent subdir, never a '
-        'shared flat namespace.'
+        'Sole-writer reminder: if this agent EDITS files, it is the only writer of '
+        'the files in its brief and must keep parallel children on SEPARATE files '
+        '(or their own git worktree) — a nested same-file fork is the classic silent '
+        'lost-update race; the parent integrates, and scratch stays in a per-agent '
+        'subdir. (Report-file capture is automatic; you\'ll get the path when it stops.)'
     )
     json.dump(
         {
