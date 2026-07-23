@@ -24,7 +24,7 @@ instructs Claude to enable it (via `overseer.py enable`) *before* invoking it.
 | `~/.claude/hooks/skill-nudge.py` | The hook. Unions routing tables, matches the prompt, consults effective overrides, emits one `additionalContext` reminder. |
 | `~/.claude/skill-routing.json` | **Global** routing table (generic skills, e.g. `grill-me`). |
 | `<repo>/.claude/skill-routing.json` | **Project** routing table (repo-specific skills, e.g. `audiovis-debug-visual`, `audiovis-fractal`). |
-| `~/.claude/settings.json` | Wires the hook into `UserPromptSubmit` (2nd command, alongside `docker-skill-nudge.py`). |
+| `~/.claude/settings.json` | Wires `skill-nudge.py` into `UserPromptSubmit`. |
 | `~/.claude/skills/skill-overseer/scripts/overseer.py` | The overseer CLI the nudge points at for disabled skills. |
 | `<dir>/.claude/settings.local.json` → `skillOverrides` | Where enable/disable state actually lives (user + project). |
 
@@ -284,8 +284,9 @@ Conventions applied (from the global working agreement):
   `deep-research`) → just add the rule. Because the nudge is overseer-aware, it will tell
   Claude to `overseer.py enable <skill>` first, so the skill self-enables on the right
   prompt instead of silently failing to be callable.
-- **Fold in the Docker nudge** → `docker-skill-nudge.py`'s hardcoded triggers could move
-  into the global routing table as ordinary rules, retiring that bespoke hook.
+- **Docker nudge folded in (done)** → `docker-skill-nudge.py`'s hardcoded triggers now
+  live in the global routing table as ordinary `docker-fastapi` / `docker-web-ui` rules;
+  the bespoke hook has been retired.
 
 ---
 

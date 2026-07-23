@@ -44,6 +44,15 @@ def main() -> int:
     if not agent_id:
         return 0
 
+    # A real subagent completion always carries a non-empty agent_type. Empty
+    # agent_type means a progress/status ping (verified: 17/27 probed fires were
+    # single-fire, empty-agent_type events whose last_assistant_message was a terse
+    # status line like "Grepping consumers..."). Capturing those writes stray report
+    # files that read as "my own prior message". handoff-nudge.py gates on the same
+    # field; this hook was missing that guard.
+    if not data.get('agent_type'):
+        return 0
+
     # The main-thread re-fire carries the PARENT's text, not the subagent's - skip it.
     if data.get('stop_hook_active'):
         return 0

@@ -82,8 +82,7 @@ def main() -> int:
         target = f' Hand it to the `{agent}` subagent.' if agent else ''
         nudge = (
             f'Context-discipline reminder: {hint}.{target} '
-            'Unless this is a throwaway one-off check, delegate it rather than '
-            'doing it on the main thread.'
+            'Skip only if this is a throwaway one-off check.'
         )
         json.dump(
             {
