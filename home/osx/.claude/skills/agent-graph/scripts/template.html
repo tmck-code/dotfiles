@@ -158,7 +158,11 @@
      as real overflow instead of an invisible squeeze. Applies to every work
      type, not just orchestration — worker titles wrap just as often. */
   .node .m, .node .sk { flex-shrink: 0; }
-  .node .m { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* meta line WRAPS instead of ellipsizing — a cut-off "spec-implementer · 6h
+     39m" reads as "spec-implementer" and loses the load-bearing duration/tok
+     figures. Wrapping keeps every character visible; the node grows to fit and
+     the post-paint re-pack (relayoutVerticalFn) keeps neighbours clear. */
+  .node .m { font-size: 10.5px; color: var(--ink-2); white-space: normal; overflow-wrap: anywhere; }
   .node .m b { color: var(--nc); font-weight: 650; }
   .node .sk {
     align-self: flex-start; font-size: 9.5px; color: var(--ink-2);
@@ -687,6 +691,12 @@ async function initializeGraph() {
      expandHorizontalNodeWidths() it must still do its full repaint even if
      no node widths changed (heights alone can move BOARD_H/y0s). */
   let H_HEIGHTS_CHANGED = false;
+  /* vertical orientation only: assigned inside the vertical branch to a closure
+     that re-packs lanes/blocks from the (post-paint, grown) node heights and
+     repaints. expandOrchestratorNodes() calls it after measuring true heights so
+     grown nodes never overlap their lane neighbours or an adjacent session's
+     block. */
+  let relayoutVerticalFn = null;
   
   svgParts.push(`<defs>
     <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
@@ -750,13 +760,14 @@ async function initializeGraph() {
       svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
     }
     htmlParts.push(`<div class="node${tight ? ' tight' : ''}${(a.events && a.events.length && ORIENTATION !== 'horizontal') ? ' has-tools' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
-      style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};">
-      <span class="t">${esc(a.title)}</span>
+      style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};"
+      title="${esc(a.title)}">
+      <span class="t" title="${esc(a.title)}">${esc(a.title)}</span>
       ${a.status !== 'ok'
         ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
         : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
       ${(!tight && a.status === 'ok') ? statsMetaLine(a) : ''}
-      ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
+      ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk" title="${esc(s)}">${esc(s)}</span>`).join('') : ''}
       ${toolChipRegion(a, ORIENTATION)}
     </div>`);
   }
@@ -963,32 +974,20 @@ async function initializeGraph() {
       return { head: c, members, descendants, numLanes, h, t0, t1, bx0, bx1 };
     });
   
-    /* Gantt-style track packing: coordinators are already sorted by start
-       time (`coordinators` sort, above), so this greedy pass is a classic
-       interval-graph row packing — reuse the first track whose last-placed
-       block ends before this block starts, else open a new (lower) track.
-       Non-overlapping blocks end up sharing a track (side by side in time);
-       only genuinely overlapping blocks stack. Packed by rendered pixel
-       extent (bx0/bx1), not raw timestamps — MIN_W-clamped short blocks can
-       still collide on screen even when their real times don't overlap. */
-    const TRACK_GAP_PX = 8;
-    hTracks = [];
+    /* Skyline packing (replaces the old full-width Gantt tracks). The track
+       model reserved, for the WHOLE board width, a row as tall as the tallest
+       block anywhere on that track — so a later track dropped hundreds of px
+       below even at x-positions where the track above only held a 1-lane block,
+       leaving huge vertical gaps between time-aligned nodes (measured median
+       320px, up to 2315px). Skyline is the transpose of the proven vertical
+       layout: process blocks left→right by x-extent and drop each to the
+       lowest y that clears every already-placed block it OVERLAPS IN X (plus a
+       gap), so a short block tucks under a tall neighbour's empty x-region
+       instead of starting a new full-width row. packHBlocksSkyline() (top
+       level, reads hBlocks + the H_* globals) also sets BOARD_H; it is re-run
+       by relayoutHorizontalBlocks() once heights grow to fit wrapped text. */
+    packHBlocksSkyline();
     for (const b of hBlocks) {
-      let ti = hTracks.findIndex((tr) => tr.endX <= b.bx0);
-      if (ti === -1) { ti = hTracks.length; hTracks.push({ endX: -Infinity, blocks: [] }); }
-      hTracks[ti].blocks.push(b);
-      hTracks[ti].endX = Math.max(hTracks[ti].endX, b.bx1 + TRACK_GAP_PX);
-      b.track = ti;
-    }
-    hTrackMeta = hTracks.map((tr) => ({ h: Math.max(...tr.blocks.map((b) => b.h)) }));
-    /* first track starts below: ruler pad, then the marker band (now above
-       the main row), then the main row itself, then the inter-track gap */
-    let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
-    hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
-    BOARD_H = cursorY + 20;
-  
-    for (const b of hBlocks) {
-      b.top = hTrackMeta[b.track].top;
       b.head.y0 = b.top; b.head.h = H_HEAD_H;
       for (const d of b.descendants) {
         d.y0 = b.top + H_HEAD_H + H_ROW_GAP + d.blockLane * (H_LANE_H + H_ROW_GAP);
@@ -1031,16 +1030,22 @@ async function initializeGraph() {
         fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
     }
   
-    /* left-rail labels — main thread, then one row per track naming every
-       block on that track (sequential blocks sharing a track are chained) */
+    /* left-rail label for the main thread only. The old per-track rail labels
+       are gone: with skyline packing blocks no longer align into left-rail
+       track rows, and their long "→"-chained meta wrapped in the narrow rail
+       into 1000px+ columns that overflowed across every track below (9 mutual
+       overlaps). Each block is instead titled in place at its own top-left,
+       clamped to its own width — the horizontal analogue of the vertical band
+       label. */
     htmlParts.push(`<div class="colhead" style="left:8px; top:${root.y0}px; width:${H_LEFT - 12}px;">
       <span class="name">main thread</span><span class="meta">the session</span></div>`);
-    hTrackMeta.forEach((tm, ti) => {
-      const names = hTracks[ti].blocks.map((b) => `${esc(b.head.type)} <span class="mono">(${fmtDur(b.head.t1 - b.head.t0)})</span>`).join(' → ');
-      const topLabel = tm.top + tm.h / 2 - 16;
-      htmlParts.push(`<div class="colhead" style="left:8px; top:${topLabel}px; width:${H_LEFT - 12}px;">
-        <span class="name">track ${ti + 1}</span><span class="meta">${names}</span></div>`);
-    });
+    for (const b of hBlocks) {
+      const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
+      const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
+      const label = String(b.head.title || '').replace(/^Coordinator:\s*/i, '');
+      const lw = Math.max(60, (bx1 - bx0) - 12);
+      htmlParts.push(`<div class="band-label" style="left:${bx0 + 6}px; top:${b.top - 15}px; max-width:${lw}px; overflow:hidden; text-overflow:ellipsis;" title="${esc(label)}">${esc(label)} · <span class="mono">${fmtDur(b.head.t1 - b.head.t0)}</span></div>`);
+    }
   
     /* main spine — one segment per session's main thread */
     for (const r of ROOTS) {
@@ -1121,7 +1126,10 @@ async function initializeGraph() {
     const BREAK_H = 64;
     const TOP = 40;   // headroom above the first block: ruler time label + the first band-label
     const MIN_H = 52;
-    const LANE_W = 148, LANE_GAP = 16, SPINE_W = 12;
+    /* LANE_W widened 148→200: a 148px lane left only ~128px for text, so meta
+       lines like "spec-implementer · 6h 39m" (191px) ellipsized. 200px fits the
+       common agent-type + duration on one line and lets the rest wrap cleanly. */
+    const LANE_W = 200, LANE_GAP = 16, SPINE_W = 12;
     const RULER_W = 52;
 
     /* ---- marker label geometry (single source of truth) ----
@@ -1274,7 +1282,20 @@ async function initializeGraph() {
        the auto-layout rather than a hard column assignment. */
     const orderedCoordinators = coordinators.slice()
       .sort((x, y) => (groupIndexOfCoord[x.id] ?? 0) - (groupIndexOfCoord[y.id] ?? 0) || x.t0 - y.t0);
-  
+
+    /* Everything below (lane packing, skyline x-packing, band/ruler/spine/edge/
+       node/marker emission) reads the current a.y0/a.h — so it is factored into
+       a re-runnable body. It is called once now, then AGAIN by relayoutVerticalFn
+       after expandOrchestratorNodes() has grown node heights to fit wrapped text:
+       the second pass re-derives lanes and block-x from the true heights, so a
+       node that grew never overlaps its lane neighbour or an adjacent block.
+       a.y0 (time-anchored) and a.h (grow-only) are computed ONCE above and left
+       untouched here, so re-running is idempotent apart from the packing. */
+    const DEFS = svgParts.join('');
+    function paintVerticalBody() {
+    svgParts.length = 0; svgParts.push(DEFS);
+    htmlParts.length = 0;
+
     const blocks = orderedCoordinators.map((c) => {
       const set = new Set();
       collectSubtree(c.id, set);
@@ -1312,26 +1333,80 @@ async function initializeGraph() {
        Process in y0 order so every "already-placed" block a later one checks
        against has a final x already. */
     const V_TRACK_GAP_PX = 8;
+    const GROUP_GAP = 40;   // x-gap between whole SESSION groups (>= TRACK_GAP)
     const LABEL_GUTTER_W = MARKER_LABEL_X + V_MARKER_LABEL_W + MARKER_LABEL_PAD;
     const X_MAIN = RULER_W + 14 + LABEL_GUTTER_W;
     const BASE_X = X_MAIN + SPINE_W + COL_GAP;
-    const placed = blocks.slice().sort((p, q) => p.by0 - q.by0);
-    for (const b of placed) {
-      let x = BASE_X;
-      for (const other of placed) {
-        if (other === b || other.x == null) continue;
-        if (other.by1 + V_TRACK_GAP_PX <= b.by0 || other.by0 >= b.by1 + V_TRACK_GAP_PX) continue; // no y-overlap
-        x = Math.max(x, other.x + other.width + TRACK_GAP);
-      }
-      b.x = x;
-    }
-    BOARD_W = (blocks.length ? Math.max(...blocks.map((b) => b.x + b.width)) : BASE_X) + 14;
+    const SPINE_TO_BLOCK = BASE_X - X_MAIN;   // origin(spine col) → first block column
 
     const blockByCoordId = {};
     blocks.forEach((b) => { blockByCoordId[b.head.id] = b; });
 
+    /* SESSION-ATOMIC packing. A "session" is a root (main thread) plus all of
+       its coordinator blocks. The requirement: when two sessions overlap in
+       time (i.e. in y, since y is the shared time axis) they must NOT interleave
+       — each session is laid out as one contiguous group and whole groups are
+       packed side-by-side in x so no two sessions' bounding boxes intersect.
+
+       Two-level packing:
+        1. INNER — within each session, skyline-pack its own coordinator blocks
+           by y-extent into relative x (relX from 0), exactly as the old global
+           packer did but scoped to one session so no foreign block can tuck into
+           a gap. Gives each session a local width (spine + widest block reach).
+        2. OUTER — treat each whole session as one unit with y-extent [gy0,gy1]
+           (its root's full time span ∪ its blocks) and skyline-pack the units in
+           x: a session drops back to the X_MAIN rail unless it overlaps an
+           already-placed session in y, in which case it shifts right of that
+           session's group by GROUP_GAP. Disjoint-in-time sessions (the common
+           case) all keep originX === X_MAIN, so their layout is byte-for-byte
+           the old one; only genuinely concurrent sessions move. */
+    const groupsBySession = {};
+    for (const b of blocks) (groupsBySession[b.head.parent] ||= []).push(b);
+    const groups = [];
+    for (const sid in groupsBySession) {
+      const gb = groupsBySession[sid].slice().sort((p, q) => p.by0 - q.by0);
+      for (const b of gb) {
+        let rx = 0;
+        for (const o of gb) {
+          if (o === b || o.relX == null) continue;
+          if (o.by1 + V_TRACK_GAP_PX <= b.by0 || o.by0 >= b.by1 + V_TRACK_GAP_PX) continue;
+          rx = Math.max(rx, o.relX + o.width + TRACK_GAP);
+        }
+        b.relX = rx;
+      }
+      const r = byId[sid];
+      const gy0 = Math.min(...gb.map((b) => b.by0), r ? r.y0 : Infinity);
+      const gy1 = Math.max(...gb.map((b) => b.by1), r ? r.y0 + r.h : -Infinity);
+      const gw = Math.max(...gb.map((b) => b.relX + b.width));   // reach right of first block col
+      groups.push({ sid, root: r, blocks: gb, gy0, gy1, totalW: SPINE_TO_BLOCK + gw });
+    }
+    const spineXByRoot = {};
+    const placedG = groups.slice().sort((p, q) => p.gy0 - q.gy0);
+    for (const g of placedG) {
+      let x = X_MAIN;
+      for (const o of placedG) {
+        if (o === g || o.originX == null) continue;
+        if (o.gy1 + V_TRACK_GAP_PX <= g.gy0 || o.gy0 >= g.gy1 + V_TRACK_GAP_PX) continue; // no y-overlap
+        x = Math.max(x, o.originX + o.totalW + GROUP_GAP);
+      }
+      g.originX = x;
+      spineXByRoot[g.sid] = x;
+      for (const b of g.blocks) b.x = x + SPINE_TO_BLOCK + b.relX;
+    }
+    BOARD_W = (groups.length ? Math.max(...groups.map((g) => g.originX + g.totalW)) : BASE_X) + 14;
+
+    /* the spine column for a given agent's session (root, coordinator, or
+       worker) — every session has its own spine origin so concurrent sessions
+       never share the X_MAIN column. */
+    function spineXOf(a) {
+      const rid = isRoot(a) ? a.id
+        : coordSet.has(a.id) ? a.parent
+        : (a.coord != null ? byId[a.coord] && byId[a.coord].parent : null);
+      return (rid != null && spineXByRoot[rid] != null) ? spineXByRoot[rid] : X_MAIN;
+    }
+
     function xOf(a) {
-      if (isRoot(a)) return X_MAIN;   // every session's main shares the spine column
+      if (isRoot(a)) return spineXOf(a);   // each session's main sits in its OWN spine column
       if (coordSet.has(a.id)) return blockByCoordId[a.id].x;
       const b = a.coord != null ? blockByCoordId[a.coord] : blocks[0];
       if (!b) return BASE_X;
@@ -1353,7 +1428,12 @@ async function initializeGraph() {
       const label = String(b.head.title || '').replace(/^Coordinator:\s*/i, '');
       svgParts.push(`<rect x="${bx0}" y="${by0}" width="${bx1 - bx0}" height="${by1 - by0}" rx="13"
         fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-      htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px;">${bandNo} · ${esc(label)}</div>`);
+      /* clamp the band-label to its OWN band's inner width and ellipsize —
+         otherwise a long uppercase header (white-space:nowrap) spills past the
+         band's right edge, overlapping the neighbouring block's label or
+         clipping at the board edge. Full text stays available on hover. */
+      const bandLabelW = Math.max(40, (bx1 - bx0) - 24);
+      htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px; max-width:${bandLabelW}px; overflow:hidden; text-overflow:ellipsis;" title="${esc(label)}">${bandNo} · ${esc(label)}</div>`);
     }
   
     /* time ruler + gridlines */
@@ -1390,7 +1470,8 @@ async function initializeGraph() {
        disjoint in time, so they stack down the column instead of overlapping;
        clicking any run opens THAT session's main thread in the drawer. */
     for (const r of ROOTS) {
-      svgParts.push(`<path class="shape" data-id="${esc(r.id)}" d="${shapePath('orchestration', X_MAIN, r.y0, SPINE_W, r.h)}"
+      const sx = spineXByRoot[r.id] != null ? spineXByRoot[r.id] : X_MAIN;
+      svgParts.push(`<path class="shape" data-id="${esc(r.id)}" d="${shapePath('orchestration', sx, r.y0, SPINE_W, r.h)}"
         fill="${cvar(r.type)}" fill-opacity="0.30" stroke="${cvar(r.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
     }
   
@@ -1435,7 +1516,7 @@ async function initializeGraph() {
       const parent = byId[a.parent];
       if (!parent) continue;
       const pIsRoot = isRoot(parent);
-      const pX = pIsRoot ? X_MAIN : xOf(parent);    // a main thread is drawn as a narrow spine
+      const pX = xOf(parent);    // a main thread is drawn as a narrow spine in its own session column
       const pW = pIsRoot ? SPINE_W : LANE_W;
       const cX = xOf(a);
       let px, cx;
@@ -1483,17 +1564,42 @@ async function initializeGraph() {
        that wraps to 3 lines pushes the next one down by its real extent. The
        `y - 8` anchor is kept, so a label still starts at its own diamond
        whenever the previous one has already ended. */
+    /* a marker's diamond sits on the spine of the SESSION it belongs to. Markers
+       carry no session id, so resolve by time containment: the root whose span
+       [t0,t1] holds the marker (fallback: the shared X_MAIN rail). This keeps a
+       shifted concurrent session's prompts on that session's own spine rather
+       than stranded on X_MAIN. */
+    function markerSpineX(t) {
+      for (const r of ROOTS) {
+        if (t >= r.t0 && t <= r.t1) return spineXByRoot[r.id] != null ? spineXByRoot[r.id] : X_MAIN;
+      }
+      return X_MAIN;
+    }
     let lastLabelBottom = -1e9;
     for (const m of sortedM) {
       const y = yOf(T(m.at));
-      svgParts.push(`<path d="M${X_MAIN + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
+      const sx = markerSpineX(T(m.at));
+      svgParts.push(`<path d="M${sx + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
       const labelY = Math.max(y - 8, lastLabelBottom + MARKER_LABEL_GAP);
       lastLabelBottom = labelY + markerLabelH(m);
-      htmlParts.push(`<div class="marker-label" style="left:${X_MAIN - MARKER_LABEL_X - V_MARKER_LABEL_W}px; top:${labelY}px; width:${V_MARKER_LABEL_W}px; max-width:${V_MARKER_LABEL_W}px; text-align:right;">
+      htmlParts.push(`<div class="marker-label" style="left:${Math.max(2, sx - MARKER_LABEL_X - V_MARKER_LABEL_W)}px; top:${labelY}px; width:${V_MARKER_LABEL_W}px; max-width:${V_MARKER_LABEL_W}px; text-align:right;">
         <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${m.label}</div>`);
     }
+
+    /* board extent from the (possibly grown) node bottoms + emit */
+    const bottoms = AGENTS.filter((a) => a.parent).map((a) => a.y0 + a.h);
+    BOARD_H = Math.max(BOARD_H, (bottoms.length ? Math.max(...bottoms) : 0) + 46);
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML =
+      `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img" aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
+    boardEl.style.width = BOARD_W + 'px';
+    boardEl.style.height = BOARD_H + 'px';
+    }  /* end paintVerticalBody */
+
+    paintVerticalBody();
+    relayoutVerticalFn = () => paintVerticalBody();
   }
-  
+
   document.getElementById('board').innerHTML =
     `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img"
       aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
@@ -1513,65 +1619,26 @@ async function initializeGraph() {
     const board = document.getElementById('board');
     const nodeEls = [...board.querySelectorAll('.node[data-id]')];
     if (!nodeEls.length) return;
-  
-    const svg = board.querySelector('svg');
-    const expandedIds = new Set();
-    let maxExpansion = 0;
-  
+
+    /* Measure every node's true (wrapped) content height and GROW its agent's
+       data-model height a.h to fit — grow-only, never shrink (a long-running
+       node keeps its time-proportional height). We mutate the MODEL, not just
+       the DOM: relayoutVerticalFn() re-derives lane assignment and block-x from
+       the grown a.h so a node that grew is pushed into its own lane rather than
+       overlapping a neighbour, and the whole board is repainted from scratch
+       (nodes, shapes, edges, bands, spine). This replaces the old per-node
+       shape patch, which left lane/block packing stale and let grown nodes
+       overlap. */
+    let grew = false;
     for (const nodeEl of nodeEls) {
       const id = nodeEl.dataset.id;
-      if (!id || !AGENTS.find((a) => a.id === id)) continue;
-  
-      const a = AGENTS.find((a) => a.id === id);
-      const initialHeight = parseFloat(nodeEl.style.height);
-      const contentHeight = nodeEl.scrollHeight;
-  
-      /* if content height exceeds initial height + padding buffer, expand */
-      const buffer = 2;
-      if (contentHeight > initialHeight + buffer) {
-        const expansion = contentHeight - initialHeight;
-        const newHeight = contentHeight;
-  
-        /* update node element height */
-        nodeEl.style.height = newHeight + 'px';
-        expandedIds.add(id);
-        maxExpansion = Math.max(maxExpansion, expansion);
-  
-        /* update SVG shape paths — each agent has two shapes (fill + stroke).
-           Both need the same new height to stay synchronized with the HTML node. */
-        const y = parseFloat(nodeEl.style.top);
-        const x = parseFloat(nodeEl.style.left);
-        const w = parseFloat(nodeEl.style.width);
-  
-        const shapes = svg.querySelectorAll(`path.shape[data-id="${id}"]`);
-        for (const shape of shapes) {
-          shape.setAttribute('d', shapePath(a.work, x, y, w, newHeight));
-        }
-      }
+      const a = byId[id];
+      if (!a || !a.parent) continue;
+      const pad = a.work === 'orchestration' ? 11 : 2;
+      const neededH = nodeEl.scrollHeight + pad * 2;
+      if (neededH > a.h + 1) { a.h = neededH; grew = true; }
     }
-  
-    /* if any nodes expanded, recalculate BOARD_H for vertical layout to accommodate taller nodes.
-       For horizontal layout, track heights are already calculated per-block, so we only need to
-       expand if this is a vertical layout (ORIENTATION is not 'horizontal'). */
-    if (expandedIds.size > 0 && ORIENTATION !== 'horizontal') {
-      const maxY = Math.max(
-        ...AGENTS.filter((a) => expandedIds.has(a.id)).map((a) => {
-          const nodeEl = board.querySelector(`.node[data-id="${a.id}"]`);
-          if (nodeEl) {
-            return parseFloat(nodeEl.style.top) + parseFloat(nodeEl.style.height);
-          }
-          return 0;
-        })
-      );
-      if (maxY > 0) {
-        const newBoardH = maxY + 46;
-        if (newBoardH > BOARD_H) {
-          svg.setAttribute('height', newBoardH);
-          svg.setAttribute('viewBox', `0 0 ${BOARD_W} ${newBoardH}`);
-          board.style.height = newBoardH + 'px';
-        }
-      }
-    }
+    if (grew && relayoutVerticalFn) relayoutVerticalFn();
   }
   
   /* ================================== relayout horizontal blocks/tracks --- */
@@ -1629,22 +1696,13 @@ async function initializeGraph() {
       b.h = b.head.h + laneHeights.reduce((sum, lh) => sum + lh + H_ROW_GAP, 0);
     }
   
-    /* Step 3: cascade block heights up into track heights, then re-stack
-       track tops sequentially — the same cursorY accumulation pattern used
-       at initial layout time, just re-run against the (possibly grown)
-       block heights. */
-    hTrackMeta.forEach((tm, ti) => {
-      tm.h = Math.max(...hTracks[ti].blocks.map((b) => b.h));
-    });
-    let cursorY = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
-    hTrackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + H_TRACK_GAP; });
-    const newBoardH = cursorY + 20;
-    if (newBoardH > BOARD_H) BOARD_H = newBoardH;
-  
-    /* Step 4: re-derive every block's top, every coordinator head's y0, and
-       every descendant's y0/h from the new geometry. */
+    /* Step 3: re-run the skyline packing against the (grown) block heights —
+       this both re-stacks blocks so none overlap and recomputes BOARD_H. */
+    packHBlocksSkyline();
+
+    /* Step 4: re-derive every coordinator head's y0 and every descendant's
+       y0 from the new block tops + lane offsets. */
     for (const b of hBlocks) {
-      b.top = hTrackMeta[b.track].top;
       b.head.y0 = b.top;
       for (const d of b.descendants) {
         d.y0 = b.top + b.laneOffsets[d.blockLane];
@@ -1653,8 +1711,69 @@ async function initializeGraph() {
            the same lane simply sit within a taller row, they don't stretch. */
       }
     }
-  
+
     H_HEIGHTS_CHANGED = true;
+  }
+
+  /* ================================== horizontal skyline block packing --- */
+  /* Place each coordinator block at the lowest y that clears every already-
+     placed block it overlaps in x (padded), plus a gap — the transpose of the
+     vertical layout's skyline x-packing. Replaces full-width Gantt tracks,
+     which reserved the tallest-block height across the whole board width and
+     left large vertical gaps between time-aligned nodes. Reads the hoisted
+     hBlocks + H_* globals and each block's rendered x-extent (bx0/bx1); sets
+     b.top and BOARD_H. Called at initial horizontal layout and re-called by
+     relayoutHorizontalBlocks() after heights grow. */
+  function packHBlocksSkyline() {
+    if (!hBlocks.length) return;
+    const base = H_TOP_Y + H_SPINE_PAD + H_MAIN_ROW_H + H_TRACK_GAP;
+    const SEP = H_TRACK_GAP;   // vertical gap between vertically-stacked blocks
+    const XPAD = 20;           // x-clearance so the ±8px dashed containers never touch
+    const GROUP_SEP = H_TRACK_GAP + 10;  // extra y-gap between whole SESSION groups
+
+    /* SESSION-ATOMIC packing (transpose of the vertical layout's session
+       grouping). A session is a root plus all its coordinator blocks. When two
+       sessions overlap in time (i.e. in x, the shared time axis) they must not
+       interleave in y — each session is packed as one contiguous group and the
+       whole groups are skyline-packed in y so no two sessions' bounding boxes
+       intersect. Sessions disjoint in time keep the same tops as the old global
+       packer (they fall back to `base`), so their layout is unchanged; only
+       genuinely concurrent sessions get pushed into their own y-band. */
+    const bySession = {};
+    for (const b of hBlocks) (bySession[b.head.parent] ||= []).push(b);
+    const groups = [];
+    for (const sid in bySession) {
+      const gb = bySession[sid].slice().sort((a, b) => a.bx0 - b.bx0 || a.t0 - b.t0);
+      const inner = [];
+      for (const b of gb) {                       // inner skyline: relative top within the session
+        let rt = 0;
+        for (const o of inner) {
+          if (o.bx1 + XPAD <= b.bx0 || b.bx1 + XPAD <= o.bx0) continue;
+          rt = Math.max(rt, o.relTop + o.h + SEP);
+        }
+        b.relTop = rt;
+        inner.push(b);
+      }
+      groups.push({
+        blocks: gb,
+        gx0: Math.min(...gb.map((b) => b.bx0)),
+        gx1: Math.max(...gb.map((b) => b.bx1)),
+        gh: Math.max(...gb.map((b) => b.relTop + b.h)),
+      });
+    }
+    const order = groups.slice().sort((a, b) => a.gx0 - b.gx0);
+    const placed = [];
+    for (const g of order) {
+      let top = base;
+      for (const o of placed) {
+        if (o.gx1 + XPAD <= g.gx0 || g.gx1 + XPAD <= o.gx0) continue; // x-disjoint → may share y
+        top = Math.max(top, o.top + o.gh + GROUP_SEP);
+      }
+      g.top = top;
+      for (const b of g.blocks) b.top = top + b.relTop;
+      placed.push(g);
+    }
+    BOARD_H = Math.max(...hBlocks.map((b) => b.top + b.h)) + 20;
   }
   
   /* ============================================ expand horizontal node widths --- */

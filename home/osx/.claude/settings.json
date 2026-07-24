@@ -71,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-macos-aarch64-none/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/hooks/yas-prompt-hook.py\""
+            "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-macos-aarch64-none/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/hooks/yas-prompt-hook.py\""
           }
         ]
       }
@@ -119,7 +119,7 @@
   "disableArtifact": true,
   "statusLine": {
     "type": "command",
-    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-macos-aarch64-none/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/claude/statusline_command.py\"",
+    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.13-macos-aarch64-none/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/claude/statusline_command.py\"",
     "padding": 1,
     "refreshInterval": 1
   },
