@@ -1,7 +1,7 @@
 {
   "env": {
     "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
   },
   "permissions": {
     "deny": [
@@ -97,7 +97,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!'"
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!' || true"
           }
         ]
       }
@@ -108,7 +108,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!'"
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!' || true"
           }
         ]
       }
