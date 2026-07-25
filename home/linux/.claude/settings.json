@@ -10,7 +10,6 @@
       "DesignSync"
     ]
   },
-  "model": "opus[1m]",
   "disableClaudeAiConnectors": true,
   "disableBundledSkills": true,
   "hooks": {
