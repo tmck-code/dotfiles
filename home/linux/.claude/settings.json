@@ -44,17 +44,6 @@
         ]
       }
     ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/same-file-write-audit.py\""
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "matcher": "",
@@ -82,10 +71,6 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/handoff-nudge.py\""
-          },
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-report-capture.py\""
           }
         ]
       }
@@ -167,6 +152,5 @@
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
-  "remoteControlAtStartup": true,
-  "agentPushNotifEnabled": true
+  "remoteControlAtStartup": true
 }
