@@ -25,7 +25,7 @@ on_resize() {
     sed -i "s/${paneID}|.*/${paneID}|${paneWidth}/" ~/.claude/terminal-width
   else
     # else add a new line with the paneID and width
-    echo "${paneID}|${paneWidth}" >> ~/.claude/terminal-width
+    echo "${paneID}|${paneWidth}" >>~/.claude/terminal-width
   fi
 }
 
@@ -42,9 +42,6 @@ shopt -s histappend                     # append to the history file, don't over
 export HISTFILE="$HOME/.bash_eternal_history"
 
 shopt -s checkwinsize # update LINES and COLUMNS if terminal is resized
-# NOTE: do NOT `export COLUMNS` - ncurses prefers an exported COLUMNS/LINES
-# over the real pty size, so fullscreen apps (htop/btop/...) inherit the
-# launch-time width and stop responding to terminal resizes entirely.
 # make truecolor codes work in tmux for claude code statusline
 export CLAUDE_CODE_TMUX_TRUECOLOR=1
 
@@ -140,12 +137,15 @@ PS0=$'${_PS0_TIME:=${EPOCHREALTIME/./}}\r\e[K'
 # Format integer microseconds as fixed-width auto-scaled duration.
 _fmt_duration() {
   local us=$1 out
-  if   (( us < 1000 ));     then printf -v out '%d µs' "$us"
-  elif (( us < 1000000 ));  then printf -v out '%d.%02d ms' $((us/1000))    $((us%1000/10))
-  elif (( us < 60000000 )); then printf -v out '%d.%02d s'  $((us/1000000)) $((us%1000000/10000))
+  if ((us < 1000)); then
+    printf -v out '%d µs' "$us"
+  elif ((us < 1000000)); then
+    printf -v out '%d.%02d ms' $((us / 1000)) $((us % 1000 / 10))
+  elif ((us < 60000000)); then
+    printf -v out '%d.%02d s' $((us / 1000000)) $((us % 1000000 / 10000))
   else
-    local s=$((us/1000000))
-    printf -v out '%dm %02ds' $((s/60)) $((s%60))
+    local s=$((us / 1000000))
+    printf -v out '%dm %02ds' $((s / 60)) $((s % 60))
   fi
   # Pad to 8 display columns. µ is 2 bytes / 1 column, so add a byte when µs.
   [[ $out == *µs ]] && printf '%-9s' "$out" || printf '%-8s' "$out"
@@ -168,7 +168,7 @@ _mk_prompt() {
 
   local dur_str='        ' # 8-space placeholder when no command was run
   if [[ -n "${_PS0_TIME:-}" ]]; then
-    dur_str=$(_fmt_duration $(( ${EPOCHREALTIME/./} - _PS0_TIME )))
+    dur_str=$(_fmt_duration $((${EPOCHREALTIME/./} - _PS0_TIME)))
   fi
   unset _PS0_TIME
 
