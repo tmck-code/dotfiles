@@ -42,7 +42,9 @@ shopt -s histappend                     # append to the history file, don't over
 export HISTFILE="$HOME/.bash_eternal_history"
 
 shopt -s checkwinsize # update LINES and COLUMNS if terminal is resized
-export COLUMNS        # ensure that $COLUMNS is available to child processes
+# NOTE: do NOT `export COLUMNS` - ncurses prefers an exported COLUMNS/LINES
+# over the real pty size, so fullscreen apps (htop/btop/...) inherit the
+# launch-time width and stop responding to terminal resizes entirely.
 # make truecolor codes work in tmux for claude code statusline
 export CLAUDE_CODE_TMUX_TRUECOLOR=1
 
