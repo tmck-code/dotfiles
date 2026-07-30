@@ -12,6 +12,7 @@ calls: the convention must hold at EVERY nesting level, so nested children that
 spawn their own grandchildren should be nudged too.
 '''
 import json
+import os
 import sys
 
 
@@ -24,13 +25,24 @@ def main() -> int:
     if data.get('tool_name', '') not in ('Agent', 'Task'):
         return 0
 
+    project = (
+        os.environ.get('CLAUDE_PROJECT_DIR')
+        or data.get('cwd')
+        or os.getcwd()
+    )
+    session_id = data.get('session_id') or 'nosession'
+    scratch = os.path.normpath(os.path.join(project, '.scratch', session_id))
+
     nudge = (
         'Subagent-handoff reminder: returned messages are unreliable — the parent '
         'often sees only part of a long message, or none of it. In this spawn, give '
         'the subagent a uniquely-named markdown report-file path in the scratchpad '
         '(named after its task so siblings never collide), tell it to write its full '
         'report there BEFORE returning and to return only that path, then READ that '
-        'file instead of acting on the returned text. Pass the same convention down '
+        'file instead of acting on the returned text. A write-guard hook enforces '
+        f'the location: the report MUST be a .md file under {scratch}/ — include '
+        'that exact directory in the subagent\'s prompt (e.g. '
+        f'{scratch}/<agent>-<task>.md) so its first write is not rejected. Pass the same convention down '
         'to any children it spawns. '
         'Sole-writer reminder: if this agent EDITS files, tell it that it is the only '
         'writer of the files in its brief and MUST NOT fork a child that edits those '
