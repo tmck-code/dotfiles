@@ -16,7 +16,9 @@ esac
 
 # 1. create a new session
 # (Note the -d flag, we do not want to attach just yet!)
-tmux new-session -s "dev" -n "mon" -d
+# A detached session defaults to 80x24 until a client attaches, so pass the
+# real terminal size up front - otherwise the panes launch at 80 cols wide.
+tmux new-session -s "dev" -n "mon" -d -x "$(tput cols)" -y "$(tput lines)"
 
 tmux select-pane -t 0
 # split into right/left panes
@@ -36,18 +38,18 @@ tmux select-pane -t 0
 tmux send-keys "${mon_command}" C-j
 
 tmux select-pane -t 1
-tmux send-keys "sleep 1 && htop -d 20" C-j
+tmux send-keys "htop -d 20" C-j
 # tmux send-keys "echo $COLUMNS" C-j
 
 tmux select-pane -t 2
-tmux send-keys "sleep 1 && nvtop -d 20" C-j
+tmux send-keys "nvtop -d 20" C-j
 # tmux send-keys "echo $COLUMNS" C-j
 
 tmux select-pane -t 3
-tmux send-keys "sleep 1 && bmon -p enp5s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'" C-j
+tmux send-keys "bmon -p enp5s0 -R 2.0 -o curses:fgchar='N' -o curses:bgchar=' ' -o curses:nchar='.'" C-j
 
 tmux select-pane -t 4
-tmux send-keys "sleep 1 && while true; do ~/bin/display-message -d \"\$(date +%H:%M:%S)\" -f 'dos rebel' -s 1234; sleep 1 ; done" C-j
+tmux send-keys "while true; do ~/bin/display-message -d \"\$(date +%H:%M:%S)\" -f 'dos rebel' -s 1234; sleep 1 ; done" C-j
 
 # finally attach to the session
 tmux attach -t dev:mon
