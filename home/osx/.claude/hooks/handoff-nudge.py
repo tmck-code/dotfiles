@@ -21,10 +21,8 @@ REMINDER = (
     'work — writing/editing the code, syncing docs, the whereis map, tasks.md, '
     'or any follow-on edit — is itself a DELEGABLE unit. Route it to a subagent '
     '(per-file or per-component, in parallel where independent) and review the '
-    'returned diff. Having the research in context now is NOT a license to '
-    'implement inline; that is the exact rationalization to resist. Only an '
-    'isolated one-line fix you did not just plan or research via a subagent '
-    'belongs on the main thread.'
+    'returned diff. Only an isolated one-line fix you did not just plan or '
+    'research via a subagent belongs on the main thread.'
 )
 
 

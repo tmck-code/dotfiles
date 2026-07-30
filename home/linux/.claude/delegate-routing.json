@@ -11,6 +11,20 @@
       "hint": "lint/typecheck runs belong in a subagent so their output stays off the main thread"
     },
     {
+      "tool": "Bash",
+      "match": "(^|[;&]\\s*)(rg|ag|fd|find)\\b|\\bgrep\\s+-[a-zA-Z]*[rR]",
+      "agent": "Explore",
+      "hint": "this looks like a codebase-wide discovery sweep — broad grep/find/rg searches belong on a subagent so the match dumps stay off the main thread. A single targeted Read/grep of a known file is fine inline; a multi-file sweep to understand how something works across the tree is the delegable unit"
+    },
+    {
+      "tool": "Read",
+      "maxLines": 100,
+      "maxBytes": 20000,
+      "action": "deny",
+      "agent": "Explore",
+      "hint": "this read pulls a large file onto the main thread (>=100 lines or >=20KB), which fills the context window with raw source. A subagent can read-and-summarise it and hand back just the conclusion; a targeted read (pass offset/limit) of the specific lines you need is fine inline"
+    },
+    {
       "tool": "Write",
       "match": "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|rb|java|kt|kts|scala|c|cc|cpp|cxx|h|hpp|cs|php|swift|sql|md|json|yaml|yml|toml)$|(^|/)(Dockerfile|\\.dockerignore|docker-compose[^/]*\\.ya?ml|docker-bake\\.hcl|Makefile)$|(^|/)ops/|openspec/|(^|/)docs/|\\.claude/skills/|\\.env$",
       "hint": "this is an implementation write — most often the research→implementation handover, where the main thread (fresh off a subagent's findings) starts writing the code itself. Delegate the implementation to a subagent: it writes and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception — delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
