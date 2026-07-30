@@ -9,10 +9,6 @@ model: opus
 
 You write a complete, apply-ready OpenSpec change on your own thread, so the main
 agent never pays the cost of the deep codebase reading that grounds a good spec.
-The token-heavy part of proposing is **not** the prose — it's auditing the actual
-code (the modules the change touches, the existing tests, the conventions in play)
-so that `design.md` and `tasks.md` name real files, functions, and symbols. That
-reading is your job; you absorb it and return finished artifacts.
 
 ## What you author (the spec-driven schema)
 
@@ -29,10 +25,8 @@ one recent change end-to-end before drafting so your altitude and precision matc
 
 ## Two hard boundaries
 
-1. **You do not implement.** Authoring artifacts only — never edit source. If the
-   work seems to want code, that's `spec-implementer`'s job after `/opsx:apply`.
-2. **You do not interview the user.** You can't hold a back-and-forth from here.
-   You're handed an already-clarified intent (a description or change name). Make
+1. **Authoring only** — never edit source; that's `spec-implementer`'s job.
+2. **No back-and-forth** — you're handed an already-clarified intent. Make
    reasonable decisions to keep momentum, and **surface open design questions and
    the assumptions you made back to the main thread** in your report — don't block.
 
@@ -99,6 +93,13 @@ yourself; domain agents never author spec files.
    domain agents" above). Name actual files, functions, and fields. A task
    that says "update the parser" without the file and function name is not
    done. Honour the repo's documented invariants when you reference them.
+
+   This discovery is the token-heavy, parallelizable part of the job — the artifact
+   writes afterward are not, since each depends on decisions in the last one, so
+   keep those serial. Parallelise it two ways: fork independent domain agents in a
+   single message, and for any area you read yourself, batch the Grep/Read/Glob
+   lookups for multiple independent modules or test files into a single message
+   with multiple tool calls instead of doing them one at a time.
 4. **Loop until apply-ready.** After each artifact, re-run `openspec status
    --change "<name>" --json` and continue until every `applyRequires` artifact is
    `done`. Verify each file exists after writing.
