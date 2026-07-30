@@ -25,7 +25,10 @@ def validate(graph):
     if not isinstance(agents, list) or not agents:
         die('graph.agents must be a non-empty array')
     roots = [a for a in agents if a.get('parent') in (None, '', 'null')]
-    if len(roots) != 1:
+    # A multi-session graph legitimately has one root per session (the renderer
+    # handles N roots); only a single-session document must have exactly one.
+    multi = bool(graph.get('multiSession')) or len(graph.get('sessions') or []) > 1
+    if not multi and len(roots) != 1:
         ids = ', '.join(a.get('id', '?') for a in roots) or '(none)'
         die(f'exactly one root (parent null) required, found {len(roots)}: {ids}')
     ids = {a.get('id') for a in agents}
@@ -93,10 +96,6 @@ def main():
     ap.add_argument('input', help='graph JSON path or sessions directory')
     ap.add_argument('-o', '--output', default=None, help='output HTML path (default: ./agent-graph.html in current dir)')
     ap.add_argument(
-        '--orientation', choices=['vertical', 'horizontal'], default=None,
-        help="layout orientation (default: graph.orientation, else 'vertical')",
-    )
-    ap.add_argument(
         '--embed', action='store_true',
         help='directory input: embed all sessions into a single self-contained HTML (no server needed)',
     )
@@ -159,10 +158,6 @@ def main():
         validate(graph)
         sessions_dir = None
 
-    orientation = args.orientation or graph.get('orientation') or 'vertical'
-    if orientation not in ('vertical', 'horizontal'):
-        die(f"graph.orientation must be 'vertical' or 'horizontal', got {orientation!r}")
-
     template = open(TEMPLATE, encoding='utf-8').read()
     title = graph.get('title') or (graph.get('session') or {}).get('id') or 'Agent graph'
 
@@ -179,7 +174,6 @@ def main():
             sessions_rel = sessions_abs
         html = template.replace('__TITLE__', title.replace('<', '&lt;'))
         html = html.replace('__DATA_JSON__', data_json)
-        html = html.replace('__ORIENTATION__', orientation)
         html = html.replace('__SESSIONS_DIR__', sessions_rel)
         html = html.replace('__DYNAMIC_MODE__', 'true')
     else:
@@ -190,7 +184,6 @@ def main():
 
         html = template.replace('__TITLE__', title.replace('<', '&lt;'))
         html = html.replace('__DATA_JSON__', data_json)
-        html = html.replace('__ORIENTATION__', orientation)
         html = html.replace('__SESSIONS_DIR__', '')
         html = html.replace('__DYNAMIC_MODE__', 'false')
 
