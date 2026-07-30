@@ -13,7 +13,6 @@ Claude (curates it), and `build_spa.py` (renders it). One JSON object:
   "footer":   "Solid connectors are …",        // optional; inline HTML allowed
   "groups":   [ ["coordA","coordB"], ["coordC"] ],  // optional; see "groups"
   "extraStats": [ ["3", "specs"], ["102/107", "tasks ticked"] ],  // optional [value,label] pairs
-  "orientation": "vertical",           // optional; "vertical" (default) | "horizontal"
   "agents":   [ … ],                   // REQUIRED, non-empty
   "markers":  [ … ]                    // optional
 }
@@ -79,63 +78,45 @@ HTML (e.g. `<b>…</b>`). Extract emits real user turns + git commit/push events
 
 ## `groups` semantics
 
-`groups` is an array of arrays of **coordinator ids**, used as a **soft
-ordering hint** in the vertical orientation: coordinators are processed in
-`[group index, start time]` order before block/track packing, so an
-explicitly grouped cluster tends to land in adjacent column-tracks together.
-It no longer assigns a hard column — the automatic time-overlap packer (see
-"vertical" below) always has final say over how many column-tracks are
-actually used. The default (omit/empty) is a single implicit group, i.e. pure
-start-time order. Coordinators left out of every group are treated as
-trailing, lowest-priority order. Use it to nudge related parallel workstreams
-toward sitting next to each other, e.g. `[["coreCoord","movesCoord"],
-["corpusCoord"]]` — it's a hint, not a guarantee of adjacency if the packer
-needs the space elsewhere.
+`groups` is an array of arrays of **coordinator ids**. It is a legacy **soft
+ordering hint** only: the current layout derives its whole arrangement from time
++ parentage, so `groups` has no effect on the rendered board. It is still
+accepted (and validated: every id must exist) for backwards compatibility with
+older graph JSONs.
 
-**`groups` only affects the vertical orientation** — the horizontal layout
-(below) ignores it and derives its own arrangement from time + parentage.
+## Layout
 
-## `orientation` — vertical vs. horizontal layout
+There is a single layout: **time runs left→right, Gantt-style**. Each session
+(a parentless root plus its whole subtree) lays out as one atomic **band**:
 
-`orientation` picks one of two independent layout engines in `template.html`;
-both read the same `agents`/`markers`/`groups` data, so no other field needs to
-change to switch. Set it via the graph JSON (`"orientation": "horizontal"`) or
-override at build time with `--orientation vertical|horizontal` (the CLI flag
-wins if both are given). Default is `vertical`.
-
-- **`vertical`** (default): time runs top→bottom. Every depth-1 coordinator
-  (one per aggregated session/tree) plus its full subtree renders as one
-  self-contained **block** — its own coordinator and worker sub-lanes travel
-  together and never interleave with another coordinator's descendants, same
-  contiguity guarantee as the horizontal layout below. Blocks are packed into
-  vertical **column-tracks**: blocks that don't overlap in time share a
-  column-track (stacked one after another since their own y-positions from
-  time already keep them apart); genuinely time-overlapping blocks get pushed
-  into a new column-track further to the right. `groups` orders the packer's
-  input (see above) but doesn't override its column-count decisions. This
-  replaced an earlier design with two global flat columns (all coordinators
-  in one strip, all workers in another) that visually merged unrelated
-  sessions together — prefer this layout as the default choice.
-- **`horizontal`**: time runs left→right; the main thread is a fixed top row.
-  Every depth-1 coordinator gets its own **block** — a head row (the
-  coordinator) with its full subtree packed into sub-lanes directly beneath
-  it, so a coordinator and its own descendants are always visually contiguous
-  and never interleave with another coordinator's descendants. Blocks are
-  then packed into horizontal **tracks** Gantt-chart-style: blocks that don't
-  overlap in time share a track side-by-side (ordered by start time);
-  time-overlapping blocks stack into a new, lower track. `groups` is not
-  consulted in this mode. Prefer this layout when you want spawn moments to
-  read as a short vertical drop rather than a long horizontal reach, or when
-  several coordinators ran mostly sequentially and you want that reflected as
-  shared rows instead of an ever-taller stack.
+- The **flow axis is x and is a real time axis**: a node's x offset is
+  `t0 − sessionStart` and its width is its runtime, both × a per-session
+  px/minute scale (so a node is literally as wide as it took to run). A node is
+  never narrower than `NODE_W` (210 px) and never wider than `MAX_EXT` (900 px).
+- The **cross axis is y and encodes depth**: a node's whole subtree occupies a
+  contiguous y-range, so a coordinator's descendants read as one grouped
+  sub-cluster. Children that overlap in time are pushed into parallel sub-lanes,
+  making concurrency visible side-by-side. Every cross-neighbour is separated by
+  the same gap, so the strip above any node is always an empty gutter — that's
+  where the orthogonal elbow edges route (no edge crosses a node interior).
+- Each band carries a labelled local time ruler in a reserved top strip, plus a
+  band label with the session's start time and total duration.
+- Bands are then **shelf-packed chronologically** (left→right, wrapping) into a
+  roughly square board; crossing into a new calendar day forces a row break and
+  emits a full-width day divider.
+- Every node is a fixed **three-row** box: title (ellipsized), one meta line
+  (branch · duration · churn · tokens · status badge), and a tool-tick strip
+  pinned to the bottom edge. Node height grows post-paint to fit its measured
+  content, and the layout re-packs until stable.
 
 ## Derived / automatic
 
 - **Colours** come from a fixed CVD-checked palette (8 light + 8 dark), assigned
   to types by appearance order and injected as `--c-<slug>` custom properties.
-- **Vertical scale** is adaptive: `clamp(3400 / activeMinutes, 4, 32)` px/min,
-  where `activeMinutes` sums the merged active time segments (idle gaps > 14 min
-  compress to a hatched break band).
+- **Time scale** is per-session and adaptive:
+  `clamp(1120 / sessionSpanMinutes, 0.25, 20)` px/min, so no single marathon
+  session dominates the board while offsets/extents stay proportional to time
+  *within* each session.
 - **Stats row** is computed (agent count, file edits, shell runs, wall clock,
   worker runtime) then `extraStats` pairs are appended.
 - The **Fate** legend group appears only if some agent is non-`ok` or has a

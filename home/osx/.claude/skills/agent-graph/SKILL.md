@@ -73,9 +73,6 @@ scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader
       in the drawer); it can be hand-edited/curated like the rest (optional).
    - Optionally set `groups` (arrays of coordinator ids) to split level-1/level-2
      column pairs side-by-side, e.g. `[["coordA","coordB"],["coordC"]]`.
-   - Optionally set `orientation` (or pass `--orientation` at build time) to
-     `"horizontal"` for a time-left→right, per-coordinator-block Gantt-style
-     layout instead of the default vertical depth-columns layout.
      See [REFERENCE.md](REFERENCE.md) for the full schema.
 
    **Apply curation as one batch patch, not many small `Edit` calls.** The
@@ -112,8 +109,6 @@ scripts/build_spa.py sessions/             →  agent-graph.html (dynamic loader
 
    ```bash
    python3 scripts/build_spa.py <scratchpad>/graph.json -o "$PWD/agent-graph.html"
-   # or, for the horizontal Gantt-style layout:
-   python3 scripts/build_spa.py <scratchpad>/graph.json -o "$PWD/agent-graph.html" --orientation horizontal
    ```
 
    Deliver via the Artifact tool (or SendUserFile).
@@ -140,8 +135,6 @@ The generated HTML auto-refreshes when new sessions are added or deleted.
    ```bash
    # Point build_spa.py to the sessions directory (not a .json file)
    python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html"
-   # Optionally with orientation:
-   python3 scripts/build_spa.py sessions/ -o "$PWD/agent-graph.html" --orientation horizontal
    ```
 
 3. **Serve the directory.** The HTML file loads sessions from `index.json` and

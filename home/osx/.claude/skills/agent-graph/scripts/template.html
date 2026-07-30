@@ -66,14 +66,12 @@
   }
   header.page .head-text { flex: 1 1 auto; min-width: 0; }
   header.page .head-actions { flex: 0 0 auto; display: flex; gap: 8px; }
-  #themeToggle, #orientationToggle {
+  #themeToggle {
     flex: 0 0 auto; border: 1px solid var(--border);
     background: none; color: var(--ink-2); border-radius: 7px; height: 28px;
-    cursor: pointer; font-size: 14px; line-height: 1;
+    cursor: pointer; font-size: 14px; line-height: 1; width: 28px;
   }
-  #themeToggle { width: 28px; }
-  #orientationToggle { width: auto; padding: 0 9px; font-size: 12px; font-weight: 650; }
-  #themeToggle:focus-visible, #orientationToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+  #themeToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 6px;
@@ -135,60 +133,40 @@
   }
 
   .node {
-    position: absolute; padding: 7px 10px 6px; cursor: pointer;
-    display: flex; flex-direction: column; gap: 1px; overflow: visible;
+    position: absolute; padding: 4px 8px 3px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 0; overflow: visible;
   }
   .node .t {
     font-size: 12px; font-weight: 650; line-height: 1.25; color: var(--ink);
-    display: -webkit-box; -webkit-line-clamp: unset; -webkit-box-orient: vertical; overflow: visible; white-space: normal;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+    flex-shrink: 0;
   }
-  .node.has-tools .t,
-  .node.has-tools .m,
-  .node.has-tools .sk,
-  .node.has-tools .badge { padding-right: 46px; }
-  /* tight nodes only shrink the font — they must NOT line-clamp: with
-     overflow:visible above, a clamp still shrinks the box's layout height to
-     the clamped line count while the wrapped text visually spills past it,
-     so the next flex sibling (.m/.sk) lands on top of that overflow instead
-     of below it. Font-size alone keeps clamp and layout height in sync. */
   .node.tight .t { font-size: 11.5px; }
-  .node[data-work="orchestration"] .t { -webkit-line-clamp: unset; white-space: normal; word-wrap: break-word; }
-  /* .m/.sk set overflow:hidden for their ellipsis truncation, which under
-     flexbox gives them an "automatic minimum size" of 0 — so instead of the
-     node's flex column overflowing (which scrollHeight could then detect
-     and grow from), the flex algorithm silently SHRINKS these two below
-     their own natural text height when space is tight, clipping/overlapping
-     their glyphs while scrollHeight still reports the constrained (fitting)
-     height. Pin them to their natural size so a genuine shortfall shows up
-     as real overflow instead of an invisible squeeze. Applies to every work
-     type, not just orchestration — worker titles wrap just as often. */
-  .node .m, .node .sk { flex-shrink: 0; }
-  /* meta line WRAPS instead of ellipsizing — a cut-off "spec-implementer · 6h
-     39m" reads as "spec-implementer" and loses the load-bearing duration/tok
-     figures. Wrapping keeps every character visible; the node grows to fit and
-     the post-paint re-pack (relayoutVerticalFn) keeps neighbours clear. */
-  .node .m { font-size: 10.5px; color: var(--ink-2); white-space: normal; overflow-wrap: anywhere; }
+  /* .m sets overflow:hidden for its ellipsis truncation, which under flexbox
+     gives it an "automatic minimum size" of 0 — so instead of the node's flex
+     column overflowing (which scrollHeight could then detect and grow from),
+     the flex algorithm silently SHRINKS it below its own natural text height
+     when space is tight, clipping its glyphs while scrollHeight still reports
+     the constrained (fitting) height. Pin it to its natural size so a genuine
+     shortfall shows up as real overflow instead of an invisible squeeze. */
+  .node .m { flex-shrink: 0; }
+  /* Node content is EXACTLY three rows: title, one meta line, tool-tick strip.
+     The meta line therefore never wraps — nodes are wide enough that
+     branch · duration · churn · tokens fits; a rare overlong branch name
+     ellipsizes rather than adding a fourth row and inflating every node. */
+  .node .m {
+    font-size: 10.5px; color: var(--ink-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
   .node .m b { color: var(--nc); font-weight: 650; }
-  .node .sk {
-    align-self: flex-start; font-size: 9.5px; color: var(--ink-2);
-    border: 1px solid var(--border); background: var(--bg); border-radius: 8px;
-    padding: 0 6px; margin-top: 2px; white-space: nowrap; max-width: 100%;
-    overflow: hidden; text-overflow: ellipsis;
-  }
-  .node .sk::before { content: "⚡ "; color: var(--muted); }
-  .node .toolcol {
-    position: absolute; top: 0; right: 0; bottom: 0; width: 44px;
-    overflow: hidden; pointer-events: none;
-  }
+  .node .m .br { font-family: ui-monospace, Menlo, monospace; color: var(--muted); }
+  /* row 3: the tool-tick strip pinned to the node's bottom edge. */
   .node .toolrow {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    position: absolute; left: 0; right: 0; bottom: 0; height: 11px;
     overflow: hidden; pointer-events: none;
-  }
-  .node .toolcol .tburst {
-    position: absolute; width: 8px; height: 8px; pointer-events: auto;
   }
   .node .toolrow .tburst {
-    position: absolute; bottom: 2px; width: 8px; height: 8px; pointer-events: auto;
+    position: absolute; bottom: 1px; width: 7px; height: 7px; pointer-events: auto;
   }
   .node .tburst {
     background: var(--muted); opacity: 0.92; border-radius: 2px;
@@ -222,8 +200,9 @@
   .ev-target.ev-spawn:hover { color: var(--ink); }
   .ev-lines { color: var(--muted); flex: 0 0 auto; font-size: 11px; font-variant-numeric: tabular-nums; }
   .ev-timeline { max-height: 280px; overflow: auto; margin-top: 4px; }
+  /* inline inside the meta row (row 2), not a row of its own */
   .node .badge {
-    align-self: flex-start; margin-top: 2px; font-size: 9.5px; font-weight: 700;
+    display: inline-block; font-size: 9.5px; font-weight: 700;
     letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2);
     border: 1px dashed var(--muted); border-radius: 4px; padding: 0 5px; white-space: nowrap;
   }
@@ -231,10 +210,7 @@
 
   .marker-label {
     position: absolute; font-size: 10.5px; line-height: 1.3; color: var(--ink-2);
-    /* Fallback cap only. The horizontal layout sizes labels inline from its own
-       MARKER_LABEL_W (150) and is clipped by this; the vertical layout overrides
-       both width AND max-width inline from V_MARKER_LABEL_W, which is the single
-       source of truth that also sizes its gutter (LABEL_GUTTER_W). */
+    /* Fallback cap only — the layout sizes marker labels inline. */
     max-width: 146px; pointer-events: none;
   }
   .marker-label b { color: var(--ink); font-weight: 650; }
@@ -316,7 +292,6 @@
     <p class="sub" id="subtitle"></p>
   </div>
   <div class="head-actions">
-    <button id="orientationToggle" type="button"></button>
     <button id="themeToggle" type="button"></button>
   </div>
 </header>
@@ -370,42 +345,6 @@
   });
   apply(current);
 })();
-
-/* --------------------------------------------------- orientation flip --- */
-/* Layout is computed once at load from a single ORIENTATION value (read in
-   the next script, before initializeGraph runs) — there's no in-place
-   re-layout path, so flipping just persists the choice and reloads. That
-   keeps this button simple and avoids the duplicate-event-listener/stale-
-   closure risk of re-running the whole paint+wiring pipeline in place. */
-(function () {
-  var KEY = 'agentgraph:orientation';
-  var BUILD = "__ORIENTATION__";
-  var GLYPH = { vertical: '↕ vertical', horizontal: '↔ horizontal' };
-  var LABEL = {
-    vertical: 'Layout: vertical (time flows down) — click for horizontal',
-    horizontal: 'Layout: horizontal (time flows right) — click for vertical',
-  };
-  var btn = document.getElementById('orientationToggle');
-  var stored = null;
-  try { stored = localStorage.getItem(KEY); } catch (e) { /* file:// may throw */ }
-  var current = (stored === 'vertical' || stored === 'horizontal') ? stored : BUILD;
-
-  function paint(state) {
-    btn.textContent = GLYPH[state];
-    btn.title = LABEL[state];
-    btn.setAttribute('aria-label', LABEL[state]);
-  }
-
-  btn.addEventListener('click', function () {
-    current = current === 'horizontal' ? 'vertical' : 'horizontal';
-    try {
-      if (current === BUILD) localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, current);
-    } catch (e) { /* file:// may throw */ }
-    location.reload();
-  });
-  paint(current);
-})();
 </script>
 
 <script>
@@ -415,17 +354,6 @@
 
 const SESSIONS_DIR = "__SESSIONS_DIR__";
 const DYNAMIC_MODE = __DYNAMIC_MODE__;
-const BUILD_ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
-/* The flip button (wired below, near themeToggle) persists a per-browser
-   override to localStorage and reloads — see ORIENTATION_KEY there. Reading
-   it here, before layout runs, means a reload lands directly in the chosen
-   orientation instead of flashing the build-time default first. */
-const ORIENTATION_KEY = 'agentgraph:orientation';
-let ORIENTATION = BUILD_ORIENTATION;
-try {
-  const storedOrientation = localStorage.getItem(ORIENTATION_KEY);
-  if (storedOrientation === 'vertical' || storedOrientation === 'horizontal') ORIENTATION = storedOrientation;
-} catch (e) { /* file:// may throw */ }
 
 let DATA = __DATA_JSON__;
 
@@ -496,8 +424,10 @@ async function initializeGraph() {
   /* normalise agents (defensive defaults for optional fields) */
   const AGENTS = DATA.agents.map((a) => ({
     respawnOf: null, parentGuessed: false, model: null, skills: [], status: 'ok',
-    work: 'implementation',
+    work: 'implementation', branch: '', events: [],
     ...a,
+    branch: typeof a.branch === 'string' ? a.branch : '',
+    events: Array.isArray(a.events) ? a.events : [],
     counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
     diff: { added: 0, removed: 0, files: 0, ...(a.diff || {}) },
     tokens: { in: 0, out: 0, cacheRead: 0, cacheCreate: 0, ...(a.tokens || {}) },
@@ -586,11 +516,12 @@ async function initializeGraph() {
      and reposition correctly if the node box later grows. Returns
      [{frac,cat,title}] (+ optional {overflow:N} sentinel). */
   const TOOL_TICK_CAP = 24;
-  function toolTicks(a, orient) {
+  function toolTicks(a) {
     const evs = a.events;
     if (!evs || !evs.length) return [];
     const sorted = evs.slice().sort((x, y) => T(x.t) - T(y.t));
-    const boxDim = orient === 'horizontal' ? a.w : a.h;
+    /* always the node's WIDTH: the strip is a bottom row. */
+    const boxDim = Math.max(20, a.w || 20);
     /* spread ticks across the WHOLE node box by their position in the agent's
        own time span (frac of [t0,t1]). This fills the box even for short
        coordinators whose drawn height is MIN_H-inflated above their true time
@@ -686,29 +617,6 @@ async function initializeGraph() {
   const htmlParts = [];
   let BOARD_W = 0, BOARD_H = 0;
 
-  /* Height added to a horizontal node that has tool events, to reserve visual
-     room for the inline tool-tick row pinned to the node's bottom edge. Width
-     stays a.w, so board packing/time-scale are unchanged. Vertical renders the
-     ticks as a right-side overlay column and needs no growth (see call sites). */
-  const H_TOOL_H = 22;
-  
-  /* shared (horizontal orientation only): layout state hoisted to top level so
-     the post-paint measurement passes (growOrchestratorHeightsHorizontal,
-     relayoutHorizontalBlocks, expandHorizontalNodeWidths) can read/mutate it —
-     it's assigned inside the horizontal branch below, not re-declared there. */
-  let H_HEAD_H = 0, H_LANE_H = 0, H_ROW_GAP = 0, H_TRACK_GAP = 0, H_TOP_Y = 0, H_SPINE_PAD = 0, H_MAIN_ROW_H = 0;
-  let hBlocks = [], hTracks = [], hTrackMeta = [];
-  /* set by relayoutHorizontalBlocks() when a block/track grew — tells
-     expandHorizontalNodeWidths() it must still do its full repaint even if
-     no node widths changed (heights alone can move BOARD_H/y0s). */
-  let H_HEIGHTS_CHANGED = false;
-  /* vertical orientation only: assigned inside the vertical branch to a closure
-     that re-packs lanes/blocks from the (post-paint, grown) node heights and
-     repaints. expandOrchestratorNodes() calls it after measuring true heights so
-     grown nodes never overlap their lane neighbours or an adjacent session's
-     block. */
-  let relayoutVerticalFn = null;
-  
   svgParts.push(`<defs>
     <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
       <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
@@ -728,10 +636,8 @@ async function initializeGraph() {
     </marker>
   </defs>`);
   
-  /* shared: render an edges[] array (dispatch/return/respawn descriptors) as
-     <path> elements — identical for both orientations, only the `d` string's
-     coordinates differ. respawnLabelOffset lets each orientation nudge the
-     "⟳ respawn" text to sit clear of its curve. */
+  /* render an edges[] array (dispatch/return/respawn descriptors) as <path>
+     elements. respawnLabelOffset nudges the "⟳ respawn" text clear of its curve. */
   function pushEdges(edges, respawnLabelOffset) {
     const [rlx, rly] = respawnLabelOffset || [8, 30];
     for (const e of edges) {
@@ -748,26 +654,32 @@ async function initializeGraph() {
     }
   }
   
-  /* compact churn + token meta line for a node; '' when nothing to show */
-  function statsMetaLine(a) {
+  /* ROW 2 of the fixed three-row node: git branch · duration · LOC churn ·
+     tokens, plus the status badge inline at the end for non-ok agents. Missing
+     pieces are simply omitted (never rendered as an empty segment), and the
+     whole thing is always a SINGLE .m span so node height stays exactly three
+     rows. The agent TYPE is deliberately absent — it's already encoded by the
+     node's colour and spelled out in the drawer. */
+  function metaLine(a) {
     const d = a.diff, tk = a.tokens.in + a.tokens.out + a.tokens.cacheRead;
-    if (!d.added && !d.removed && !tk) return '';
     const parts = [];
-    if (d.added || d.removed) parts.push(`<b>+${d.added}</b> −${d.removed}`);
-    if (tk) parts.push(`${fmtTokens(tk)} tok`);
-    return `<span class="m mono">${parts.join(' · ')}</span>`;
+    if (a.branch) parts.push(`<span class="br">⎇ ${esc(a.branch)}</span>`);
+    parts.push(`<span class="mono">${fmtDur(a.t1 - a.t0)}</span>`);
+    if (d.added || d.removed) parts.push(`<span class="mono"><b>+${d.added}</b> −${d.removed}</span>`);
+    if (tk) parts.push(`<span class="mono">${fmtTokens(tk)} tok</span>`);
+    if (a.status !== 'ok') parts.push(`<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`);
+    return `<span class="m">${parts.join(' · ')}</span>`;
   }
 
-  /* shared: paint one agent block — surface backing, tinted/hatched shape,
-     and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
-     whichever orientation's coordinate space the caller computed. */
+  /* paint one agent block — surface backing, tinted/hatched shape, and the
+     overlaid HTML node (title/meta/skills). */
   /* uniform rounded-rectangle for EVERY node — the redesign drops shape-as-signal
      (kind is conveyed by fill/border colour + labels only). */
   function rectPath(x, y, w, h) {
     const r = 9;
     return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
   }
-  function paintNode(a, x, y, w, h, pad, tight, skillsFit) {
+  function paintNode(a, x, y, w, h, pad, tight) {
     /* main thread (parentless root) gets a heavier border so it reads as the
        session's spine among its uniformly-shaped children. */
     const sw = a.parent == null ? 2.6 : 1.5;
@@ -779,62 +691,31 @@ async function initializeGraph() {
     if (a.status !== 'ok') {
       svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
     }
-    htmlParts.push(`<div class="node${tight ? ' tight' : ''}${(a.events && a.events.length && ORIENTATION !== 'horizontal') ? ' has-tools' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+    /* exactly three rows: title, meta, tool-tick strip. Skill chips were a
+       fourth (variable-count) row and are dropped — skills stay in the drawer. */
+    htmlParts.push(`<div class="node${tight ? ' tight' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
       style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};"
       title="${esc(a.title)}">
       <span class="t" title="${esc(a.title)}">${esc(a.title)}</span>
-      ${a.status !== 'ok'
-        ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
-        : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
-      ${(!tight && a.status === 'ok') ? statsMetaLine(a) : ''}
-      ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk" title="${esc(s)}">${esc(s)}</span>`).join('') : ''}
-      ${toolChipRegion(a, ORIENTATION)}
+      ${metaLine(a)}
+      ${toolChipRegion(a)}
     </div>`);
   }
-  /* Inline tool-tick region: one absolutely-positioned tick per tool call,
-      spread across the node box by its position in the agent's own time span
-      (frac of [t0,t1] * boxDim). Vertical = a column pinned to the right edge,
-      ticks top→bottom by time; horizontal = a row pinned to the bottom edge,
-      ticks left→right by time. Returns '' when there are no events so nodes
-      without tool data render exactly as before. */
-  function toolChipRegion(a, orient) {
-    const ticks = toolTicks(a, orient);
+  /* ROW 3: the tool-tick strip — one absolutely-positioned tick per tool call,
+      spread left→right across the node's WIDTH by its position in the agent's
+      own time span (frac of [t0,t1] * a.w). Returns '' when there are no events. */
+  function toolChipRegion(a) {
+    const ticks = toolTicks(a);
     if (!ticks.length) return '';
-    if (orient === 'horizontal') {
-      const chips = ticks.map((k) => {
-        if (k.overflow) return `<span class="tburst more" title="+${k.overflow} more tool calls" style="left:${k.off}px"></span>`;
-        return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="left:${k.off}px"></span>`;
-      }).join('');
-      return `<div class="toolrow">${chips}</div>`;
-    }
-    /* vertical: the RHS tool column is wide enough for a few side-by-side
-       sub-columns. Ticks keep their time-frac vertical position (top = off);
-       when several land at the same height they wrap into the next sub-column
-       instead of overlapping in one line. Greedy first-fit: each sub-column
-       remembers the last top it used; a tick goes in the first column whose
-       last top is far enough (>= TICK_STEP) from this tick's off. */
-    const TICK_STEP = 11;
-    const COL_W = 14;
-    const colLast = [];
     const chips = ticks.map((k) => {
-      if (k.overflow) {
-        return `<span class="tburst more" title="+${k.overflow} more tool calls" style="top:${k.off}px; left:2px"></span>`;
-      }
-      let col = 0;
-      while (col < colLast.length && colLast[col] > k.off - TICK_STEP) col++;
-      colLast[col] = k.off;
-      const left = 2 + col * COL_W;
-      return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="top:${k.off}px; left:${left}px"></span>`;
+      if (k.overflow) return `<span class="tburst more" title="+${k.overflow} more tool calls" style="left:${k.off}px"></span>`;
+      return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="left:${k.off}px"></span>`;
     }).join('');
-    return `<div class="toolcol">${chips}</div>`;
+    return `<div class="toolrow">${chips}</div>`;
   }
   
-  /* shared (horizontal orientation only): orthogonal V–H–V elbow with rounded
-     corners: vertical out of x1,y1, a single horizontal turn in the channel at
-     yk, vertical into x2,y2 — the rotated analogue of the vertical layout's
-     elbowH. Declared at top level (not inside the horizontal branch below) so
-     expandHorizontalNodeWidths() can also call it during its post-paint
-     re-layout pass. */
+  /* orthogonal V–H–V elbow with rounded corners: vertical out of x1,y1, a single
+     horizontal turn in the channel at yk, vertical into x2,y2. */
   function elbowV(x1, y1, x2, y2, yk, r) {
     const sIn = Math.sign(yk - y1) || 1;
     const sH = Math.sign(x2 - x1) || 1;
@@ -847,22 +728,8 @@ async function initializeGraph() {
       + ` V${y2}`;
   }
 
-  /* horizontal elbow (H–V–H): horizontal out of (x1,y1), a single vertical turn
-     in the channel at xk, horizontal into (x2,y2) — the transpose of elbowV. */
-  function elbowH(x1, y1, x2, y2, xk, r) {
-    const sIn = Math.sign(xk - x1) || 1;
-    const sV = Math.sign(y2 - y1) || 1;
-    const sOut = Math.sign(x2 - xk) || 1;
-    const rr = Math.max(0, Math.min(r, Math.abs(y2 - y1) / 2, Math.abs(xk - x1), Math.abs(x2 - xk)));
-    return `M${x1},${y1} H${xk - sIn * rr}`
-      + ` Q${xk},${y1} ${xk},${y1 + sV * rr}`
-      + ` V${y2 - sV * rr}`
-      + ` Q${xk},${y2} ${xk + sOut * rr},${y2}`
-      + ` H${x2}`;
-  }
-
   /* ================================================================
-     RANK-BASED COMPACT LAYOUT (both orientations)
+     RANK-BASED COMPACT LAYOUT (horizontal: time flows left→right)
 
      The old layout positioned nodes PROPORTIONALLY to elapsed time along a
      global ruler (with hatched "idle" strips compressing gaps) and drew each
@@ -878,9 +745,8 @@ async function initializeGraph() {
          every node a sequential rank; position = rank, so children sit directly
          next to their parent and there are no time gaps to compress (the idle
          strips and the global ruler are gone). Durations still live in labels.
-       - Each SESSION (a root + its whole subtree) lays out as one atomic block —
-         vertical: depth→columns, rank→rows; horizontal: rank→columns,
-         depth→rows (the transpose).
+       - Each SESSION (a root + its whole subtree) lays out as one atomic block:
+         rank→columns (time left→right), depth→rows.
        - Sessions are then BIN-PACKED (skyline, bottom-left, chronological order)
          into a roughly square board that hugs the top-left and wraps — instead
          of spreading down one global time axis. Each session band carries a
@@ -891,11 +757,10 @@ async function initializeGraph() {
      session box), 0 node overlaps, content-driven height so no truncation,
      de-collided band labels, correct parent/dispatch/return/respawn edges. */
 
-  const isH = ORIENTATION === 'horizontal';
-  const NODE_W    = 210;   // uniform node width (both orientations)
-  const NODE_MIN_H = 54;   // floor; grown to fit wrapped text post-paint
-  const DEPTH_GAP = 26;    // gap along the depth axis (x vert / y horiz)
-  const RANK_GAP  = 12;    // gap along the rank axis (y vert / x horiz)
+  const NODE_W    = 210;   // uniform minimum node width
+  const NODE_MIN_H = 44;   // floor; grown to fit wrapped text post-paint
+  const DEPTH_GAP = 26;    // gap along the depth axis (y)
+  const RANK_GAP  = 12;    // gap along the rank axis (x)
   const BAND_PAD  = 12;    // padding inside a session band
   const BAND_LABEL_H = 22; // reserved strip at the band top for its label
   const SESS_GAP  = 30;    // gap between packed session blocks
@@ -921,10 +786,10 @@ async function initializeGraph() {
   });
 
   /* ---- per-session LOCAL TIME AXIS ----
-     Within a session the FLOW axis (y in vertical, x in horizontal) is a real time
-     axis: a node's flow OFFSET = (t0 − sessionStart) and its flow EXTENT = runtime,
-     both × a per-session scale — "as long/tall as it took to run". DEPTH maps to the
-     CROSS axis; nodes at the same depth that OVERLAP IN TIME are pushed into parallel
+     Within a session the FLOW axis (x) is a real time axis: a node's flow
+     OFFSET = (t0 − sessionStart) and its flow EXTENT = runtime, both × a per-session
+     scale — "as wide as it took to run". DEPTH maps to the CROSS axis (y); nodes at
+     the same depth that OVERLAP IN TIME are pushed into parallel
      sub-lanes so concurrency is visible side-by-side. Every cross-neighbour (lane↔lane
      and depth↔depth) is separated by the SAME CROSS_GAP, so the strip just before any
      node on the cross axis is always an empty gutter — that is where the elbow edges
@@ -933,34 +798,30 @@ async function initializeGraph() {
      SCALE: per-session px/min = clamp(TARGET_FLOW / sessionSpanMinutes, MIN, MAX).
      Normalising each session's whole span toward ~TARGET_FLOW keeps the board compact
      and stops one marathon session from dominating, while WITHIN a session offset and
-     extent stay strictly proportional to time. Extents are floored (labels stay
-     legible: vertical grows to fit wrapped text; horizontal is never narrower than
-     NODE_W) and capped at MAX_EXT so one very long node can't blow up a band. */
+     extent stay strictly proportional to time. Extents are floored (a node is never
+     narrower than NODE_W, so labels stay legible) and capped at MAX_EXT so one very
+     long node can't blow up a band. */
   const CROSS_GAP   = DEPTH_GAP;          // uniform separation between every cross-neighbour
-  const TARGET_FLOW = 560;                // aim each session's span ≈ this many px
-  const MIN_PXPM = 0.25, MAX_PXPM = 10;   // per-session scale clamp (px per minute)
-  const FLOW_MIN_V = 46;                  // min node height (vertical); grows to fit text
+  /* a generous time scale so nodes get enough width to lay their content out in
+     rows instead of wrapping. */
+  const TARGET_FLOW = 1120;               // aim each session's span ≈ this many px
+  const MIN_PXPM = 0.25, MAX_PXPM = 20;   // per-session scale clamp (px per minute)
   const MAX_EXT = 900;                    // cap a single node's time extent
   const LANE_FLOW_GAP = 8;                // min flow-gap between two same-lane nodes
-  const WIDTH_CAP = 2 * NODE_W;           // vertical: node width may grow to 2×NODE_W to reduce wrapping
-  const TOOL_RESERVE = 16;                // horizontal: bottom strip reserved for the tool-tick row
-  /* labelled local time axis reserved inside each band: a left gutter in vertical,
-     a top strip in horizontal. Nodes are shifted off it so labels never collide. */
-  const AXIS_W = 46;                      // vertical: left time-axis gutter width
-  const AXIS_H = 16;                      // horizontal: top time-axis strip height
-  /* The time axis is reserved on the CROSS axis (a LEFT gutter in vertical, a TOP
-     strip in horizontal), so nodes never sit on it:
-       vertical  → cross = x: CROSS0 = BAND_PAD + AXIS_W;   flow = y starts below the label.
-       horizontal→ cross = y: CROSS0 = BAND_PAD + label + AXIS_H;  flow = x starts at BAND_PAD. */
-  const CROSS0 = isH ? (BAND_PAD + BAND_LABEL_H + AXIS_H) : (BAND_PAD + AXIS_W);
-  const FLOW_OFF = isH ? BAND_PAD : (BAND_PAD + BAND_LABEL_H);
+  const TOOL_RESERVE = 11;                // bottom strip reserved for the tool-tick row (== .toolrow height, no extra gap)
+  /* labelled local time axis reserved inside each band as a top strip. Nodes are
+     shifted off it so labels never collide. */
+  const AXIS_H = 16;                      // top time-axis strip height
+  /* The time axis is reserved on the CROSS axis (a TOP strip), so nodes never sit
+     on it: cross = y: CROSS0 = BAND_PAD + label + AXIS_H; flow = x starts at BAND_PAD. */
+  const CROSS0 = BAND_PAD + BAND_LABEL_H + AXIS_H;
+  const FLOW_OFF = BAND_PAD;
 
-  /* content height (a._contentH) and preferred width (a._prefW, vertical) are
-     measured post-paint and fed back into the flow/cross extent so wrapped text
-     never truncates; start at the floor. */
-  for (const a of AGENTS) { a.w = NODE_W; a.h = NODE_MIN_H; a._contentH = NODE_MIN_H; a._prefW = NODE_W; }
+  /* content height (a._contentH) is measured post-paint and fed back into the cross
+     extent so text never truncates; start at the floor. */
+  for (const a of AGENTS) { a.w = NODE_W; a.h = NODE_MIN_H; a._contentH = NODE_MIN_H; }
 
-  const nodePad = (a) => a.parent == null ? 8 : (a.work === 'orchestration' ? 8 : 4);
+  const nodePad = (a) => a.parent == null ? 4 : (a.work === 'orchestration' ? 4 : 3);
   const durMin = (a) => Math.max(0, a.t1 - a.t0) / 60000;
 
   function layoutInternal() {
@@ -976,12 +837,10 @@ async function initializeGraph() {
       for (const a of nodes) {
         a._flow = FLOW_OFF + ((a.t0 - sStart) / 60000) * scale;
         const durExt = Math.min(MAX_EXT, durMin(a) * scale);
-        /* vertical: cross extent = content-preferred width (up to WIDTH_CAP), flow
-           extent = duration (floored, grows to fit wrapped text height).
-           horizontal: flow extent = duration width (≥ NODE_W), cross extent = content
-           height (already includes the reserved tool strip via a._contentH). */
-        if (!isH) { a._cext = Math.min(WIDTH_CAP, Math.max(NODE_W, a._prefW)); a._fext = Math.max(FLOW_MIN_V, durExt, a._contentH); }
-        else      { a._fext = Math.max(NODE_W, durExt); a._cext = Math.max(NODE_MIN_H, a._contentH); }
+        /* flow extent = duration width (≥ NODE_W); cross extent = content height
+           (already includes the reserved tool strip via a._contentH). */
+        a._fext = Math.max(NODE_W, durExt);
+        a._cext = Math.max(NODE_MIN_H, a._contentH);
       }
 
       /* NESTED SUBTREE packing on the cross axis. Each node's WHOLE subtree occupies
@@ -1039,8 +898,7 @@ async function initializeGraph() {
 
       s.flowMax = Math.max(...nodes.map((a) => a._flow + a._fext)) + BAND_PAD;
       s.crossMax = Math.max(...nodes.map((a) => a._cross + a._cext)) + BAND_PAD;
-      if (!isH) { s.gw = s.crossMax; s.gh = s.flowMax; }
-      else      { s.gw = s.flowMax; s.gh = s.crossMax; }
+      s.gw = s.flowMax; s.gh = s.crossMax;
     }
   }
 
@@ -1089,8 +947,7 @@ async function initializeGraph() {
 
   function applyAbs() {
     for (const s of sessions) for (const a of s.nodes) {
-      if (!isH) { a.x0 = s.ox + a._cross; a.w = a._cext;  a.y0 = s.oy + a._flow;  a.h = a._fext; }
-      else      { a.x0 = s.ox + a._flow;  a.w = a._fext;  a.y0 = s.oy + a._cross; a.h = a._cext; }
+      a.x0 = s.ox + a._flow;  a.w = a._fext;  a.y0 = s.oy + a._cross; a.h = a._cext;
     }
   }
 
@@ -1111,30 +968,20 @@ async function initializeGraph() {
     for (const s of sessions) {
       svgParts.push(`<rect x="${s.ox}" y="${s.oy}" width="${s.gw}" height="${s.gh}" rx="14"
         fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-      /* LOCAL TIME AXIS: a labelled ruler in the reserved gutter (left in vertical,
-         top in horizontal) with faint gridlines across the band, at a sensible
-         interval for the per-session scale (≥ ~44px between labelled ticks). */
+      /* LOCAL TIME AXIS: a labelled ruler in the reserved top strip with faint
+         gridlines across the band, at a sensible interval for the per-session
+         scale (≥ ~44px between labelled ticks). */
       const pxPerHour = s.scale * 60;
       const HR = 3600000;
       const tickHrs = Math.max(1, Math.ceil(44 / Math.max(1, pxPerHour)));   // hours between labelled ticks
       const stepMs = tickHrs * HR;
-      if (!isH) {
-        /* vertical: axis baseline down the left gutter (just left of the nodes) */
-        svgParts.push(`<line x1="${s.ox + CROSS0 - 8}" y1="${s.oy + FLOW_OFF - 6}" x2="${s.ox + CROSS0 - 8}" y2="${s.oy + s.gh - 6}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>`);
-      } else {
-        /* horizontal: axis baseline across the top strip (just above the nodes) */
-        svgParts.push(`<line x1="${s.ox + FLOW_OFF}" y1="${s.oy + CROSS0 - 8}" x2="${s.ox + s.gw - 6}" y2="${s.oy + CROSS0 - 8}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>`);
-      }
+      /* axis baseline across the top strip (just above the nodes) */
+      svgParts.push(`<line x1="${s.ox + FLOW_OFF}" y1="${s.oy + CROSS0 - 8}" x2="${s.ox + s.gw - 6}" y2="${s.oy + CROSS0 - 8}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>`);
       let ticks = 0;
       for (let t = Math.ceil(s.sStart / stepMs) * stepMs; t <= s.sEnd && ticks < 30; t += stepMs, ticks++) {
         const f = FLOW_OFF + ((t - s.sStart) / 60000) * s.scale;   // flow-axis coordinate of this tick
-        if (!isH) {
-          svgParts.push(`<line x1="${s.ox + CROSS0 - 8}" y1="${s.oy + f}" x2="${s.ox + s.gw - 6}" y2="${s.oy + f}" stroke="var(--grid)" stroke-width="1" opacity="0.35"/>`);
-          htmlParts.push(`<div class="axis-tick" style="left:${s.ox + 4}px; top:${s.oy + f - 7}px; width:${AXIS_W - 12}px; text-align:right;">${fmtT(t)}</div>`);
-        } else {
-          svgParts.push(`<line x1="${s.ox + f}" y1="${s.oy + CROSS0 - 8}" x2="${s.ox + f}" y2="${s.oy + s.gh - 6}" stroke="var(--grid)" stroke-width="1" opacity="0.35"/>`);
-          htmlParts.push(`<div class="axis-tick" style="left:${s.ox + f + 3}px; top:${s.oy + BAND_LABEL_H + 1}px;">${fmtT(t)}</div>`);
-        }
+        svgParts.push(`<line x1="${s.ox + f}" y1="${s.oy + CROSS0 - 8}" x2="${s.ox + f}" y2="${s.oy + s.gh - 6}" stroke="var(--grid)" stroke-width="1" opacity="0.35"/>`);
+        htmlParts.push(`<div class="axis-tick" style="left:${s.ox + f + 3}px; top:${s.oy + BAND_LABEL_H + 1}px;">${fmtT(t)}</div>`);
       }
       const r = s.root;
       const title = String(r.title || 'session').replace(/^Coordinator:\s*/i, '');
@@ -1153,10 +1000,10 @@ async function initializeGraph() {
       if (!a._hasKids || (a.depth || 0) < 1 || !a._sb) continue;
       const pad = 5 + Math.max(0, 2 - (a.depth - 1));   // slightly larger pad for shallower nests
       const [c0, c1, f0, f1] = a._sb;
-      const x = s.ox + (isH ? f0 : c0) - pad;
-      const y = s.oy + (isH ? c0 : f0) - pad;
-      const w = (isH ? (f1 - f0) : (c1 - c0)) + pad * 2;
-      const h = (isH ? (c1 - c0) : (f1 - f0)) + pad * 2;
+      const x = s.ox + f0 - pad;
+      const y = s.oy + c0 - pad;
+      const w = (f1 - f0) + pad * 2;
+      const h = (c1 - c0) + pad * 2;
       const coord = a.depth === 1;
       svgParts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" pointer-events="none"
         fill="${cvar(a.type)}" fill-opacity="${coord ? 0.05 : 0.03}"
@@ -1167,11 +1014,9 @@ async function initializeGraph() {
        respawn (dashed muted). Rendered as orthogonal ELBOW polylines (right-angle
        segments with a small corner radius) rather than straight diagonals. In the
        rank-outline a child is always one depth deeper AND later in rank than its
-       parent, so a facing-edge elbow is a clean L/Z: vertical layout uses a V–H–V
-       elbow off the parent's BOTTOM into the child's TOP with the horizontal turn
-       in the row-gap just below the parent (keeps it out of node interiors);
-       horizontal layout uses the H–V–H transpose off the parent's RIGHT into the
-       child's LEFT with the turn in the column-gap just right of the parent. */
+       parent, so a facing-edge elbow is a clean L/Z: a V–H–V elbow off the parent's
+       BOTTOM into the child's TOP, with the horizontal turn in the row-gap just
+       above the child (keeps it out of node interiors). */
     const edges = [];
     const CR = 7;   // elbow corner radius
     const GUT = DEPTH_GAP / 2;   // half the empty gutter between adjacent depth bands
@@ -1180,36 +1025,22 @@ async function initializeGraph() {
       const p = byId[a.parent];
       if (!p) continue;
       const acx = a.x0 + a.w / 2, acy = a.y0 + a.h / 2;
-      const pcx = p.x0 + p.w / 2, pcy = p.y0 + p.h / 2;
+      const pcx = p.x0 + p.w / 2;
       /* A child is always exactly one depth-band deeper than its parent, so the
          strip between the parent's depth band and the child's is EMPTY of nodes.
          Route the elbow's long segment through that gutter (just before the child)
-         so it never crosses a node interior:
-           vertical layout  → parent RIGHT edge ⇢ child LEFT edge, vertical run in
-             the x-gutter just left of the child (H–V–H, via elbowH);
-           horizontal layout → parent BOTTOM edge ⇢ child TOP edge, horizontal run
-             in the y-gutter just above the child (V–H–V, via elbowV). */
-      if (!isH) {
-        const xk = a.x0 - GUT;
-        edges.push({ from: a.parent, to: a.id, d: elbowH(p.x0 + p.w, pcy, a.x0, acy, xk, CR),
-          stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-        if (a.status === 'ok')
-          edges.push({ from: a.id, to: a.parent, d: elbowH(a.x0, acy + 7, p.x0 + p.w, pcy + 7, xk + 5, CR),
-            stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
-      } else {
-        const yk = a.y0 - GUT;
-        edges.push({ from: a.parent, to: a.id, d: elbowV(pcx, p.y0 + p.h, acx, a.y0, yk, CR),
-          stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-        if (a.status === 'ok')
-          edges.push({ from: a.id, to: a.parent, d: elbowV(acx + 7, a.y0, pcx + 7, p.y0 + p.h, yk + 5, CR),
-            stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
-      }
+         so it never crosses a node interior: parent BOTTOM edge ⇢ child TOP edge,
+         horizontal run in the y-gutter just above the child (V–H–V, via elbowV). */
+      const yk = a.y0 - GUT;
+      edges.push({ from: a.parent, to: a.id, d: elbowV(pcx, p.y0 + p.h, acx, a.y0, yk, CR),
+        stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
+      if (a.status === 'ok')
+        edges.push({ from: a.id, to: a.parent, d: elbowV(acx + 7, a.y0, pcx + 7, p.y0 + p.h, yk + 5, CR),
+          stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
       if (a.respawnOf && byId[a.respawnOf]) {
         const dead = byId[a.respawnOf];
-        const dcx = dead.x0 + dead.w / 2, dcy = dead.y0 + dead.h / 2;
-        const d = isH
-          ? elbowH(dead.x0 + dead.w, dcy, a.x0, acy, (dead.x0 + dead.w + a.x0) / 2, CR)
-          : elbowV(dcx, dead.y0 + dead.h, acx, a.y0, (dead.y0 + dead.h + a.y0) / 2, CR);
+        const dcx = dead.x0 + dead.w / 2;
+        const d = elbowV(dcx, dead.y0 + dead.h, acx, a.y0, (dead.y0 + dead.h + a.y0) / 2, CR);
         edges.push({ from: dead.id, to: a.id, d,
           stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.7, w: 1.4, respawn: true });
       }
@@ -1220,7 +1051,7 @@ async function initializeGraph() {
     for (const a of AGENTS) {
       const pad = nodePad(a);
       const tight = a.h < 70;
-      paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight, a.skills.length > 0);
+      paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight);
     }
 
     const boardEl = document.getElementById('board');
@@ -1236,17 +1067,13 @@ async function initializeGraph() {
   document.getElementById('board').style.width = BOARD_W + 'px';
 
   /* ------------------------------------------- content-driven size measurement --- */
-  /* After each paint, measure every node's true content and feed it back into the
-     model, then re-run the whole layout + pack + paint so nothing overlaps and
-     sessions stay atomic. Two measurements:
-       - HEIGHT (a._contentH): the bottom of the last FLOW child, EXCLUDING the
-         absolutely-positioned tool overlays (.toolrow/.toolcol) — measuring those
-         would count the reserved strip and feed an infinite-growth loop. Horizontal
-         nodes with tools reserve TOOL_RESERVE extra px at the bottom so the tick row
-         no longer overlaps the last text line (the reported spill).
-       - WIDTH (a._prefW, vertical only): the node's intrinsic (max-content) width,
-         clamped to [NODE_W, WIDTH_CAP] so a node widens up to 2× to reduce wrapping,
-         then wraps. max-content is independent of the applied width, so it's stable. */
+  /* After each paint, measure every node's true content HEIGHT (a._contentH) and feed
+     it back into the model, then re-run the whole layout + pack + paint so nothing
+     overlaps and sessions stay atomic. The measurement is the bottom of the last FLOW
+     child, EXCLUDING the absolutely-positioned tool strip (.toolrow) — measuring that
+     would count the reserved strip and feed an infinite-growth loop. Nodes with tools
+     reserve TOOL_RESERVE extra px at the bottom so the tick row no longer overlaps the
+     last text line (the reported spill). */
   function measureNodes() {
     const board = document.getElementById('board');
     let changed = false;
@@ -1256,20 +1083,15 @@ async function initializeGraph() {
       const pad = nodePad(a);
       let cb = 0;
       for (const c of el.children) {
-        if (c.classList.contains('toolrow') || c.classList.contains('toolcol')) continue;
+        if (c.classList.contains('toolrow')) continue;
         const b = c.offsetTop + c.offsetHeight;
         if (b > cb) cb = b;
       }
-      const reserve = (isH && a.events && a.events.length) ? TOOL_RESERVE : 0;
-      const needH = cb + 6 + pad * 2 + reserve;
+      /* the tick strip is a bottom row, so room must be reserved for it or row 3
+         would paint over row 2. */
+      const reserve = (a.events && a.events.length) ? TOOL_RESERVE : 0;
+      const needH = cb + 1 + pad * 2 + reserve;
       if (Math.abs(needH - a._contentH) > 0.5) { a._contentH = needH; changed = true; }
-      if (!isH) {
-        const savedW = el.style.width, savedMW = el.style.maxWidth;
-        el.style.maxWidth = WIDTH_CAP + 'px'; el.style.width = 'max-content';
-        const pw = Math.min(WIDTH_CAP, Math.max(NODE_W, el.offsetWidth));
-        el.style.width = savedW; el.style.maxWidth = savedMW;
-        if (Math.abs(pw - a._prefW) > 1) { a._prefW = pw; changed = true; }
-      }
     }
     return changed;
   }
@@ -1340,7 +1162,7 @@ async function initializeGraph() {
     drawerBody.innerHTML = `
       <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
       <h2>${esc(a.title)}</h2>
-      <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}</div>
+      <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}${a.branch ? ` · ⎇ ${esc(a.branch)}` : ''}</div>
       ${a.depth > 2 ? `<p class="status-note">Nested at depth ${a.depth} — shown in its nearest coordinator's worker column.</p>` : ''}
       ${a.parentGuessed ? `<p class="status-note">Parent inferred — the recorded spawn parent could not be resolved.</p>` : ''}
       ${STATUS_TEXT[a.status] ? `<p class="status-note"><b>${esc(STATUS_BADGE[a.status] || a.status)}</b> — ${STATUS_TEXT[a.status]}</p>` : ''}

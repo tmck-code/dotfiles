@@ -196,6 +196,23 @@ def count_diff_tokens(entries):
     return diff, tokens
 
 
+def branch_of(entries):
+    """Most common non-empty `gitBranch` across a transcript's entries.
+
+    Claude Code stamps every jsonl entry with the git branch that was checked
+    out when it was written, so a transcript that spans a branch switch has
+    several; the modal value is the one the work actually happened on.
+    """
+    counts = {}
+    for e in entries:
+        b = e.get('gitBranch')
+        if b:
+            counts[b] = counts.get(b, 0) + 1
+    if not counts:
+        return ''
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
 def tool_category(name):
     if name in EDIT_TOOLS:
         return 'edit'
@@ -609,6 +626,7 @@ def build_graph(project_dir, session_id):
         'end': m_end,
         'status': 'ok',
         'work': 'orchestration',
+        'branch': branch_of(main_entries),
         'skills': main_skills,
         'counts': main_counts,
         'diff': main_diff,
@@ -657,6 +675,7 @@ def build_graph(project_dir, session_id):
             'end': s_end,
             'status': status,
             'work': work,
+            'branch': branch_of(entries) or branch_of(main_entries),
             'skills': skills,
             'counts': counts,
             'diff': diff,
