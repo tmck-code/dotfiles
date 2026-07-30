@@ -1,0 +1,13 @@
+{ "rules": [
+  { "skill": "grill-me",
+    "match": "\\bgrill me\\b|stress[- ]test (my|the) (plan|design)|\\bget grilled\\b",
+    "hint": "user wants to be interrogated/stress-tested on a plan or design" },
+
+  { "skill": "docker-fastapi",
+    "match": "docker|\\bimage\\s+size\\b|\\b(?:shrink|smaller|reduce)\\w*\\s+(?:the\\s+)?(?:image|container)\\b|\\bbuild\\s+(?:faster|speed|time|cache)\\b|\\b(?:slow|faster)\\s+\\w*\\s*build\\b|\\blayer\\s+cach\\w*\\b|\\bmulti-?stage\\b|\\buv\\s+sync\\b.*\\b(?:image|build)\\b",
+    "hint": "Python/FastAPI backend image — multi-stage uv builds, shrinking image size, build speed, layer caching, keeping heavy ML deps out of the runtime image" },
+
+  { "skill": "docker-web-ui",
+    "match": "docker|\\bimage\\s+size\\b|\\b(?:shrink|smaller|reduce)\\w*\\s+(?:the\\s+)?(?:image|container)\\b|\\bbuild\\s+(?:faster|speed|time|cache)\\b|\\b(?:slow|faster)\\s+\\w*\\s*build\\b|\\blayer\\s+cach\\w*\\b|\\bmulti-?stage\\b|\\buv\\s+sync\\b.*\\b(?:image|build)\\b",
+    "hint": "frontend/Vite image" }
+] }

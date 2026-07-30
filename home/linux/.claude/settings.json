@@ -1,8 +1,17 @@
 {
   "env": {
-    "CLAUDE_CODE_TMUX_TRUECOLOR": "1"
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
   },
-  "model": "opus[1m]",
+  "permissions": {
+    "deny": [
+      "Workflow",
+      "Artifact",
+      "DesignSync"
+    ]
+  },
+  "disableClaudeAiConnectors": true,
+  "disableBundledSkills": true,
   "hooks": {
     "PreToolUse": [
       {
@@ -41,7 +50,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/docker-skill-nudge.py\""
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/skill-nudge.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-linux-x86_64-gnu/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/hooks/yas-prompt-hook.py\""
           }
         ]
       }
@@ -63,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!'"
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!' || true"
           }
         ]
       }
@@ -74,15 +92,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!'"
+            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!' || true"
           }
         ]
       }
     ]
   },
+  "disableRemoteControl": true,
+  "disableWorkflows": true,
+  "disableArtifact": true,
   "statusLine": {
     "type": "command",
-    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/.python/cpython-3.13-linux-x86_64-gnu/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/claude/statusline_command.py\"",
+    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-linux-x86_64-gnu/bin/python3.15\" \"${YAS_DEV_ROOT:-$HOME/dev/yet-another-statusline}/claude/statusline_command.py\"",
     "padding": 1,
     "refreshInterval": 1
   },
@@ -127,7 +148,7 @@
       }
     }
   },
-  "effortLevel": "medium",
+  "effortLevel": "low",
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,

@@ -60,7 +60,20 @@
   }
   .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
 
-  header.page { max-width: 1500px; margin: 0 auto; padding: 36px 28px 8px; }
+  header.page {
+    max-width: 1500px; margin: 0 auto; padding: 36px 28px 8px;
+    display: flex; align-items: flex-start; gap: 16px;
+  }
+  header.page .head-text { flex: 1 1 auto; min-width: 0; }
+  header.page .head-actions { flex: 0 0 auto; display: flex; gap: 8px; }
+  #themeToggle, #orientationToggle {
+    flex: 0 0 auto; border: 1px solid var(--border);
+    background: none; color: var(--ink-2); border-radius: 7px; height: 28px;
+    cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  #themeToggle { width: 28px; }
+  #orientationToggle { width: auto; padding: 0 9px; font-size: 12px; font-weight: 650; }
+  #themeToggle:focus-visible, #orientationToggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
   .eyebrow {
     font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
     color: var(--muted); margin-bottom: 6px;
@@ -117,35 +130,106 @@
   }
 
   .node {
-    position: absolute; padding: 9px 13px 8px; cursor: pointer;
-    display: flex; flex-direction: column; gap: 2px;
+    position: absolute; padding: 7px 10px 6px; cursor: pointer;
+    display: flex; flex-direction: column; gap: 1px; overflow: visible;
   }
   .node .t {
-    font-size: 13px; font-weight: 650; line-height: 1.25; color: var(--ink);
-    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
+    font-size: 12px; font-weight: 650; line-height: 1.25; color: var(--ink);
+    display: -webkit-box; -webkit-line-clamp: unset; -webkit-box-orient: vertical; overflow: visible; white-space: normal;
   }
-  .node.tight .t { font-size: 12px; }
-  .node .m {
-    font-size: 11px; color: var(--ink-2);
-    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
-  }
+  .node.has-tools .t,
+  .node.has-tools .m,
+  .node.has-tools .sk,
+  .node.has-tools .badge { padding-right: 46px; }
+  /* tight nodes only shrink the font — they must NOT line-clamp: with
+     overflow:visible above, a clamp still shrinks the box's layout height to
+     the clamped line count while the wrapped text visually spills past it,
+     so the next flex sibling (.m/.sk) lands on top of that overflow instead
+     of below it. Font-size alone keeps clamp and layout height in sync. */
+  .node.tight .t { font-size: 11.5px; }
+  .node[data-work="orchestration"] .t { -webkit-line-clamp: unset; white-space: normal; word-wrap: break-word; }
+  /* .m/.sk set overflow:hidden for their ellipsis truncation, which under
+     flexbox gives them an "automatic minimum size" of 0 — so instead of the
+     node's flex column overflowing (which scrollHeight could then detect
+     and grow from), the flex algorithm silently SHRINKS these two below
+     their own natural text height when space is tight, clipping/overlapping
+     their glyphs while scrollHeight still reports the constrained (fitting)
+     height. Pin them to their natural size so a genuine shortfall shows up
+     as real overflow instead of an invisible squeeze. Applies to every work
+     type, not just orchestration — worker titles wrap just as often. */
+  .node .m, .node .sk { flex-shrink: 0; }
+  /* meta line WRAPS instead of ellipsizing — a cut-off "spec-implementer · 6h
+     39m" reads as "spec-implementer" and loses the load-bearing duration/tok
+     figures. Wrapping keeps every character visible; the node grows to fit and
+     the post-paint re-pack (relayoutVerticalFn) keeps neighbours clear. */
+  .node .m { font-size: 10.5px; color: var(--ink-2); white-space: normal; overflow-wrap: anywhere; }
   .node .m b { color: var(--nc); font-weight: 650; }
   .node .sk {
-    align-self: flex-start; font-size: 10px; color: var(--ink-2);
+    align-self: flex-start; font-size: 9.5px; color: var(--ink-2);
     border: 1px solid var(--border); background: var(--bg); border-radius: 8px;
-    padding: 1px 7px; margin-top: 3px; max-width: 100%;
-    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
+    padding: 0 6px; margin-top: 2px; white-space: nowrap; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis;
   }
   .node .sk::before { content: "⚡ "; color: var(--muted); }
+  .node .toolcol {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 44px;
+    overflow: hidden; pointer-events: none;
+  }
+  .node .toolrow {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    overflow: hidden; pointer-events: none;
+  }
+  .node .toolcol .tburst {
+    position: absolute; width: 8px; height: 8px; pointer-events: auto;
+  }
+  .node .toolrow .tburst {
+    position: absolute; bottom: 2px; width: 8px; height: 8px; pointer-events: auto;
+  }
+  .node .tburst {
+    background: var(--muted); opacity: 0.92; border-radius: 2px;
+  }
+  .node .tburst.more { background: var(--ink-2); opacity: 0.6; border-radius: 50%; }
+  .node .tburst.cat-edit { background: #2a9d8f; }
+  .node .tburst.cat-read { background: #457b9d; }
+  .node .tburst.cat-bash { background: #e9c46a; }
+  .node .tburst.cat-spawn { background: var(--nc); }
+  .node .tburst.cat-skill { background: #9b5de5; }
+  .node .tburst.cat-other { background: var(--muted); }
+  .ev-row {
+    display: flex; align-items: baseline; gap: 8px; padding: 4px 0;
+    border-bottom: 1px solid var(--border); font-size: 12.5px;
+  }
+  .ev-row:last-child { border-bottom: none; }
+  .ev-dot { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; background: var(--muted); margin-top: 3px; }
+  .ev-dot.cat-edit { background: #2a9d8f; }
+  .ev-dot.cat-read { background: #457b9d; }
+  .ev-dot.cat-bash { background: #e9c46a; }
+  .ev-dot.cat-spawn { background: var(--ink-2); }
+  .ev-dot.cat-skill { background: #9b5de5; }
+  .ev-dot.cat-other { background: var(--muted); }
+  .ev-time { color: var(--muted); font-variant-numeric: tabular-nums; font-family: ui-monospace, Menlo, monospace; font-size: 11px; flex: 0 0 auto; }
+  .ev-tool { font-weight: 650; color: var(--ink-2); flex: 0 0 auto; }
+  .ev-target {
+    color: var(--ink); flex: 1 1 auto; min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px;
+  }
+  .ev-target.ev-spawn { color: var(--ink-2); cursor: pointer; text-decoration: underline dotted; }
+  .ev-target.ev-spawn:hover { color: var(--ink); }
+  .ev-lines { color: var(--muted); flex: 0 0 auto; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ev-timeline { max-height: 280px; overflow: auto; margin-top: 4px; }
   .node .badge {
-    align-self: flex-start; margin-top: 3px; font-size: 10px; font-weight: 700;
+    align-self: flex-start; margin-top: 2px; font-size: 9.5px; font-weight: 700;
     letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2);
-    border: 1px dashed var(--muted); border-radius: 4px; padding: 1px 6px; white-space: nowrap;
+    border: 1px dashed var(--muted); border-radius: 4px; padding: 0 5px; white-space: nowrap;
   }
   .node:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 
   .marker-label {
     position: absolute; font-size: 10.5px; line-height: 1.3; color: var(--ink-2);
+    /* Fallback cap only. The horizontal layout sizes labels inline from its own
+       MARKER_LABEL_W (150) and is clipped by this; the vertical layout overrides
+       both width AND max-width inline from V_MARKER_LABEL_W, which is the single
+       source of truth that also sizes its gutter (LABEL_GUTTER_W). */
     max-width: 146px; pointer-events: none;
   }
   .marker-label b { color: var(--ink); font-weight: 650; }
@@ -209,10 +293,27 @@
   }
 </style>
 
+<script>
+/* Applied before render to avoid a flash of the wrong theme. */
+(function () {
+  var KEY = 'agentgraph:theme';
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { /* file:// may throw */ }
+  if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
+  else try { localStorage.removeItem(KEY); } catch (e) {}
+})();
+</script>
+
 <header class="page">
-  <div class="eyebrow" id="eyebrow"></div>
-  <h1 id="title"></h1>
-  <p class="sub" id="subtitle"></p>
+  <div class="head-text">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="title"></h1>
+    <p class="sub" id="subtitle"></p>
+  </div>
+  <div class="head-actions">
+    <button id="orientationToggle" type="button"></button>
+    <button id="themeToggle" type="button"></button>
+  </div>
 </header>
 
 <div class="stats" id="stats"></div>
@@ -232,561 +333,503 @@
 </aside>
 
 <script>
+/* ------------------------------------------------------- theme toggle --- */
+(function () {
+  var KEY = 'agentgraph:theme';
+  var STATES = ['auto', 'light', 'dark'];
+  var GLYPH = { auto: '◐', light: '☀', dark: '☾' };
+  var LABEL = {
+    auto: 'Theme: auto (follow system) — click for light',
+    light: 'Theme: light — click for dark',
+    dark: 'Theme: dark — click for auto',
+  };
+  var btn = document.getElementById('themeToggle');
+  var current = document.documentElement.dataset.theme;
+  if (STATES.indexOf(current) < 1) current = 'auto';
+
+  function apply(state) {
+    current = state;
+    if (state === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = state;
+    btn.textContent = GLYPH[state];
+    btn.title = LABEL[state];
+    btn.setAttribute('aria-label', LABEL[state]);
+    try {
+      if (state === 'auto') localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, state);
+    } catch (e) { /* file:// may throw */ }
+  }
+
+  btn.addEventListener('click', function () {
+    apply(STATES[(STATES.indexOf(current) + 1) % STATES.length]);
+  });
+  apply(current);
+})();
+
+/* --------------------------------------------------- orientation flip --- */
+/* Layout is computed once at load from a single ORIENTATION value (read in
+   the next script, before initializeGraph runs) — there's no in-place
+   re-layout path, so flipping just persists the choice and reloads. That
+   keeps this button simple and avoids the duplicate-event-listener/stale-
+   closure risk of re-running the whole paint+wiring pipeline in place. */
+(function () {
+  var KEY = 'agentgraph:orientation';
+  var BUILD = "__ORIENTATION__";
+  var GLYPH = { vertical: '↕ vertical', horizontal: '↔ horizontal' };
+  var LABEL = {
+    vertical: 'Layout: vertical (time flows down) — click for horizontal',
+    horizontal: 'Layout: horizontal (time flows right) — click for vertical',
+  };
+  var btn = document.getElementById('orientationToggle');
+  var stored = null;
+  try { stored = localStorage.getItem(KEY); } catch (e) { /* file:// may throw */ }
+  var current = (stored === 'vertical' || stored === 'horizontal') ? stored : BUILD;
+
+  function paint(state) {
+    btn.textContent = GLYPH[state];
+    btn.title = LABEL[state];
+    btn.setAttribute('aria-label', LABEL[state]);
+  }
+
+  btn.addEventListener('click', function () {
+    current = current === 'horizontal' ? 'vertical' : 'horizontal';
+    try {
+      if (current === BUILD) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, current);
+    } catch (e) { /* file:// may throw */ }
+    location.reload();
+  });
+  paint(current);
+})();
+</script>
+
+<script>
 'use strict';
 
 /* ---------------------------------------------------------------- data --- */
 
-const DATA = __DATA_JSON__;
-const ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
+const SESSIONS_DIR = "__SESSIONS_DIR__";
+const DYNAMIC_MODE = __DYNAMIC_MODE__;
+const BUILD_ORIENTATION = "__ORIENTATION__";  // "vertical" (default) | "horizontal"
+/* The flip button (wired below, near themeToggle) persists a per-browser
+   override to localStorage and reloads — see ORIENTATION_KEY there. Reading
+   it here, before layout runs, means a reload lands directly in the chosen
+   orientation instead of flashing the build-time default first. */
+const ORIENTATION_KEY = 'agentgraph:orientation';
+let ORIENTATION = BUILD_ORIENTATION;
+try {
+  const storedOrientation = localStorage.getItem(ORIENTATION_KEY);
+  if (storedOrientation === 'vertical' || storedOrientation === 'horizontal') ORIENTATION = storedOrientation;
+} catch (e) { /* file:// may throw */ }
 
-/* validated categorical palette (dataviz, CVD-checked, both themes) */
-const LIGHT = ['#4a3aa7', '#1baf7a', '#2a78d6', '#eda100', '#e87ba4', '#008300', '#eb6834', '#e34948'];
-const DARK  = ['#9085e9', '#199e70', '#3987e5', '#c98500', '#d55181', '#008300', '#d95926', '#e66767'];
+let DATA = __DATA_JSON__;
 
-const WORK_LABEL = {
-  orchestration: 'orchestration', implementation: 'implementation',
-  testing: 'testing / gates', docs: 'docs', research: 'research',
-};
+// Dynamic loading mode: fetch sessions from directory
+async function loadDynamicSessions() {
+  if (!DYNAMIC_MODE || !SESSIONS_DIR) return DATA;
 
-/* normalise agents (defensive defaults for optional fields) */
-const AGENTS = DATA.agents.map((a) => ({
-  respawnOf: null, parentGuessed: false, model: null, skills: [], status: 'ok',
-  work: 'implementation',
-  ...a,
-  counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
-  skills: Array.isArray(a.skills) ? a.skills : [],
-}));
-const MARKERS = Array.isArray(DATA.markers) ? DATA.markers.slice() : [];
+  try {
+    const indexResp = await fetch(`${SESSIONS_DIR}/index.json`);
+    if (!indexResp.ok) throw new Error(`Failed to load index: ${indexResp.status}`);
+    const index = await indexResp.json();
 
-const byId = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
-const root = AGENTS.find((a) => a.parent == null) || AGENTS[0];
+    const agents = [];
+    const markers = [];
+    const loadedSessions = [];
 
-/* ------------------------------------------------------------- colours --- */
-
-const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
-const typeOrder = [];
-const pushType = (t) => { if (!typeOrder.includes(t)) typeOrder.push(t); };
-pushType(root.type);
-AGENTS.forEach((a) => pushType(a.type));
-
-function cssVars(arr) {
-  return typeOrder.map((t, i) => `--c-${slug(t)}:${arr[i % arr.length]};`).join('');
-}
-const styleEl = document.createElement('style');
-styleEl.textContent = [
-  `:root{${cssVars(LIGHT)}}`,
-  `@media (prefers-color-scheme:dark){:root{${cssVars(DARK)}}}`,
-  `:root[data-theme="dark"]{${cssVars(DARK)}}`,
-  `:root[data-theme="light"]{${cssVars(LIGHT)}}`,
-].join('\n');
-document.head.appendChild(styleEl);
-const cvar = (t) => `var(--c-${slug(t)})`;
-
-/* ------------------------------------------------------- structure/tree --- */
-
-const coordinators = AGENTS.filter((a) => a.parent === root.id).sort((x, y) => T(x.start) - T(y.start));
-const coordSet = new Set(coordinators.map((c) => c.id));
-
-/* nearest coordinator ancestor + depth from root (root=0, coord=1, worker=2, …) */
-function ancestorCoord(a) {
-  let cur = a, guard = 0;
-  while (cur && guard++ < 40) {
-    if (coordSet.has(cur.id)) return cur.id;
-    if (cur.parent == null) return null;
-    cur = byId[cur.parent];
-  }
-  return null;
-}
-function depthOf(a) {
-  let d = 0, cur = a, guard = 0;
-  while (cur && cur.parent != null && guard++ < 40) { d++; cur = byId[cur.parent]; }
-  return d;
-}
-AGENTS.forEach((a) => { a.depth = depthOf(a); a.coord = a === root || coordSet.has(a.id) ? null : ancestorCoord(a); });
-const workers = AGENTS.filter((a) => a !== root && !coordSet.has(a.id));
-
-/* groups: arrays of coordinator ids. default = one group holding every coordinator */
-let GROUPS = (Array.isArray(DATA.groups) && DATA.groups.length)
-  ? DATA.groups.map((g) => g.filter((id) => coordSet.has(id)))
-  : [coordinators.map((c) => c.id)];
-GROUPS = GROUPS.filter((g) => g.length);
-/* any coordinator not placed by DATA.groups → append to a trailing group */
-const placed = new Set(GROUPS.flat());
-const leftovers = coordinators.filter((c) => !placed.has(c.id)).map((c) => c.id);
-if (leftovers.length) GROUPS.push(leftovers);
-if (!GROUPS.length) GROUPS = [[]];
-const groupIndexOfCoord = {};
-GROUPS.forEach((g, gi) => g.forEach((id) => { groupIndexOfCoord[id] = gi; }));
-const groupIndexOf = (a) => a === root ? -1
-  : coordSet.has(a.id) ? groupIndexOfCoord[a.id]
-  : (a.coord != null ? groupIndexOfCoord[a.coord] : 0) ?? 0;
-
-/* ---------------------------------------------------------- shared/time --- */
-
-function T(s) { return new Date(s).getTime(); }
-const MIN = 60000;
-AGENTS.forEach((a) => { a.t0 = T(a.start); a.t1 = T(a.end); if (!(a.t1 > a.t0)) a.t1 = a.t0 + 30000; });
-
-const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-const fmtDur = (ms) => {
-  const m = Math.round(ms / MIN);
-  if (m < 1) return `${Math.round(ms / 1000)}s`;
-  return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
-};
-const workLabel = (w) => WORK_LABEL[w] || w;
-
-/* ---- text measurement (canvas 2d, matches the node CSS fonts) ---------- */
-const _measCanvas = document.createElement('canvas');
-const _measCtx = _measCanvas.getContext('2d');
-const NODE_FONT_FAMILY = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-/* fonts must mirror the .node CSS below (title/meta/skill sizes & weights) */
-const FONT_TITLE = `650 13px ${NODE_FONT_FAMILY}`;
-const FONT_TITLE_TIGHT = `650 12px ${NODE_FONT_FAMILY}`;
-const FONT_META = `400 11px ${NODE_FONT_FAMILY}`;
-const FONT_META_B = `650 11px ${NODE_FONT_FAMILY}`;
-const FONT_SK = `400 10px ${NODE_FONT_FAMILY}`;
-function textW(s, font) { _measCtx.font = font; return _measCtx.measureText(String(s == null ? '' : s)).width; }
-
-/* Wrap `text` to fit `maxW` px at `font`, breaking on whitespace and
-   hard-breaking any single token longer than maxW. Returns array of lines. */
-function wrapText(text, maxW, font) {
-  _measCtx.font = font;
-  const words = String(text == null ? '' : text).split(/\s+/).filter(Boolean);
-  const lines = [];
-  let cur = '';
-  const pushCur = () => { if (cur) { lines.push(cur); cur = ''; } };
-  for (let word of words) {
-    /* hard-break a token wider than maxW into chunks that each fit */
-    while (_measCtx.measureText(word).width > maxW && word.length > 1) {
-      let cut = word.length;
-      while (cut > 1 && _measCtx.measureText(word.slice(0, cut)).width > maxW) cut--;
-      const head = word.slice(0, cut);
-      if (cur) { lines.push(cur); cur = ''; }
-      lines.push(head);
-      word = word.slice(cut);
+    for (const session of index.sessions) {
+      try {
+        const ndjsonResp = await fetch(`${SESSIONS_DIR}/${session.id}.ndjson`);
+        if (!ndjsonResp.ok) continue;
+        const ndjsonText = await ndjsonResp.text();
+        const sessionData = JSON.parse(ndjsonText.split('\n')[0]);
+        agents.push(...(sessionData.agents || []));
+        markers.push(...(sessionData.markers || []));
+        loadedSessions.push(sessionData);
+      } catch (e) {
+        console.error(`Failed to load session ${session.id}:`, e);
+      }
     }
-    const trial = cur ? cur + ' ' + word : word;
-    if (cur && _measCtx.measureText(trial).width > maxW) { lines.push(cur); cur = word; }
-    else cur = trial;
-  }
-  pushCur();
-  return lines.length ? lines : [''];
-}
 
-/* ---- node sizing (horizontal): pick smallest width in [minW,maxW] whose
-   title wraps to <= maxTitleLines, then derive height from actual rows ---- */
-const NODE_PAD_X = 13;   // .node horizontal padding (each side)
-const NODE_PAD_TOP = 9;  // .node top padding
-const NODE_PAD_BOT = 8;  // .node bottom padding
-const NODE_ROW_GAP = 2;  // flex gap between rows
-/* Line-box heights are rounded UP with headroom so the modeled height is a
-   strict upper bound on the browser's real layout (canvas measureText/line
-   estimates otherwise undercount by a few px and clip the bottom row). */
-const TITLE_LH = Math.ceil(13 * 1.25) + 1;   // ~18 → 18px title line box
-const META_LH = Math.ceil(11 * 1.5) + 1;     // ~17 → 18px meta line box
-const SK_LH = Math.ceil(10 * 1.5) + 3 + 3;   // chip line + 3px margin-top + slack
-const BOTTOM_SLACK = 8;       // fixed slack so rounding never clips the last row
-const MAX_TITLE_LINES = 10;
-
-function sizeNode(a, minW, baseW, maxW) {
-  const font = a.work === 'orchestration' ? FONT_TITLE : FONT_TITLE;
-  const titleFont = FONT_TITLE;
-  /* smallest content width (px, inside padding) that fits title in <=10 lines */
-  let chosenW = maxW, titleLines = null;
-  for (let w = minW; w <= maxW; w += 10) {
-    const inner = w - NODE_PAD_X * 2;
-    const lines = wrapText(a.title, inner, titleFont);
-    if (lines.length <= MAX_TITLE_LINES) { chosenW = w; titleLines = lines; break; }
-  }
-  if (titleLines == null) {
-    /* even at maxW it needs >10 lines: clamp width to maxW, keep all lines
-       (hard-break guarantees no overflow; height simply grows) */
-    chosenW = maxW;
-    titleLines = wrapText(a.title, maxW - NODE_PAD_X * 2, titleFont);
-  }
-  const inner = chosenW - NODE_PAD_X * 2;
-  a._titleLines = titleLines;
-  a.w = chosenW;
-
-  /* rows below the title: either a status badge or the meta line, plus chips */
-  let h = NODE_PAD_TOP + NODE_PAD_BOT + titleLines.length * TITLE_LH;
-  if (a.status !== 'ok') {
-    h += NODE_ROW_GAP + META_LH;   // badge ~ one line
-    a._skillsFit = false;
-  } else {
-    /* meta: "<type> · <dur>" — wrap if it doesn't fit one line */
-    const metaStr = `${a.type} · ${fmtDur(a.t1 - a.t0)}`;
-    const metaLines = wrapText(metaStr, inner, FONT_META);
-    h += NODE_ROW_GAP + metaLines.length * META_LH;
-    /* skill chips: each chip on its own row (align-self flex-start) */
-    a._skillsFit = a.skills.length > 0;
-    if (a._skillsFit) h += a.skills.length * SK_LH;
-  }
-  /* the HTML .node div is inset from the outer SVG shape by `pad` on each side
-     (pad = 10 for orchestration, 3 otherwise — see paintNode caller), so the
-     outer box must be that much taller than the content box. */
-  const shapePad = a.work === 'orchestration' ? 10 : 3;
-  a._pad = shapePad;
-  a.h = h + BOTTOM_SLACK + shapePad * 2;   // content + slack + shape inset (upper bound)
-  return a;
-}
-
-/* work-type silhouettes */
-function shapePath(work, x, y, w, h) {
-  if (work === 'testing') {
-    const c = 10;
-    return `M${x + c},${y} H${x + w - c} L${x + w},${y + c} V${y + h - c} L${x + w - c},${y + h} H${x + c} L${x},${y + h - c} V${y + c} Z`;
-  }
-  if (work === 'docs') {
-    const f = 14, r = 8;
-    return `M${x + r},${y} H${x + w - f} L${x + w},${y + f} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
-  }
-  if (work === 'orchestration') {
-    const v = 9;
-    return `M${x},${y + v} L${x + w / 2},${y} L${x + w},${y + v} V${y + h - v} L${x + w / 2},${y + h} L${x},${y + h - v} Z`;
-  }
-  const r = 9; // implementation / research / default: rounded rect
-  return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
-}
-
-const STATUS_BADGE = { cutoff: '✕ usage limit', dropped: '✕ connection lost', fault: '✕ harness fault' };
-
-const svgParts = [];
-const htmlParts = [];
-let BOARD_W = 0, BOARD_H = 0;
-
-svgParts.push(`<defs>
-  <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-    <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
-  </pattern>
-  <pattern id="breakhatch" width="9" height="9" patternTransform="rotate(-45)" patternUnits="userSpaceOnUse">
-    <line x1="0" y1="0" x2="0" y2="9" stroke="var(--line)" stroke-width="1.4" opacity="0.6"/>
-  </pattern>
-  ${typeOrder.map((t) => `
-  <marker id="arr-${slug(t)}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
-    <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="${cvar(t)}"/>
-  </marker>
-  <marker id="dot-${slug(t)}" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="5" markerHeight="5">
-    <circle cx="3" cy="3" r="2.6" fill="${cvar(t)}"/>
-  </marker>`).join('')}
-  <marker id="arr-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
-    <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="var(--muted)"/>
-  </marker>
-</defs>`);
-
-/* shared: render an edges[] array (dispatch/return/respawn descriptors) as
-   <path> elements — identical for both orientations, only the `d` string's
-   coordinates differ. respawnLabelOffset lets each orientation nudge the
-   "⟳ respawn" text to sit clear of its curve. */
-function pushEdges(edges, respawnLabelOffset) {
-  const [rlx, rly] = respawnLabelOffset || [8, 30];
-  for (const e of edges) {
-    svgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
-      stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
-      ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
-      ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
-    if (e.respawn) {
-      const mid = e.d.match(/M([\d.]+),([\d.]+) C/);
-      if (mid) svgParts.push(`<text x="${+mid[1] + rlx}" y="${+mid[2] + rly}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
-    }
+    return {
+      draft: false,
+      multiSession: loadedSessions.length > 1,
+      sessions: loadedSessions,
+      title: `Agent graph (${loadedSessions.length} sessions)`,
+      eyebrow: 'multi-session view',
+      subtitle: '',
+      footer: '',
+      agents,
+      markers,
+    };
+  } catch (e) {
+    console.error('Failed to load dynamic sessions:', e);
+    return DATA;
   }
 }
 
-/* shared: paint one agent block — surface backing, tinted/hatched shape,
-   and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
-   whichever orientation's coordinate space the caller computed. */
-function paintNode(a, x, y, w, h, pad, tight, skillsFit) {
-  svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
-    fill="var(--surface)" stroke="none"/>`);
-  svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}"
-    fill="${cvar(a.type)}" fill-opacity="0.13" stroke="${cvar(a.type)}" stroke-width="1.5"
-    ${a.status !== 'ok' ? 'stroke-dasharray="5 3"' : ''}/>`);
-  if (a.status !== 'ok') {
-    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${shapePath(a.work, x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
+// Ensure data is loaded before initialization
+(async () => {
+  if (DYNAMIC_MODE) {
+    DATA = await loadDynamicSessions();
   }
-  htmlParts.push(`<div class="node${tight ? ' tight' : ''}" data-id="${esc(a.id)}" tabindex="0" role="button"
-    style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};">
-    <span class="t">${esc(a.title)}</span>
-    ${a.status !== 'ok'
-      ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
-      : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
-    ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk">${esc(s)}</span>`).join('') : ''}
-  </div>`);
-}
+  // Fall through to initialization code below
+})().catch(e => console.error('Initialization error:', e));
 
-if (ORIENTATION === 'horizontal') {
-  /* ============================================== horizontal layout === */
-  /* time runs left→right. Each depth-1 coordinator gets its own BLOCK
-     (head row = the coordinator, sub-lanes below = its full subtree, its
-     own descendants only — never another coordinator's). Blocks that
-     don't overlap in time share a horizontal TRACK, Gantt-style (packed
-     left→right by start time); only time-overlapping blocks drop to a
-     new, lower track. The main thread is always its own fixed top row. */
 
-  const H_LEFT = 190;      // left rail label column width
-  const MAIN_ROW_H = 44;   // main spine thickness
-  const SPINE_PAD = 20;    // small gap between the ruler/gridline top and the spine
-  const TRACK_GAP = 32;    // gap between packed coordinator tracks
-  const ROW_GAP = 10;      // gap between sub-lanes within a block
-  const MIN_W = 180;       // min node width
-  const BASE_W = 220;      // base width target
-  const MAX_W = 2 * BASE_W; // 440 — widen up to here to avoid title truncation
-  const NODE_GAP = 12;     // horizontal gap between adjacent nodes in a lane
-  const PAD_SEG = 2.5 * MIN;
-  const GAP_MIN = 14 * MIN;
-  const BREAK_W = 64;
 
-  /* active segments (merge event times closer than GAP_MIN) — same idea
-     as the vertical layout's time compression, just applied along x */
-  const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
-    .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
-  const rawSegs = [];
-  for (const t of times) {
-    const last = rawSegs[rawSegs.length - 1];
-    if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
-    else rawSegs.push({ start: t, end: t });
+async function initializeGraph() {
+  /* validated categorical palette (dataviz, CVD-checked, both themes) */
+  const LIGHT = ['#4a3aa7', '#1baf7a', '#2a78d6', '#eda100', '#e87ba4', '#008300', '#eb6834', '#e34948'];
+  const DARK  = ['#9085e9', '#199e70', '#3987e5', '#c98500', '#d55181', '#008300', '#d95926', '#e66767'];
+  
+  const WORK_LABEL = {
+    orchestration: 'orchestration', implementation: 'implementation',
+    testing: 'testing / gates', docs: 'docs', research: 'research',
+  };
+  
+  /* normalise agents (defensive defaults for optional fields) */
+  const AGENTS = DATA.agents.map((a) => ({
+    respawnOf: null, parentGuessed: false, model: null, skills: [], status: 'ok',
+    work: 'implementation',
+    ...a,
+    counts: { edits: 0, bash: 0, reads: 0, spawns: 0, ...(a.counts || {}) },
+    diff: { added: 0, removed: 0, files: 0, ...(a.diff || {}) },
+    tokens: { in: 0, out: 0, cacheRead: 0, cacheCreate: 0, ...(a.tokens || {}) },
+    skills: Array.isArray(a.skills) ? a.skills : [],
+  }));
+  const MARKERS = Array.isArray(DATA.markers) ? DATA.markers.slice() : [];
+  
+  const byId = Object.fromEntries(AGENTS.map((a) => [a.id, a]));
+
+  /* ROOTS, not root. A single-session graph has exactly one parentless agent
+     (its main thread), but an aggregated multi-session graph flattens N
+     sessions into one AGENTS array and so legitimately has N parentless mains
+     — one per session. Every one of them is a real root: it owns its own
+     session's coordinators and its own y/x extent.
+
+     `root` is ONLY the PRIMARY root (earliest-starting), and is used purely
+     for board-level chrome that needs a single representative: the palette
+     seed and the colour of the spine/marker glyphs (every main shares
+     type 'main', so the choice is cosmetic and stable). Anything STRUCTURAL —
+     "is this agent a root?", "is this agent's parent a root?" — must go via
+     isRoot()/byId[a.parent], never `=== root`, or it silently attributes every
+     session's children to one arbitrary session's main thread. */
+  const ROOTS = AGENTS.filter((a) => a.parent == null);
+  if (!ROOTS.length && AGENTS.length) ROOTS.push(AGENTS[0]);
+  const ROOT_IDS = new Set(ROOTS.map((a) => a.id));
+  const isRoot = (a) => !!a && ROOT_IDS.has(a.id);
+  ROOTS.sort((x, y) => T(x.start) - T(y.start));
+  const root = ROOTS[0];
+  
+  /* ------------------------------------------------------------- colours --- */
+  
+  const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
+  const typeOrder = [];
+  const pushType = (t) => { if (!typeOrder.includes(t)) typeOrder.push(t); };
+  pushType(root.type);
+  AGENTS.forEach((a) => pushType(a.type));
+  
+  function cssVars(arr) {
+    return typeOrder.map((t, i) => `--c-${slug(t)}:${arr[i % arr.length]};`).join('');
   }
-  if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
-  const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
-  const SCALE_PXPM = Math.min(40, Math.max(10, 6600 / activeMinutes));
-  const SCALE = SCALE_PXPM / MIN;
-
-  let cursorX = H_LEFT + 20;
-  const segs = rawSegs.map((s, i) => {
-    const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
-    if (i > 0) cursorX += BREAK_W;
-    const x0 = cursorX;
-    cursorX += (end - start) * SCALE;
-    return { start, end, x0, x1: cursorX, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
-  });
-
-  function xOf(t) {
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      if (t <= s.end) return t < s.start ? s.x0 : s.x0 + (t - s.start) * SCALE;
+  const styleEl = document.createElement('style');
+  styleEl.textContent = [
+    `:root{${cssVars(LIGHT)}}`,
+    `@media (prefers-color-scheme:dark){:root{${cssVars(DARK)}}}`,
+    `:root[data-theme="dark"]{${cssVars(DARK)}}`,
+    `:root[data-theme="light"]{${cssVars(LIGHT)}}`,
+  ].join('\n');
+  document.head.appendChild(styleEl);
+  const cvar = (t) => `var(--c-${slug(t)})`;
+  
+  /* ------------------------------------------------------- structure/tree --- */
+  
+  /* a coordinator is a child of ANY root (i.e. any session's main thread) */
+  const coordinators = AGENTS.filter((a) => a.parent != null && ROOT_IDS.has(a.parent))
+    .sort((x, y) => T(x.start) - T(y.start));
+  const coordSet = new Set(coordinators.map((c) => c.id));
+  
+  /* nearest coordinator ancestor + depth from root (root=0, coord=1, worker=2, …) */
+  function ancestorCoord(a) {
+    let cur = a, guard = 0;
+    while (cur && guard++ < 40) {
+      if (coordSet.has(cur.id)) return cur.id;
+      if (cur.parent == null) return null;
+      cur = byId[cur.parent];
     }
-    return segs[segs.length - 1].x1;
+    return null;
   }
-  /* Desired x-position by start time (preserves left→right ordering). Width &
-     height are content-driven (measureText); the pack below resolves overlap. */
-  for (const a of AGENTS) {
-    sizeNode(a, MIN_W, BASE_W, MAX_W);
-    a.desiredX0 = xOf(a.t0);
-    a.x0 = a.desiredX0;
+  function depthOf(a) {
+    let d = 0, cur = a, guard = 0;
+    while (cur && cur.parent != null && guard++ < 40) { d++; cur = byId[cur.parent]; }
+    return d;
   }
-  // BOARD_W is recalculated after packing (below)
-
-  /* main-thread markers are laid out first (before H_TOP is fixed) so the
-     board reserves exactly as much header room as the stacked rows need —
-     labels draw ABOVE the entire graph (ruler ticks included), each marker
-     greedily assigned to the first row whose last-placed label ends before
-     this one starts, so close-together prompts stack into new rows instead
-     of overlapping or crowding the timeline below. */
-  const MARKER_ROW_H = 15;
-  const MARKER_LABEL_W = 150;
-  const MARKER_MIN_GAP = 10;
-  const sortedMarkers = MARKERS.slice().sort((p, q) => T(p.at) - T(q.at));
-  const markerRowEndX = [];
-  for (const m of sortedMarkers) {
-    m._x = xOf(T(m.at));
-    let row = markerRowEndX.findIndex((endX) => endX <= m._x - MARKER_MIN_GAP);
-    if (row === -1) { row = markerRowEndX.length; markerRowEndX.push(-Infinity); }
-    m._row = row;
-    markerRowEndX[row] = m._x + MARKER_LABEL_W;
+  function evCat(tool) {
+    if (EDIT_TOOLS.has(tool)) return 'edit';
+    if (tool === 'Read') return 'read';
+    if (tool === 'Bash') return 'bash';
+    if (tool === 'Agent' || tool === 'Task') return 'spawn';
+    if (tool === 'Skill') return 'skill';
+    return 'other';
   }
-  const MARKER_ROWS = Math.max(1, markerRowEndX.length);
-  const MARKER_TOP = 10;
-  const MARKER_AREA_H = MARKER_TOP + MARKER_ROWS * MARKER_ROW_H;
-  const H_TOP = MARKER_AREA_H + 24;  // top padding above the board (ruler labels), below the marker header
-
-  /* per-coordinator blocks: coordinator + its full subtree, subtree
-     packed into greedy non-overlapping sub-lanes (own descendants only —
-     this is what keeps a coordinator's cluster contiguous: cross-block
-     mixing never happens because each block only ever looks at its own
-     subtree). */
-  const childrenOf = {};
-  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
-  function collectSubtree(id, set) {
-    set.add(id);
-    for (const c of (childrenOf[id] || [])) collectSubtree(c, set);
-  }
-
-  /* greedy first-fit sub-lane packing by pixel extent: place each node (in
-     start order) in the first sub-lane whose current right edge + NODE_GAP is
-     <= this node's desiredX0; else open a new sub-lane. Because widths are now
-     data-driven, this uses pixel edges (not raw time) so a very wide earlier
-     node correctly forces a later node onto a fresh sub-lane. A left→right
-     sweep (packLane, below) is the final safety net within each sub-lane. */
-  function packLane(nodes) {
-    nodes.sort((a, b) => a.desiredX0 - b.desiredX0);
-    let prevRight = -Infinity;
-    for (const n of nodes) {
-      n.x0 = Math.max(n.desiredX0, prevRight + NODE_GAP);
-      prevRight = n.x0 + n.w;
+  const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit']);
+  /* one tick per tool call, placed at its TRUE relative time within the agent's
+     own [t0,t1] span. Capped at TOOL_TICK_CAP ticks; overflow collapses into a
+     single trailing "+N" sentinel tick. frac is a 0..1 fraction of the node's
+     own span (NOT the global time scale), so ticks map onto the existing bar
+     and reposition correctly if the node box later grows. Returns
+     [{frac,cat,title}] (+ optional {overflow:N} sentinel). */
+  const TOOL_TICK_CAP = 24;
+  function toolTicks(a, orient) {
+    const evs = a.events;
+    if (!evs || !evs.length) return [];
+    const sorted = evs.slice().sort((x, y) => T(x.t) - T(y.t));
+    const boxDim = orient === 'horizontal' ? a.w : a.h;
+    /* spread ticks across the WHOLE node box by their position in the agent's
+       own time span (frac of [t0,t1]). This fills the box even for short
+       coordinators whose drawn height is MIN_H-inflated above their true time
+       span (raw yOf-based offsets would bunch them in the top time-band). When
+       the box height equals the time span — the common case for long
+       coordinators with distinct spawn/return waves — frac maps 1:1 onto the
+       timeline, so a call between the last return and the next launch lines up
+       with that gap. */
+    const span = Math.max(1, a.t1 - a.t0);
+    const shown = sorted.slice(0, TOOL_TICK_CAP);
+    const ticks = shown.map((ev) => {
+      const frac = Math.max(0, Math.min(1, (T(ev.t) - a.t0) / span));
+      const off = Math.max(0, Math.min(boxDim, frac * boxDim));
+      const cat = evCat(ev.tool);
+      const tgt = ev.target ? String(ev.target) : '';
+      const tgtShort = tgt.length > 48 ? tgt.slice(0, 47) + '…' : tgt;
+      const title = `${fmtT(T(ev.t))} · ${ev.tool}${tgtShort ? ' · ' + tgtShort : ''}`;
+      return { off, cat, title };
+    });
+    if (sorted.length > TOOL_TICK_CAP) {
+      const lastOff = ticks.length ? ticks[ticks.length - 1].off : boxDim - 6;
+      ticks.push({ off: Math.min(boxDim - 6, lastOff), cat: 'other', overflow: sorted.length - TOOL_TICK_CAP });
     }
-    return nodes.reduce((m, n) => Math.max(m, n.h), 0);   // lane height = tallest
+    return ticks;
   }
-
-  const blocks = coordinators.map((c) => {
-    const set = new Set();
-    collectSubtree(c.id, set);
-    const members = AGENTS.filter((a) => set.has(a.id));
-    const descendants = members.filter((a) => a.id !== c.id).sort((x, y) => x.t0 - y.t0);
-    /* Lane assignment by TIME overlap (not pixel overlap): two nodes conflict
-       only when they truly overlap in wall-clock time.  Pixel compression
-       would make many sequential nodes appear to share the same x, but they
-       should share one lane and be packed left→right by packLane. */
-    const laneEndT = [];   // wall-clock end time of last node placed in each lane
-    for (const d of descendants) {
-      let lane = laneEndT.findIndex((et) => et <= d.t0);
-      if (lane === -1) { lane = laneEndT.length; laneEndT.push(-Infinity); }
-      laneEndT[lane] = d.t1;
-      d.blockLane = lane;
+  AGENTS.forEach((a) => { a.depth = depthOf(a); a.coord = isRoot(a) || coordSet.has(a.id) ? null : ancestorCoord(a); });
+  const workers = AGENTS.filter((a) => !isRoot(a) && !coordSet.has(a.id));
+  
+  /* groups: arrays of coordinator ids. default = one group holding every coordinator */
+  let GROUPS = (Array.isArray(DATA.groups) && DATA.groups.length)
+    ? DATA.groups.map((g) => g.filter((id) => coordSet.has(id)))
+    : [coordinators.map((c) => c.id)];
+  GROUPS = GROUPS.filter((g) => g.length);
+  /* any coordinator not placed by DATA.groups → append to a trailing group */
+  const placed = new Set(GROUPS.flat());
+  const leftovers = coordinators.filter((c) => !placed.has(c.id)).map((c) => c.id);
+  if (leftovers.length) GROUPS.push(leftovers);
+  if (!GROUPS.length) GROUPS = [[]];
+  const groupIndexOfCoord = {};
+  GROUPS.forEach((g, gi) => g.forEach((id) => { groupIndexOfCoord[id] = gi; }));
+  const groupIndexOf = (a) => isRoot(a) ? -1
+    : coordSet.has(a.id) ? groupIndexOfCoord[a.id]
+    : (a.coord != null ? groupIndexOfCoord[a.coord] : 0) ?? 0;
+  
+  /* ---------------------------------------------------------- shared/time --- */
+  
+  function T(s) { return new Date(s).getTime(); }
+  const MIN = 60000;
+  AGENTS.forEach((a) => { a.t0 = T(a.start); a.t1 = T(a.end); if (!(a.t1 > a.t0)) a.t1 = a.t0 + 30000; });
+  
+  /* escape for BOTH text nodes and attribute values — the double-quote escape is
+     load-bearing: node/band titles are user prompts that routinely contain " , and
+     an unescaped one closes a title="…" attribute early and lets the rest of the
+     board's HTML nest inside that one node. */
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const fmtT = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const fmtDur = (ms) => {
+    const m = Math.round(ms / MIN);
+    if (m < 1) return `${Math.round(ms / 1000)}s`;
+    return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m}m`;
+  };
+  const fmtTokens = (n) => {
+    n = n || 0;
+    if (n < 1000) return `${n}`;
+    if (n < 1e6) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+    return `${(n / 1e6).toFixed(2).replace(/\.0+$/, '')}M`;
+  };
+  const workLabel = (w) => WORK_LABEL[w] || w;
+  
+  /* work-type silhouettes */
+  function shapePath(work, x, y, w, h) {
+    if (work === 'testing') {
+      const c = 10;
+      return `M${x + c},${y} H${x + w - c} L${x + w},${y + c} V${y + h - c} L${x + w - c},${y + h} H${x + c} L${x},${y + h - c} V${y + c} Z`;
     }
-    const numLanes = laneEndT.length;
-    const t0 = c.t0;
-    const t1 = Math.max(c.t1, ...members.map((m) => m.t1));
-    return { head: c, members, descendants, numLanes, t0, t1 };
-  });
-
-  /* Pack x-positions within each row and measure per-lane heights. The head
-     row holds just the coordinator; sub-lanes hold its descendants. Block
-     height = head height + Σ(laneHeight + ROW_GAP). Heights vary per node now,
-     so each lane's height is the tallest node placed in it. */
-  for (const b of blocks) {
-    b.headH = packLane([b.head]);   // single node, but reuse the sweep
-    b.laneH = [];
-    for (let lane = 0; lane < b.numLanes; lane++) {
-      const laneNodes = b.descendants.filter((d) => d.blockLane === lane);
-      b.laneH[lane] = packLane(laneNodes);
+    if (work === 'docs') {
+      const f = 14, r = 8;
+      return `M${x + r},${y} H${x + w - f} L${x + w},${y + f} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
     }
-    b.h = b.headH + b.laneH.reduce((s, hh) => s + hh + ROW_GAP, 0);
-  }
-
-  /* Gantt-style track packing: coordinators are already sorted by start
-     time (`coordinators` sort, above), so this greedy pass is a classic
-     interval-graph row packing — reuse the first track whose last-placed
-     block ends before this block starts, else open a new (lower) track.
-     Non-overlapping blocks end up sharing a track (side by side in time);
-     only genuinely overlapping blocks stack. */
-  const tracks = [];
-  for (const b of blocks) {
-    let ti = tracks.findIndex((tr) => tr.endT <= b.t0);
-    if (ti === -1) { ti = tracks.length; tracks.push({ endT: -Infinity, blocks: [] }); }
-    tracks[ti].blocks.push(b);
-    tracks[ti].endT = Math.max(tracks[ti].endT, b.t1);
-    b.track = ti;
-  }
-  const trackMeta = tracks.map((tr) => ({ h: Math.max(...tr.blocks.map((b) => b.h)) }));
-  /* first track starts below: ruler pad, then the marker band (now above
-     the main row), then the main row itself, then the inter-track gap.
-     After laying out each track, advance cursorY by the actual max bottom
-     of blocks in that track (not the band height), so one outlier block
-     does not create a void below shorter sibling blocks. */
-  let cursorY = H_TOP + SPINE_PAD + MAIN_ROW_H + TRACK_GAP;
-  trackMeta.forEach((tm) => { tm.top = cursorY; cursorY += tm.h + TRACK_GAP; });
-  BOARD_H = cursorY + 20;
-
-  /* cumulative top offset of each sub-lane within a block (heights vary) */
-  for (const b of blocks) {
-    b.top = trackMeta[b.track].top;
-    b.head.y0 = b.top;
-    b.laneTop = [];
-    let off = b.headH;
-    for (let lane = 0; lane < b.numLanes; lane++) {
-      off += ROW_GAP;
-      b.laneTop[lane] = off;
-      off += b.laneH[lane];
+    if (work === 'orchestration') {
+      const v = 9;
+      return `M${x},${y + v} L${x + w / 2},${y} L${x + w},${y + v} V${y + h - v} L${x + w / 2},${y + h} L${x},${y + h - v} Z`;
     }
-    for (const d of b.descendants) {
-      d.y0 = b.top + b.laneTop[d.blockLane];
-    }
+    const r = 9; // implementation / research / default: rounded rect
+    return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
   }
-  root.desiredX0 = xOf(root.t0);
-  root.x0 = root.desiredX0;
-  root.w = BASE_W;   // main spine is a fixed-width bar, not a content node
-  root.y0 = H_TOP + SPINE_PAD; root.h = MAIN_ROW_H;
+  
+  const STATUS_BADGE = { cutoff: '✕ usage limit', dropped: '✕ connection lost', fault: '✕ harness fault' };
+  
+  const svgParts = [];
+  const htmlParts = [];
+  let BOARD_W = 0, BOARD_H = 0;
 
-  /* FINAL SAFETY SWEEP — guarantee zero overlap by construction.
-     Within a block: lanes are stacked vertically (never overlap) and each lane
-     was swept left→right (never overlap) → no intra-block overlap. Across
-     blocks on ONE track: they were placed at the same `top` with independent
-     lane layouts, so their y-bands can coincide; the ONLY way to guarantee no
-     cross-block overlap regardless of vertical layout is to make their X
-     EXTENTS disjoint. So sweep whole blocks left→right: shift every member of a
-     block right by whatever it takes for the block's left edge to clear the
-     previous block's right edge + NODE_GAP. Blocks are already start-ordered
-     (coordinators sort), so this preserves left→right order. Tracks are stacked
-     with TRACK_GAP → no cross-track overlap. Root is its own row. */
-  for (const tr of tracks) {
-    let prevRight = -Infinity;
-    for (const b of tr.blocks) {
-      const minX = Math.min(...b.members.map((m) => m.x0));
-      const shift = Math.max(0, prevRight + NODE_GAP - minX);
-      if (shift > 0) for (const m of b.members) m.x0 += shift;
-      prevRight = Math.max(...b.members.map((m) => m.x0 + m.w));
+  /* Height added to a horizontal node that has tool events, to reserve visual
+     room for the inline tool-tick row pinned to the node's bottom edge. Width
+     stays a.w, so board packing/time-scale are unchanged. Vertical renders the
+     ticks as a right-side overlay column and needs no growth (see call sites). */
+  const H_TOOL_H = 22;
+  
+  /* shared (horizontal orientation only): layout state hoisted to top level so
+     the post-paint measurement passes (growOrchestratorHeightsHorizontal,
+     relayoutHorizontalBlocks, expandHorizontalNodeWidths) can read/mutate it —
+     it's assigned inside the horizontal branch below, not re-declared there. */
+  let H_HEAD_H = 0, H_LANE_H = 0, H_ROW_GAP = 0, H_TRACK_GAP = 0, H_TOP_Y = 0, H_SPINE_PAD = 0, H_MAIN_ROW_H = 0;
+  let hBlocks = [], hTracks = [], hTrackMeta = [];
+  /* set by relayoutHorizontalBlocks() when a block/track grew — tells
+     expandHorizontalNodeWidths() it must still do its full repaint even if
+     no node widths changed (heights alone can move BOARD_H/y0s). */
+  let H_HEIGHTS_CHANGED = false;
+  /* vertical orientation only: assigned inside the vertical branch to a closure
+     that re-packs lanes/blocks from the (post-paint, grown) node heights and
+     repaints. expandOrchestratorNodes() calls it after measuring true heights so
+     grown nodes never overlap their lane neighbours or an adjacent session's
+     block. */
+  let relayoutVerticalFn = null;
+  
+  svgParts.push(`<defs>
+    <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
+    </pattern>
+    <pattern id="breakhatch" width="9" height="9" patternTransform="rotate(-45)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="9" stroke="var(--line)" stroke-width="1.4" opacity="0.6"/>
+    </pattern>
+    ${typeOrder.map((t) => `
+    <marker id="arr-${slug(t)}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+      <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="${cvar(t)}"/>
+    </marker>
+    <marker id="dot-${slug(t)}" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="5" markerHeight="5">
+      <circle cx="3" cy="3" r="2.6" fill="${cvar(t)}"/>
+    </marker>`).join('')}
+    <marker id="arr-muted" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="3.5" markerHeight="3.5" orient="auto-start-reverse">
+      <path d="M0,0.6 L7.4,4 L0,7.4 Z" fill="var(--muted)"/>
+    </marker>
+  </defs>`);
+  
+  /* shared: render an edges[] array (dispatch/return/respawn descriptors) as
+     <path> elements — identical for both orientations, only the `d` string's
+     coordinates differ. respawnLabelOffset lets each orientation nudge the
+     "⟳ respawn" text to sit clear of its curve. */
+  function pushEdges(edges, respawnLabelOffset) {
+    const [rlx, rly] = respawnLabelOffset || [8, 30];
+    for (const e of edges) {
+      svgParts.push(`<path class="edge" data-from="${esc(e.from)}" data-to="${esc(e.to)}" d="${e.d}" fill="none"
+        stroke="${e.stroke}" stroke-width="${e.w}" stroke-opacity="${e.op}"
+        ${e.dash ? `stroke-dasharray="${e.dash}"` : ''}
+        ${e.atStart ? `marker-start="url(#${e.marker})"` : `marker-end="url(#${e.marker})"`}/>`);
+      if (e.respawn) {
+        /* accepts a straight L(ine), a C(urve) arc, or an elbow polyline whose
+           first command after the move is V or H */
+        const mid = e.d.match(/M([\d.]+),([\d.]+) [CLVH]/);
+        if (mid) svgParts.push(`<text x="${+mid[1] + rlx}" y="${+mid[2] + rly}" font-size="10" fill="var(--muted)">⟳ respawn</text>`);
+      }
     }
   }
-
-  /* Recompute BOARD_W & BOARD_H from ACTUAL packed node extents so nothing is
-     clipped (widths/heights are data-driven now). */
-  const allNodes = AGENTS.filter((a) => a.x0 != null && a.w != null);
-  BOARD_W = Math.max(H_LEFT, ...allNodes.map((a) => a.x0 + a.w)) + 40;
-  BOARD_H = Math.max(BOARD_H, ...allNodes.map((a) => a.y0 + a.h)) + 20;
-
-  /* Light ordinal separators — draw a subtle vertical line between each pair of
-     consecutive nodes on the main thread (at the midpoint gap), replacing the
-     old time-grid which would now be misleading. Label as ordinal only. */
-  /* We intentionally drop the 15-min time-ruler gridlines in horizontal mode
-     since x is no longer a linear time axis. Instead draw a single light
-     baseline and keep break-strip idle annotations. */
-
-  /* Time gridlines are intentionally omitted in horizontal orientation —
-     x is now ordinal (start-time-sorted, uniform block width), not a linear
-     time axis, so labelled time ticks would be misleading.
-     Break strips still show idle gaps between active segments. */
-
-  /* break strips (idle gaps compressed into fixed-width hatched bands) */
-  segs.forEach((s, i) => {
-    if (!segs[i + 1]) return;
-    const xg = s.x1, gap = s.gapAfterMs;
-    svgParts.push(`<rect x="${xg + 6}" y="${H_TOP}" width="${BREAK_W - 12}" height="${BOARD_H - H_TOP - 8}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
-    htmlParts.push(`<div class="break-label mono" style="left:${xg + 6}px; top:${H_TOP + 10}px; width:${BREAK_W - 12}px; font-size:9.5px; text-align:center; color:var(--muted); display:block;">idle<br>${fmtDur(gap)}</div>`);
-  });
-
-  /* per-block dashed containers (visual grouping of a coordinator + its subtree) */
-  for (const b of blocks) {
-    const bx0 = Math.min(...b.members.map((m) => m.x0)) - 8;
-    const bx1 = Math.max(...b.members.map((m) => m.x0 + m.w)) + 8;
-    svgParts.push(`<rect x="${bx0}" y="${b.top - 6}" width="${bx1 - bx0}" height="${b.h + 12}" rx="13"
-      fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+  
+  /* compact churn + token meta line for a node; '' when nothing to show */
+  function statsMetaLine(a) {
+    const d = a.diff, tk = a.tokens.in + a.tokens.out + a.tokens.cacheRead;
+    if (!d.added && !d.removed && !tk) return '';
+    const parts = [];
+    if (d.added || d.removed) parts.push(`<b>+${d.added}</b> −${d.removed}`);
+    if (tk) parts.push(`${fmtTokens(tk)} tok`);
+    return `<span class="m mono">${parts.join(' · ')}</span>`;
   }
 
-  /* left-rail labels — main thread, then one row per track naming every
-     block on that track (sequential blocks sharing a track are chained) */
-  htmlParts.push(`<div class="colhead" style="left:8px; top:${root.y0}px; width:${H_LEFT - 12}px;">
-    <span class="name">main thread</span><span class="meta">the session</span></div>`);
-  trackMeta.forEach((tm, ti) => {
-    const names = tracks[ti].blocks.map((b) => `${esc(b.head.type)} <span class="mono">(${fmtDur(b.head.t1 - b.head.t0)})</span>`).join(' → ');
-    const topLabel = tm.top + tm.h / 2 - 16;
-    htmlParts.push(`<div class="colhead" style="left:8px; top:${topLabel}px; width:${H_LEFT - 12}px;">
-      <span class="name">track ${ti + 1}</span><span class="meta">${names}</span></div>`);
-  });
-
-  /* main spine — shape + label overlay so it is visibly identifiable */
-  svgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', root.x0, root.y0, root.w, root.h)}"
-    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
-  /* Root spine label: no fixed height so scrollHeight matches clientHeight */
-  htmlParts.push(`<div class="node" data-id="${esc(root.id)}" tabindex="0" role="button"
-    style="left:${root.x0}px; top:${root.y0 + 6}px; width:${root.w}px; min-height:${root.h - 12}px; --nc:${cvar(root.type)};">
-    <span class="t">${esc(root.title)}</span>
-    <span class="m"><b>${esc(root.type)}</b> · <span class="mono">${fmtDur(root.t1 - root.t0)}</span></span>
-  </div>`);
-
-  /* orthogonal V–H–V elbow with rounded corners: vertical out of x1,y1,
-     a single horizontal turn in the channel at yk, vertical into x2,y2 —
-     the rotated analogue of the vertical layout's elbowH. */
+  /* shared: paint one agent block — surface backing, tinted/hatched shape,
+     and the overlaid HTML node (title/meta/skills). x/y/w/h are already in
+     whichever orientation's coordinate space the caller computed. */
+  /* uniform rounded-rectangle for EVERY node — the redesign drops shape-as-signal
+     (kind is conveyed by fill/border colour + labels only). */
+  function rectPath(x, y, w, h) {
+    const r = 9;
+    return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
+  }
+  function paintNode(a, x, y, w, h, pad, tight, skillsFit) {
+    /* main thread (parentless root) gets a heavier border so it reads as the
+       session's spine among its uniformly-shaped children. */
+    const sw = a.parent == null ? 2.6 : 1.5;
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}"
+      fill="var(--surface)" stroke="none"/>`);
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}"
+      fill="${cvar(a.type)}" fill-opacity="${a.parent == null ? 0.2 : 0.13}" stroke="${cvar(a.type)}" stroke-width="${sw}"
+      ${a.status !== 'ok' ? 'stroke-dasharray="5 3"' : ''}/>`);
+    if (a.status !== 'ok') {
+      svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}" fill="url(#hatch)" pointer-events="none"/>`);
+    }
+    htmlParts.push(`<div class="node${tight ? ' tight' : ''}${(a.events && a.events.length && ORIENTATION !== 'horizontal') ? ' has-tools' : ''}" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+      style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};"
+      title="${esc(a.title)}">
+      <span class="t" title="${esc(a.title)}">${esc(a.title)}</span>
+      ${a.status !== 'ok'
+        ? `<span class="badge">${STATUS_BADGE[a.status] || '✕ ' + esc(a.status)}</span>`
+        : `<span class="m"><b>${esc(a.type)}</b> · <span class="mono">${fmtDur(a.t1 - a.t0)}</span></span>`}
+      ${(!tight && a.status === 'ok') ? statsMetaLine(a) : ''}
+      ${a.skills.length && skillsFit ? a.skills.map((s) => `<span class="sk" title="${esc(s)}">${esc(s)}</span>`).join('') : ''}
+      ${toolChipRegion(a, ORIENTATION)}
+    </div>`);
+  }
+  /* Inline tool-tick region: one absolutely-positioned tick per tool call,
+      spread across the node box by its position in the agent's own time span
+      (frac of [t0,t1] * boxDim). Vertical = a column pinned to the right edge,
+      ticks top→bottom by time; horizontal = a row pinned to the bottom edge,
+      ticks left→right by time. Returns '' when there are no events so nodes
+      without tool data render exactly as before. */
+  function toolChipRegion(a, orient) {
+    const ticks = toolTicks(a, orient);
+    if (!ticks.length) return '';
+    if (orient === 'horizontal') {
+      const chips = ticks.map((k) => {
+        if (k.overflow) return `<span class="tburst more" title="+${k.overflow} more tool calls" style="left:${k.off}px"></span>`;
+        return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="left:${k.off}px"></span>`;
+      }).join('');
+      return `<div class="toolrow">${chips}</div>`;
+    }
+    /* vertical: the RHS tool column is wide enough for a few side-by-side
+       sub-columns. Ticks keep their time-frac vertical position (top = off);
+       when several land at the same height they wrap into the next sub-column
+       instead of overlapping in one line. Greedy first-fit: each sub-column
+       remembers the last top it used; a tick goes in the first column whose
+       last top is far enough (>= TICK_STEP) from this tick's off. */
+    const TICK_STEP = 11;
+    const COL_W = 14;
+    const colLast = [];
+    const chips = ticks.map((k) => {
+      if (k.overflow) {
+        return `<span class="tburst more" title="+${k.overflow} more tool calls" style="top:${k.off}px; left:2px"></span>`;
+      }
+      let col = 0;
+      while (col < colLast.length && colLast[col] > k.off - TICK_STEP) col++;
+      colLast[col] = k.off;
+      const left = 2 + col * COL_W;
+      return `<span class="tburst cat-${k.cat}" title="${esc(k.title)}" style="top:${k.off}px; left:${left}px"></span>`;
+    }).join('');
+    return `<div class="toolcol">${chips}</div>`;
+  }
+  
+  /* shared (horizontal orientation only): orthogonal V–H–V elbow with rounded
+     corners: vertical out of x1,y1, a single horizontal turn in the channel at
+     yk, vertical into x2,y2 — the rotated analogue of the vertical layout's
+     elbowH. Declared at top level (not inside the horizontal branch below) so
+     expandHorizontalNodeWidths() can also call it during its post-paint
+     re-layout pass. */
   function elbowV(x1, y1, x2, y2, yk, r) {
     const sIn = Math.sign(yk - y1) || 1;
     const sH = Math.sign(x2 - x1) || 1;
@@ -799,228 +842,12 @@ if (ORIENTATION === 'horizontal') {
       + ` V${y2}`;
   }
 
-  /* edges: dispatch + return + respawn */
-  const edges = [];
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const parent = byId[a.parent];
-    if (!parent) continue;
-    const px = a.x0 + 4;
-    const py = a.parent === root.id ? root.y0 + root.h : parent.y0 + parent.h;
-    const cx = px, cy = a.y0;
-    const yk = (py + cy) / 2;
-    edges.push({ from: a.parent, to: a.id,
-      d: elbowV(px, py, cx, cy, yk, 6),
-      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-    if (a.status === 'ok') {
-      const rx = a.x0 + a.w - 4;
-      const ry0 = a.y0 + a.h, ry1 = py + 4;
-      const ryk = (ry0 + ry1) / 2;
-      edges.push({ from: a.id, to: a.parent,
-        d: elbowV(rx, ry0, rx, ry1, ryk, 6),
-        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
-    }
-    if (a.respawnOf && byId[a.respawnOf]) {
-      const dead = byId[a.respawnOf];
-      const dy = dead.y0 + dead.h / 2, dx = dead.x0 + dead.w;
-      const ay = a.y0 + a.h / 2, ax = a.x0;
-      edges.push({ from: dead.id, to: a.id, d:
-        `M${dx + 2},${dy} C${dx + 46},${dy} ${ax - 46},${ay} ${ax - 3},${ay}`,
-        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
-    }
-  }
-  pushEdges(edges, [6, -8]);
-
-  /* agent blocks — width/height are content-measured, so no tightening or
-     skill-hiding is needed; everything is sized to fit by construction. */
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const pad = a._pad != null ? a._pad : (a.work === 'orchestration' ? 10 : 3);
-    paintNode(a, a.x0, a.y0, a.w, a.h, pad, false, a._skillsFit);
-  }
-
-  /* main-thread markers — labels render as small clickable node-like boxes
-     in a dedicated header ABOVE the entire graph (ruler ticks included),
-     each in the row it was greedily assigned to above (so close-together
-     prompts stack into new rows instead of colliding), with a thin dashed
-     leader line down to a diamond on the spine marking the actual moment.
-     Single-line with an ellipsis if a prompt is unusually long — click (or
-     Enter/Space) opens the drawer with the full, untruncated text. */
-  for (const m of sortedMarkers) {
-    const mxg = m._x;
-    const labelTop = MARKER_TOP + m._row * MARKER_ROW_H;
-    const my = root.y0 + root.h / 2;
-    svgParts.push(`<line x1="${mxg}" y1="${labelTop + MARKER_ROW_H - 2}" x2="${mxg}" y2="${my}" stroke="${cvar(root.type)}" stroke-width="1" stroke-dasharray="2 3" opacity="0.55"/>`);
-    svgParts.push(`<path d="M${mxg - 5.5},${my} l5.5,-5.5 l5.5,5.5 l-5.5,5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
-    const labelX = Math.max(8, Math.min(mxg - 10, BOARD_W - MARKER_LABEL_W - 8));
-    htmlParts.push(`<div class="marker-label row" data-marker="${MARKERS.indexOf(m)}" tabindex="0" role="button"
-      style="left:${labelX}px; top:${labelTop}px; width:${MARKER_LABEL_W}px;" title="${esc(m.label)}">
-      <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${esc(m.label)}
-    </div>`);
-  }
-
-} else {
-  /* ================================================ vertical layout === */
-  const PAD_SEG = 2.5 * MIN;
-  const GAP_MIN = 14 * MIN;
-  const BREAK_H = 64;
-  const TOP = 84;
-  const MIN_H = 72;  // raised floor so short agents remain legible
-  const LANE_W = 148, LANE_GAP = 16, SPINE_W = 12;
-  const RULER_W = 52;
-
-  /* active segments (merge event times closer than GAP_MIN) */
-  const times = [...AGENTS.flatMap((a) => [a.t0, a.t1]), ...MARKERS.map((m) => T(m.at))]
-    .filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
-  const rawSegs = [];
-  for (const t of times) {
-    const last = rawSegs[rawSegs.length - 1];
-    if (last && t - last.end <= GAP_MIN) last.end = Math.max(last.end, t);
-    else rawSegs.push({ start: t, end: t });
-  }
-  if (!rawSegs.length) rawSegs.push({ start: 0, end: MIN });
-
-  /* adaptive scale from summed active minutes */
-  const activeMinutes = Math.max(1, rawSegs.reduce((n, s) => n + (s.end - s.start), 0) / MIN);
-  const SCALE_PXPM = Math.min(32, Math.max(4, 3400 / activeMinutes));
-  const SCALE = SCALE_PXPM / MIN;   // px per ms
-
-  let cursor = TOP;
-  const segs = rawSegs.map((s, i) => {
-    const start = s.start - PAD_SEG, end = s.end + PAD_SEG;
-    if (i > 0) cursor += BREAK_H;
-    const y0 = cursor;
-    cursor += (end - start) * SCALE;
-    return { start, end, y0, y1: cursor, gapAfterMs: rawSegs[i + 1] ? rawSegs[i + 1].start - s.end : 0 };
-  });
-  BOARD_H = cursor + 46;
-
-  function yOf(t) {
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      if (t <= s.end) return t < s.start ? s.y0 : s.y0 + (t - s.start) * SCALE;
-    }
-    return segs[segs.length - 1].y1;
-  }
-  for (const a of AGENTS) {
-    a.y0 = yOf(a.t0);
-    a.h = Math.max(MIN_H, yOf(a.t1) - a.y0);
-  }
-
-  /* lane packing: per group, coordinators then workers get greedy lanes */
-  const groupMeta = GROUPS.map(() => ({ cLanes: 0, wLanes: 0 }));
-  GROUPS.forEach((g, gi) => {
-    const coords = coordinators.filter((c) => g.includes(c.id));
-    const cLanes = [];
-    for (const c of coords) {
-      let lane = cLanes.findIndex((endY) => endY + 8 <= c.y0);
-      if (lane === -1) { lane = cLanes.length; cLanes.push(0); }
-      cLanes[lane] = c.y0 + c.h; c.lane = lane;
-    }
-    const ws = workers.filter((w) => groupIndexOf(w) === gi).sort((x, y) => x.t0 - y.t0);
-    const wLanes = [];
-    for (const w of ws) {
-      let lane = wLanes.findIndex((endY) => endY + 16 <= w.y0);
-      if (lane === -1) { lane = wLanes.length; wLanes.push(0); }
-      wLanes[lane] = w.y0 + w.h; w.lane = lane;
-    }
-    groupMeta[gi] = { cLanes: Math.max(cLanes.length, 1), wLanes: Math.max(wLanes.length, 1) };
-  });
-
-  /* column x positions: [ruler][main] then per-group [coords][workers] */
-  const MAIN_W = SPINE_W + 174;
-  const COL_GAP = 32;
-  const GROUP_GAP = 44;
-  const colW = (n) => n * (LANE_W + LANE_GAP) - LANE_GAP;
-  const X_MAIN = RULER_W + 14;
-  let x = X_MAIN + MAIN_W + COL_GAP;
-  GROUPS.forEach((g, gi) => {
-    if (gi > 0) x += GROUP_GAP;
-    groupMeta[gi].xCoord = x;
-    x += colW(groupMeta[gi].cLanes) + COL_GAP + 4;
-    groupMeta[gi].xWork = x;
-    x += colW(groupMeta[gi].wLanes);
-  });
-  BOARD_W = x + 14;
-
-  function xOf(a) {
-    if (a === root) return X_MAIN;
-    const gi = groupIndexOf(a);
-    const gm = groupMeta[gi] || groupMeta[0];
-    const base = coordSet.has(a.id) ? gm.xCoord : gm.xWork;
-    return base + (a.lane || 0) * (LANE_W + LANE_GAP);
-  }
-
-  /* coordinator bands — worker clusters, behind everything */
-  let bandNo = 0;
-  for (const c of coordinators) {
-    const boxed = workers.filter((w) => w.coord === c.id);
-    if (!boxed.length) continue;   // guard: coordinator with zero workers
-    bandNo++;
-    const bx0 = Math.min(...boxed.map(xOf)) - 8;
-    const bx1 = Math.max(...boxed.map((a) => xOf(a) + LANE_W)) + 8;
-    const by0 = Math.min(...boxed.map((a) => a.y0)) - 19;
-    const by1 = Math.max(...boxed.map((a) => a.y0 + a.h)) + 5;
-    const label = String(c.title || '').replace(/^Coordinator:\s*/i, '');
-    svgParts.push(`<rect x="${bx0}" y="${by0}" width="${bx1 - bx0}" height="${by1 - by0}" rx="13"
-      fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
-    htmlParts.push(`<div class="band-label" style="left:${bx0 + 12}px; top:${by0 + 4}px;">${bandNo} · ${esc(label)}</div>`);
-  }
-
-  /* time ruler + gridlines */
-  for (const s of segs) {
-    const first = Math.ceil(s.start / (15 * MIN)) * 15 * MIN;
-    for (let t = first; t <= s.end; t += 15 * MIN) {
-      const y = yOf(t);
-      svgParts.push(`<line x1="${RULER_W}" y1="${y}" x2="${BOARD_W - 8}" y2="${y}" stroke="var(--grid)" stroke-width="1" opacity="0.6"/>
-        <text x="${RULER_W - 8}" y="${y + 3.5}" text-anchor="end" font-size="10.5" fill="var(--muted)" font-family="ui-monospace,Menlo,monospace">${fmtT(t)}</text>`);
-    }
-  }
-
-  /* break bands */
-  segs.forEach((s, i) => {
-    if (!segs[i + 1]) return;
-    const y = s.y1, gap = s.gapAfterMs;
-    svgParts.push(`<rect x="8" y="${y + 8}" width="${BOARD_W - 16}" height="${BREAK_H - 16}" rx="9" fill="url(#breakhatch)" stroke="var(--line)" stroke-dasharray="5 4"/>`);
-    const label = gap > 3 * 60 * MIN
-      ? `⏸ &nbsp;long pause — <span class="mono">${fmtDur(gap)}</span> idle`
-      : `idle — <span class="mono">${fmtDur(gap)}</span>`;
-    htmlParts.push(`<div class="break-label" style="left:${RULER_W + 22}px; top:${y + 8}px; height:${BREAK_H - 16}px; background:var(--surface); padding:0 10px;">${label}</div>`);
-  });
-
-  /* column headers */
-  const heads = [[X_MAIN - 4, MAIN_W, 'main thread', 'level 0 · the session']];
-  GROUPS.forEach((g, gi) => {
-    const gm = groupMeta[gi];
-    const coords = coordinators.filter((c) => g.includes(c.id));
-    const wtypes = [...new Set(workers.filter((w) => groupIndexOf(w) === gi).map((w) => w.type))];
-    heads.push([gm.xCoord - 4, colW(gm.cLanes) + 8, coords.length === 1 ? 'coordinator' : 'coordinators', 'level 1']);
-    heads.push([gm.xWork - 4, colW(gm.wLanes) + 8, 'domain workers', wtypes.length ? 'level 2 · ' + wtypes.join(' / ') : 'level 2']);
-  });
-  heads.forEach(([hx, w, name, meta]) => {
-    htmlParts.push(`<div class="colhead" style="left:${hx}px; width:${w}px;">
-      <span class="name">${esc(name)}</span><span class="meta">${esc(meta)}</span></div>`);
-  });
-
-  /* dotted separators between groups */
-  GROUPS.forEach((g, gi) => {
-    if (gi === 0) return;
-    const sx = groupMeta[gi].xCoord - GROUP_GAP + 2;
-    svgParts.push(`<line x1="${sx}" y1="${TOP - 20}" x2="${sx}" y2="${BOARD_H - 20}" stroke="var(--grid)" stroke-dasharray="2 6"/>`);
-  });
-
-  /* main spine */
-  svgParts.push(`<path class="shape" data-id="${esc(root.id)}" d="${shapePath('orchestration', X_MAIN, root.y0, SPINE_W, root.h)}"
-    fill="${cvar(root.type)}" fill-opacity="0.30" stroke="${cvar(root.type)}" stroke-width="1.5" style="cursor:pointer"/>`);
-
-  /* orthogonal H–V–H elbow with rounded corners: horizontal out of x1,y1,
-     a single vertical turn in the channel at xk, horizontal into x2,y2.
-     The turn always sits in the gutter just outside the target, so the
-     connector never runs through a node body. */
+  /* horizontal elbow (H–V–H): horizontal out of (x1,y1), a single vertical turn
+     in the channel at xk, horizontal into (x2,y2) — the transpose of elbowV. */
   function elbowH(x1, y1, x2, y2, xk, r) {
-    const sIn = Math.sign(xk - x1) || 1;    // dir of first horizontal (x1 → xk)
-    const sV = Math.sign(y2 - y1) || 1;     // dir of the vertical leg
-    const sOut = Math.sign(x2 - xk) || 1;   // dir of last horizontal (xk → x2)
+    const sIn = Math.sign(xk - x1) || 1;
+    const sV = Math.sign(y2 - y1) || 1;
+    const sOut = Math.sign(x2 - xk) || 1;
     const rr = Math.max(0, Math.min(r, Math.abs(y2 - y1) / 2, Math.abs(xk - x1), Math.abs(x2 - xk)));
     return `M${x1},${y1} H${xk - sIn * rr}`
       + ` Q${xk},${y1} ${xk},${y1 + sV * rr}`
@@ -1029,218 +856,604 @@ if (ORIENTATION === 'horizontal') {
       + ` H${x2}`;
   }
 
-  /* edges: dispatch + return + respawn */
-  const edges = [];
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const parent = byId[a.parent];
-    if (!parent) continue;
-    const px = a.parent === root.id ? X_MAIN + SPINE_W : xOf(parent) + LANE_W;
-    const cx = xOf(a);
-    const yTop = a.y0, yBot = a.y0 + a.h;
-    const xk = cx - 9;                       // vertical turn, in the target's left gutter
-    const off = 13 + (a.lane || 0) * 9;      // per-lane track offset so sibling buses don't overlap
-    /* dispatch: parent's right edge → down the gutter → into the child's left,
-       the long horizontal leg riding above the row */
-    edges.push({ from: a.parent, to: a.id,
-      d: elbowH(px, yTop - off, cx, yTop + 16, xk, 6),
-      stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
-    if (a.status === 'ok') {
-      /* return: out of the child's lower-left → below the row → back to the spine */
-      edges.push({ from: a.id, to: a.parent,
-        d: elbowH(cx, yBot - 16, px + 2, yBot + off, xk, 6),
-        stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.6, w: 1.4, atStart: true });
-    }
-    if (a.respawnOf && byId[a.respawnOf]) {
-      const dead = byId[a.respawnOf];
-      const dx = xOf(dead) + LANE_W / 2, dy = dead.y0 + dead.h;
-      const ax = xOf(a) + LANE_W / 2;
-      edges.push({ from: dead.id, to: a.id, d:
-        `M${dx},${dy + 2} C${dx},${dy + 46} ${ax},${a.y0 - 46} ${ax},${a.y0 - 3}`,
-        stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.75, w: 1.4, respawn: true });
-    }
-  }
-  pushEdges(edges, [8, 30]);
+  /* ================================================================
+     RANK-BASED COMPACT LAYOUT (both orientations)
 
-  /* agent blocks */
-  for (const a of AGENTS) {
-    if (!a.parent) continue;
-    const nx = xOf(a);
-    const pad = a.work === 'orchestration' ? 11 : 2;
-    const tight = a.h < 70;
-    paintNode(a, nx, a.y0, LANE_W, a.h, pad, tight, a.skills.length && a.h - pad * 2 >= 84);
-  }
+     The old layout positioned nodes PROPORTIONALLY to elapsed time along a
+     global ruler (with hatched "idle" strips compressing gaps) and drew each
+     agent kind as a different shape/size. This redesign drops all of that in
+     favour of density:
 
-  /* main-thread markers (labels stacked to avoid collisions) */
-  let lastLabelY = -1e9;
-  for (const m of MARKERS.slice().sort((p, q) => T(p.at) - T(q.at))) {
-    const y = yOf(T(m.at));
-    svgParts.push(`<path d="M${X_MAIN + SPINE_W / 2},${y - 5.5} l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 Z" fill="var(--surface)" stroke="${cvar(root.type)}" stroke-width="1.6"/>`);
-    const labelY = Math.max(y - 8, lastLabelY + 48);
-    lastLabelY = labelY;
-    htmlParts.push(`<div class="marker-label" style="left:${X_MAIN + SPINE_W + 12}px; top:${labelY}px;">
-      <span class="mono" style="color:var(--muted)">${fmtT(T(m.at))}</span> · ${m.label}</div>`);
-  }
-}
+       - Uniform node shape/size: every node is the same NODE_W-wide rounded
+         rectangle (height grows only to fit wrapped text); kind is signalled by
+         fill/border colour + labels (see paintNode/rectPath). Main thread gets a
+         heavier border.
+       - Within a session, nodes keep chronological ORDER but spacing is
+         RANK-based, not time-proportional: a chronological pre-order DFS gives
+         every node a sequential rank; position = rank, so children sit directly
+         next to their parent and there are no time gaps to compress (the idle
+         strips and the global ruler are gone). Durations still live in labels.
+       - Each SESSION (a root + its whole subtree) lays out as one atomic block —
+         vertical: depth→columns, rank→rows; horizontal: rank→columns,
+         depth→rows (the transpose).
+       - Sessions are then BIN-PACKED (skyline, bottom-left, chronological order)
+         into a roughly square board that hugs the top-left and wraps — instead
+         of spreading down one global time axis. Each session band carries a
+         local time reference (start time + duration) in its label.
 
-document.getElementById('board').innerHTML =
-  `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}" role="img"
-    aria-label="Timeline of agents and handoffs">${svgParts.join('')}</svg>${htmlParts.join('')}`;
-document.getElementById('board').style.width = BOARD_W + 'px';
+     Invariants preserved: sessions atomic & non-intersecting (skyline places
+     gapped, non-overlapping rectangles and every node lives inside its own
+     session box), 0 node overlaps, content-driven height so no truncation,
+     de-collided band labels, correct parent/dispatch/return/respawn edges. */
 
-/* ------------------------------------------------------- header/stats --- */
+  const isH = ORIENTATION === 'horizontal';
+  const NODE_W    = 210;   // uniform node width (both orientations)
+  const NODE_MIN_H = 54;   // floor; grown to fit wrapped text post-paint
+  const DEPTH_GAP = 26;    // gap along the depth axis (x vert / y horiz)
+  const RANK_GAP  = 12;    // gap along the rank axis (y vert / x horiz)
+  const BAND_PAD  = 12;    // padding inside a session band
+  const BAND_LABEL_H = 22; // reserved strip at the band top for its label
+  const SESS_GAP  = 30;    // gap between packed session blocks
+  const DAY_H     = 34;    // height of a full-width day-divider strip
+  let dayMarkers = [];     // [{y,label}] full-width date dividers along the flow
 
-document.getElementById('eyebrow').textContent = DATA.eyebrow || '';
-document.getElementById('title').textContent = DATA.title || (DATA.session && DATA.session.id) || 'Agent graph';
-document.getElementById('subtitle').innerHTML = DATA.subtitle || '';
-document.getElementById('footer').innerHTML = DATA.footer
-  || 'Hover or click any node to light up its connections. Solid connectors are dispatches (parent → agent, at the moment of spawn); dotted connectors are results handed back on completion. Hatched blocks were killed mid-flight; dashed ⟳ links show which later agent picked their brief back up.';
+  const childrenMap = {};
+  AGENTS.forEach((a) => { if (a.parent) (childrenMap[a.parent] ||= []).push(a.id); });
 
-const sum = (k) => AGENTS.reduce((n, a) => n + (a.counts[k] || 0), 0);
-const activeRuntime = workers.reduce((n, a) => n + (a.t1 - a.t0), 0);
-const baseStats = [
-  [String(AGENTS.length), 'agents'],
-  [sum('edits'), 'file edits'],
-  [sum('bash'), 'shell runs'],
-  [fmtDur(root.t1 - root.t0), 'wall clock'],
-  [fmtDur(activeRuntime), 'worker runtime'],
-];
-const extraStats = Array.isArray(DATA.extraStats) ? DATA.extraStats : [];
-/* accept either [value, label] pairs or {value/v, label/k/key} objects */
-const statPair = (s) => Array.isArray(s) ? s : [s.value ?? s.v ?? '', s.label ?? s.k ?? s.key ?? ''];
-document.getElementById('stats').innerHTML = [...baseStats, ...extraStats].map(statPair)
-  .map(([v, k]) => `<div class="tile"><div class="v mono">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join('');
-
-const mini = (work) => `<svg width="26" height="16" viewBox="0 0 26 16">
-  <path d="${shapePath(work, 1.5, 1.5, 23, 13)}" fill="none" stroke="var(--ink-2)" stroke-width="1.4"/></svg>`;
-const usedWorks = [...new Set(AGENTS.map((a) => a.work))].filter((w) => WORK_LABEL[w]);
-const hasFate = AGENTS.some((a) => a.status !== 'ok' || a.respawnOf);
-document.getElementById('legend').innerHTML = `
-  <div class="grp"><span class="grp-label">Agent type — colour</span>
-    ${typeOrder.map((t) => `<span class="item"><span class="swatch" style="background:${cvar(t)}"></span>${esc(t)}</span>`).join('')}
-  </div>
-  <div class="grp"><span class="grp-label">Work type — shape</span>
-    ${usedWorks.map((w) => `<span class="item">${mini(w)}${esc(workLabel(w))}</span>`).join('')}
-  </div>
-  ${hasFate ? `<div class="grp"><span class="grp-label">Fate</span>
-    <span class="item"><svg width="26" height="16"><rect x="1.5" y="1.5" width="23" height="13" rx="4" fill="url(#hatch)" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1.3"/></svg>killed mid-flight</span>
-    <span class="item"><svg width="30" height="16"><path d="M2,8 H24" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 4"/><path d="M22,4.5 L27,8 L22,11.5 Z" fill="var(--muted)"/></svg>⟳ respawned as</span>
-  </div>` : ''}`;
-
-/* ---------------------------------------------------------- interaction --- */
-
-const drawer = document.getElementById('drawer');
-const drawerBody = document.getElementById('drawerBody');
-const STATUS_TEXT = {
-  ok: null,
-  cutoff: 'Killed by the usage-limit window.',
-  dropped: 'API connection closed mid-response.',
-  fault: 'Harness fault — tool calls never executed.',
-};
-
-function openDrawer(id) {
-  const a = byId[id];
-  if (!a) return;
-  const c = a.counts;
-  const parent = a.parent ? byId[a.parent] : null;
-  drawerBody.innerHTML = `
-    <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
-    <h2>${esc(a.title)}</h2>
-    <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}</div>
-    ${a.depth > 2 ? `<p class="status-note">Nested at depth ${a.depth} — shown in its nearest coordinator's worker column.</p>` : ''}
-    ${a.parentGuessed ? `<p class="status-note">Parent inferred — the recorded spawn parent could not be resolved.</p>` : ''}
-    ${STATUS_TEXT[a.status] ? `<p class="status-note"><b>${esc(STATUS_BADGE[a.status] || a.status)}</b> — ${STATUS_TEXT[a.status]}</p>` : ''}
-    <h3>Brief</h3><p>${esc(a.brief)}</p>
-    <h3>Outcome</h3><p>${esc(a.outcome)}</p>
-    <h3>Skills loaded</h3>
-    <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
-    <h3>Tool calls</h3>
-    <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>`;
-  drawer.classList.add('open');
-}
-function openMarkerDrawer(idx) {
-  const m = MARKERS[idx];
-  if (!m) return;
-  drawerBody.innerHTML = `
-    <div class="typechip" style="--dc:var(--ink-2)">marker</div>
-    <h2>${esc(m.label)}</h2>
-    <div class="when mono">${fmtT(T(m.at))}</div>`;
-  drawer.classList.add('open');
-}
-document.getElementById('drawerClose').addEventListener('click', () => drawer.classList.remove('open'));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') drawer.classList.remove('open'); });
-
-const board = document.getElementById('board');
-
-/* click-to-isolate: dim everything except the selected node's directed chain —
-   walk UP through its parents to root, and DOWN through its own descendants
-   only. Never flow back down into a parent's other children: if a coordinator
-   spawns 4 subagents and one is selected, its 3 uninvolved siblings stay
-   dimmed. Respawn partners (a real handoff relationship) stay linked. */
-const allEdges = [...document.querySelectorAll('.edge')];
-const allShapes = [...document.querySelectorAll('.shape[data-id]')];
-const allNodeEls = [...document.querySelectorAll('.node[data-id]')];
-const childrenOf = {};
-AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
-function directedChain(id) {
-  const seen = new Set([id]);
-  let cur = byId[id];
-  while (cur && cur.parent && !seen.has(cur.parent)) { seen.add(cur.parent); cur = byId[cur.parent]; }
-  const stack = [id];
-  while (stack.length) {
-    const top = stack.pop();
-    for (const cid of (childrenOf[top] || [])) {
-      if (!seen.has(cid)) { seen.add(cid); stack.push(cid); }
-    }
-  }
-  const sel = byId[id];
-  if (sel && sel.respawnOf) seen.add(sel.respawnOf);
-  AGENTS.forEach((a) => { if (a.respawnOf === id) seen.add(a.id); });
-  return seen;
-}
-let isolated = null, hovered = null;
-function focus(id) {
-  const set = id ? directedChain(id) : null;
-  allShapes.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
-  allNodeEls.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
-  allEdges.forEach((p) => {
-    const inSet = !!set && set.has(p.dataset.from) && set.has(p.dataset.to);
-    p.classList.toggle('dim', !!set && !inSet);
-    p.classList.toggle('hot', inSet);
+  /* one entry per session (root + subtree), nodes in chronological pre-order so
+     rank == index and a parent is immediately followed by its first child. */
+  const sessions = ROOTS.slice().sort((p, q) => p.t0 - q.t0).map((r, i) => {
+    const nodes = [];
+    (function visit(id) {
+      const a = byId[id];
+      if (!a) return;
+      a._rank = nodes.length;
+      nodes.push(a);
+      const kids = (childrenMap[id] || []).slice().sort((x, y) => byId[x].t0 - byId[y].t0);
+      for (const k of kids) visit(k);
+    })(r.id);
+    return { root: r, idx: i + 1, nodes };
   });
+
+  /* ---- per-session LOCAL TIME AXIS ----
+     Within a session the FLOW axis (y in vertical, x in horizontal) is a real time
+     axis: a node's flow OFFSET = (t0 − sessionStart) and its flow EXTENT = runtime,
+     both × a per-session scale — "as long/tall as it took to run". DEPTH maps to the
+     CROSS axis; nodes at the same depth that OVERLAP IN TIME are pushed into parallel
+     sub-lanes so concurrency is visible side-by-side. Every cross-neighbour (lane↔lane
+     and depth↔depth) is separated by the SAME CROSS_GAP, so the strip just before any
+     node on the cross axis is always an empty gutter — that is where the elbow edges
+     route (0 node interiors crossed).
+
+     SCALE: per-session px/min = clamp(TARGET_FLOW / sessionSpanMinutes, MIN, MAX).
+     Normalising each session's whole span toward ~TARGET_FLOW keeps the board compact
+     and stops one marathon session from dominating, while WITHIN a session offset and
+     extent stay strictly proportional to time. Extents are floored (labels stay
+     legible: vertical grows to fit wrapped text; horizontal is never narrower than
+     NODE_W) and capped at MAX_EXT so one very long node can't blow up a band. */
+  const CROSS_GAP   = DEPTH_GAP;          // uniform separation between every cross-neighbour
+  const FLOW_OFF    = BAND_PAD + BAND_LABEL_H;
+  const TARGET_FLOW = 560;                // aim each session's span ≈ this many px
+  const MIN_PXPM = 0.25, MAX_PXPM = 10;   // per-session scale clamp (px per minute)
+  const FLOW_MIN_V = 46;                  // min node height (vertical); grows to fit text
+  const MAX_EXT = 900;                    // cap a single node's time extent
+  const LANE_FLOW_GAP = 8;                // min flow-gap between two same-lane nodes
+
+  /* content height (a._contentH) is measured post-paint and fed back into the
+     flow/cross extent so wrapped text never truncates; starts at the floor. */
+  for (const a of AGENTS) { a.w = NODE_W; a.h = NODE_MIN_H; a._contentH = NODE_MIN_H; }
+
+  const nodePad = (a) => a.parent == null ? 8 : (a.work === 'orchestration' ? 8 : 4);
+  const durMin = (a) => Math.max(0, a.t1 - a.t0) / 60000;
+
+  function layoutInternal() {
+    for (const s of sessions) {
+      const nodes = s.nodes;
+      const sStart = Math.min(...nodes.map((a) => a.t0));
+      const sEnd = Math.max(...nodes.map((a) => a.t1));
+      const spanMin = Math.max(1, (sEnd - sStart) / 60000);
+      const scale = Math.min(MAX_PXPM, Math.max(MIN_PXPM, TARGET_FLOW / spanMin));
+      s.scale = scale; s.sStart = sStart; s.sEnd = sEnd;
+
+      /* flow offset (∝ start) + flow extent (∝ runtime) + cross extent per node */
+      for (const a of nodes) {
+        a._flow = FLOW_OFF + ((a.t0 - sStart) / 60000) * scale;
+        const durExt = Math.min(MAX_EXT, durMin(a) * scale);
+        if (!isH) { a._cext = NODE_W; a._fext = Math.max(FLOW_MIN_V, durExt, a._contentH); }
+        else      { a._fext = Math.max(NODE_W, durExt); a._cext = Math.max(NODE_MIN_H, a._contentH); }
+      }
+
+      /* per-depth sub-lane packing by FLOW overlap (first-fit): a node joins the
+         lowest-index lane that is free at its start time, else opens a new lane —
+         so time-overlapping same-depth nodes land in different lanes (visible
+         concurrency) and never overlap. */
+      const maxDepth = Math.max(0, ...nodes.map((a) => a.depth || 0));
+      const byDepth = [];
+      for (const a of nodes) (byDepth[a.depth || 0] ||= []).push(a);
+      const crossBase = [BAND_PAD];
+      const CELL = NODE_W + CROSS_GAP;   // uniform cross cell (predicted lane spacing)
+      for (let d = 0; d <= maxDepth; d++) {
+        const list = (byDepth[d] || []).slice().sort((x, y) => x._flow - y._flow);
+        const laneEnd = [], laneCext = [];
+        for (const a of list) {
+          /* among lanes free at this node's start time, pick the one whose cross
+             position is NEAREST the parent's — clusters children around their
+             parent so the dispatch elbow's cross-hop stays short and mostly clears
+             sibling nodes; opens a new lane only when none are free. */
+          const pCross = (a.parent != null && byId[a.parent]) ? byId[a.parent]._cross : null;
+          let lane = -1, bestScore = Infinity;
+          for (let i = 0; i < laneEnd.length; i++) {
+            if (laneEnd[i] + LANE_FLOW_GAP > a._flow) continue;
+            const laneCrossPred = crossBase[d] + i * CELL;
+            const score = pCross == null ? i : Math.abs(laneCrossPred - pCross);
+            if (score < bestScore) { bestScore = score; lane = i; }
+          }
+          if (lane === -1) { lane = laneEnd.length; laneEnd.push(0); laneCext.push(0); }
+          laneEnd[lane] = a._flow + a._fext;
+          laneCext[lane] = Math.max(laneCext[lane], a._cext);
+          a._lane = lane;
+        }
+        const laneCross = [];
+        let run = crossBase[d];
+        for (let i = 0; i < laneEnd.length; i++) {
+          laneCross[i] = run;
+          run += (isH ? laneCext[i] : NODE_W) + CROSS_GAP;
+        }
+        crossBase[d + 1] = run;
+        for (const a of list) a._cross = laneCross[a._lane];
+      }
+
+      s.flowMax = Math.max(...nodes.map((a) => a._flow + a._fext)) + BAND_PAD;
+      s.crossMax = Math.max(...nodes.map((a) => a._cross + a._cext)) + BAND_PAD;
+      if (!isH) { s.gw = s.crossMax; s.gh = s.flowMax; }
+      else      { s.gw = s.flowMax; s.gh = s.crossMax; }
+    }
+  }
+
+  /* skyline bin-pack the session blocks (each padded by SESS_GAP) into a
+     roughly square board, hugging the top-left and wrapping. Bottom-left
+     heuristic → dense; chronological processing order keeps sessions roughly
+     time-ordered left→right / top→bottom. Guarantees non-overlapping,
+     gap-separated session boxes. */
+  /* CHRONOLOGICAL shelf packing. The global time scale IS the reading order: session
+     blocks flow strictly in start-time order top-left → right, wrapping to the next
+     shelf-row when they exceed the board width — no session is ever placed out of
+     chronological order (unlike a bottom-left skyline, which could tuck a later small
+     block into an earlier gap). Where the flow crosses into a new calendar day it
+     forces a row break and records a full-width day-divider (dayMarkers), giving an
+     approximate global time scale without a separate timeline widget; per-session
+     start-time + duration labels carry the finer (hour) resolution. Still compact and
+     pack-driven; sessions stay atomic and gap-separated (SESS_GAP), so no two boxes
+     intersect. */
+  function packSessions() {
+    dayMarkers = [];
+    if (!sessions.length) { BOARD_W = BOARD_H = 40; return; }
+    const totalArea = sessions.reduce((n, s) => n + (s.gw + SESS_GAP) * (s.gh + SESS_GAP), 0);
+    const maxW = Math.max(...sessions.map((s) => s.gw + SESS_GAP));
+    const W = Math.max(maxW, Math.round(Math.sqrt(totalArea) * 1.5));
+    const dayKey = (t) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+    const dayLabel = (t) => new Date(t).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    let cx = 0, rowY = 0, rowH = 0, prevDay = null;
+    for (const s of sessions) {
+      const dk = dayKey(s.root.t0);
+      if (dk !== prevDay) {
+        if (cx > 0) rowY += rowH + SESS_GAP;          // close the current partial row
+        else if (rowY > 0) rowY += SESS_GAP;
+        dayMarkers.push({ y: rowY, label: dayLabel(s.root.t0) });
+        rowY += DAY_H;
+        cx = 0; rowH = 0; prevDay = dk;
+      } else if (cx > 0 && cx + s.gw + SESS_GAP > W) { // wrap within the same day
+        rowY += rowH + SESS_GAP; cx = 0; rowH = 0;
+      }
+      s.ox = cx; s.oy = rowY;
+      cx += s.gw + SESS_GAP;
+      rowH = Math.max(rowH, s.gh);
+    }
+    BOARD_W = Math.max(W, Math.max(...sessions.map((s) => s.ox + s.gw))) + 20;
+    BOARD_H = rowY + rowH + 20;
+  }
+
+  function applyAbs() {
+    for (const s of sessions) for (const a of s.nodes) {
+      if (!isH) { a.x0 = s.ox + a._cross; a.w = NODE_W;   a.y0 = s.oy + a._flow;  a.h = a._fext; }
+      else      { a.x0 = s.ox + a._flow;  a.w = a._fext;  a.y0 = s.oy + a._cross; a.h = a._cext; }
+    }
+  }
+
+  const DEFS = svgParts.join('');   // the <defs> block pushed above, reused each paint
+
+  function paint() {
+    svgParts.length = 0; svgParts.push(DEFS);
+    htmlParts.length = 0;
+
+    /* full-width day dividers along the reading flow (the global time scale) */
+    for (const dm of dayMarkers) {
+      svgParts.push(`<rect x="0" y="${dm.y}" width="${BOARD_W}" height="${DAY_H}" fill="var(--band)"/>
+        <line x1="0" y1="${dm.y + DAY_H - 1}" x2="${BOARD_W}" y2="${dm.y + DAY_H - 1}" stroke="var(--grid)" stroke-width="1.5"/>`);
+      htmlParts.push(`<div style="position:absolute; left:10px; top:${dm.y + 7}px; font-size:13px; font-weight:750; letter-spacing:0.04em; color:var(--ink-2); pointer-events:none;">${esc(dm.label)}</div>`);
+    }
+
+    /* session bands + local-time label (start time + total duration) */
+    for (const s of sessions) {
+      svgParts.push(`<rect x="${s.ox}" y="${s.oy}" width="${s.gw}" height="${s.gh}" rx="14"
+        fill="var(--band)" stroke="var(--grid)" stroke-dasharray="3 4"/>`);
+      /* faint hourly ticks across long session bands (the local time axis made
+         visible); skipped when an hour is too few px to be legible */
+      const pxPerHour = s.scale * 60;
+      if (pxPerHour >= 34) {
+        const HR = 3600000;
+        let ticks = 0;
+        for (let t = Math.ceil(s.sStart / HR) * HR; t <= s.sEnd && ticks < 24; t += HR, ticks++) {
+          const f = FLOW_OFF + ((t - s.sStart) / 60000) * s.scale;
+          if (!isH) svgParts.push(`<line x1="${s.ox + 6}" y1="${s.oy + f}" x2="${s.ox + s.gw - 6}" y2="${s.oy + f}" stroke="var(--grid)" stroke-width="1" opacity="0.4"/>`);
+          else svgParts.push(`<line x1="${s.ox + f}" y1="${s.oy + 6}" x2="${s.ox + f}" y2="${s.oy + s.gh - 6}" stroke="var(--grid)" stroke-width="1" opacity="0.4"/>`);
+        }
+      }
+      const r = s.root;
+      const title = String(r.title || 'session').replace(/^Coordinator:\s*/i, '');
+      const label = `${s.idx} · ${title}`;
+      const tref = `${fmtT(r.t0)} · ${fmtDur(r.t1 - r.t0)}`;
+      const lw = Math.max(60, s.gw - 20);
+      htmlParts.push(`<div class="band-label" style="left:${s.ox + 10}px; top:${s.oy + 5}px; max-width:${lw}px; overflow:hidden; text-overflow:ellipsis;" title="${esc(label + ' · ' + tref)}">${esc(label)} · <span class="mono">${esc(tref)}</span></div>`);
+    }
+
+    /* edges: dispatch (solid, arrow at child) + return (dotted, dot at child) +
+       respawn (dashed muted). Rendered as orthogonal ELBOW polylines (right-angle
+       segments with a small corner radius) rather than straight diagonals. In the
+       rank-outline a child is always one depth deeper AND later in rank than its
+       parent, so a facing-edge elbow is a clean L/Z: vertical layout uses a V–H–V
+       elbow off the parent's BOTTOM into the child's TOP with the horizontal turn
+       in the row-gap just below the parent (keeps it out of node interiors);
+       horizontal layout uses the H–V–H transpose off the parent's RIGHT into the
+       child's LEFT with the turn in the column-gap just right of the parent. */
+    const edges = [];
+    const CR = 7;   // elbow corner radius
+    const GUT = DEPTH_GAP / 2;   // half the empty gutter between adjacent depth bands
+    for (const a of AGENTS) {
+      if (!a.parent) continue;
+      const p = byId[a.parent];
+      if (!p) continue;
+      const acx = a.x0 + a.w / 2, acy = a.y0 + a.h / 2;
+      const pcx = p.x0 + p.w / 2, pcy = p.y0 + p.h / 2;
+      /* A child is always exactly one depth-band deeper than its parent, so the
+         strip between the parent's depth band and the child's is EMPTY of nodes.
+         Route the elbow's long segment through that gutter (just before the child)
+         so it never crosses a node interior:
+           vertical layout  → parent RIGHT edge ⇢ child LEFT edge, vertical run in
+             the x-gutter just left of the child (H–V–H, via elbowH);
+           horizontal layout → parent BOTTOM edge ⇢ child TOP edge, horizontal run
+             in the y-gutter just above the child (V–H–V, via elbowV). */
+      if (!isH) {
+        const xk = a.x0 - GUT;
+        edges.push({ from: a.parent, to: a.id, d: elbowH(p.x0 + p.w, pcy, a.x0, acy, xk, CR),
+          stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
+        if (a.status === 'ok')
+          edges.push({ from: a.id, to: a.parent, d: elbowH(a.x0, acy + 7, p.x0 + p.w, pcy + 7, xk + 5, CR),
+            stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
+      } else {
+        const yk = a.y0 - GUT;
+        edges.push({ from: a.parent, to: a.id, d: elbowV(pcx, p.y0 + p.h, acx, a.y0, yk, CR),
+          stroke: cvar(a.type), marker: `arr-${slug(a.type)}`, dash: '', op: 0.85, w: 2 });
+        if (a.status === 'ok')
+          edges.push({ from: a.id, to: a.parent, d: elbowV(acx + 7, a.y0, pcx + 7, p.y0 + p.h, yk + 5, CR),
+            stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
+      }
+      if (a.respawnOf && byId[a.respawnOf]) {
+        const dead = byId[a.respawnOf];
+        const dcx = dead.x0 + dead.w / 2, dcy = dead.y0 + dead.h / 2;
+        const d = isH
+          ? elbowH(dead.x0 + dead.w, dcy, a.x0, acy, (dead.x0 + dead.w + a.x0) / 2, CR)
+          : elbowV(dcx, dead.y0 + dead.h, acx, a.y0, (dead.y0 + dead.h + a.y0) / 2, CR);
+        edges.push({ from: dead.id, to: a.id, d,
+          stroke: 'var(--muted)', marker: 'arr-muted', dash: '4 4', op: 0.7, w: 1.4, respawn: true });
+      }
+    }
+    pushEdges(edges, [8, -6]);
+
+    /* every agent (root included) is a node; flow-axis extent ∝ runtime */
+    for (const a of AGENTS) {
+      const pad = nodePad(a);
+      const tight = a.h < 70;
+      paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight, a.skills.length > 0);
+    }
+
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}"
+      role="img" aria-label="Agent graph">${svgParts.join('')}</svg>${htmlParts.join('')}`;
+    boardEl.style.width = BOARD_W + 'px';
+    boardEl.style.height = BOARD_H + 'px';
+  }
+
+  function relayoutAll() { layoutInternal(); packSessions(); applyAbs(); paint(); }
+  relayoutAll();
+
+  document.getElementById('board').style.width = BOARD_W + 'px';
+
+  /* ------------------------------------------- content-driven height growth --- */
+  /* Measure each node's true wrapped content height (at its current width) and feed
+     it back into a._contentH, which layoutInternal folds into the flow extent
+     (vertical height) / cross extent (horizontal height) so wrapped text never
+     truncates. Grow-only; re-run the whole layout + pack + paint so a grown node
+     never overlaps and session boxes stay atomic. Iterate to a fixed point. */
+  function growHeights() {
+    const board = document.getElementById('board');
+    let grew = false;
+    for (const el of board.querySelectorAll('.node[data-id]')) {
+      const a = byId[el.dataset.id];
+      if (!a) continue;
+      const pad = nodePad(a);
+      const need = el.scrollHeight + pad * 2;
+      if (need > a._contentH + 0.5) { a._contentH = need; grew = true; }
+    }
+    return grew;
+  }
+  requestAnimationFrame(() => {
+    let iter = 0;
+    while (growHeights() && iter++ < 5) relayoutAll();
+  });
+  
+  /* ------------------------------------------------------- header/stats --- */
+  
+  document.getElementById('eyebrow').textContent = DATA.eyebrow || '';
+  document.getElementById('title').textContent = DATA.title || (DATA.session && DATA.session.id) || 'Agent graph';
+  document.getElementById('subtitle').innerHTML = DATA.subtitle || '';
+  document.getElementById('footer').innerHTML = DATA.footer
+    || 'Hover or click any node to light up its connections. Solid connectors are dispatches (parent → agent, at the moment of spawn); dotted connectors are results handed back on completion. Hatched blocks were killed mid-flight; dashed ⟳ links show which later agent picked their brief back up.';
+  
+  const sum = (k) => AGENTS.reduce((n, a) => n + (a.counts[k] || 0), 0);
+  const sumStat = (grp, k) => AGENTS.reduce((n, a) => n + (a[grp][k] || 0), 0);
+  const activeRuntime = workers.reduce((n, a) => n + (a.t1 - a.t0), 0);
+  const totalTokens = sumStat('tokens', 'in') + sumStat('tokens', 'out')
+    + sumStat('tokens', 'cacheRead') + sumStat('tokens', 'cacheCreate');
+  const baseStats = [
+    [String(AGENTS.length), 'agents'],
+    [sum('edits'), 'file edits'],
+    [sum('bash'), 'shell runs'],
+    [`+${sumStat('diff', 'added')} −${sumStat('diff', 'removed')}`, 'lines changed'],
+    [fmtTokens(totalTokens), 'tokens'],
+    /* wall clock spans EVERY session's main thread, not just the primary
+       root's — an aggregated graph has one root per session */
+    [fmtDur(Math.max(...ROOTS.map((r) => r.t1)) - Math.min(...ROOTS.map((r) => r.t0))), 'wall clock'],
+    [fmtDur(activeRuntime), 'worker runtime'],
+  ];
+  const extraStats = Array.isArray(DATA.extraStats) ? DATA.extraStats : [];
+  /* accept either [value, label] pairs or {value/v, label/k/key} objects */
+  const statPair = (s) => Array.isArray(s) ? s : [s.value ?? s.v ?? '', s.label ?? s.k ?? s.key ?? ''];
+  document.getElementById('stats').innerHTML = [...baseStats, ...extraStats].map(statPair)
+    .map(([v, k]) => `<div class="tile"><div class="v mono">${esc(v)}</div><div class="k">${esc(k)}</div></div>`).join('');
+  
+  /* nodes are now a uniform rectangle (shape no longer encodes work type), so the
+     "Work type — shape" legend group is dropped; work type still shows in the drawer. */
+  const hasFate = AGENTS.some((a) => a.status !== 'ok' || a.respawnOf);
+  document.getElementById('legend').innerHTML = `
+    <div class="grp"><span class="grp-label">Agent type — colour</span>
+      ${typeOrder.map((t) => `<span class="item"><span class="swatch" style="background:${cvar(t)}"></span>${esc(t)}</span>`).join('')}
+    </div>
+    ${hasFate ? `<div class="grp"><span class="grp-label">Fate</span>
+      <span class="item"><svg width="26" height="16"><rect x="1.5" y="1.5" width="23" height="13" rx="4" fill="url(#hatch)" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1.3"/></svg>killed mid-flight</span>
+      <span class="item"><svg width="30" height="16"><path d="M2,8 H24" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 4"/><path d="M22,4.5 L27,8 L22,11.5 Z" fill="var(--muted)"/></svg>⟳ respawned as</span>
+    </div>` : ''}`;
+  
+  /* ---------------------------------------------------------- interaction --- */
+  
+  const drawer = document.getElementById('drawer');
+  const drawerBody = document.getElementById('drawerBody');
+  const STATUS_TEXT = {
+    ok: null,
+    cutoff: 'Killed by the usage-limit window.',
+    dropped: 'API connection closed mid-response.',
+    fault: 'Harness fault — tool calls never executed.',
+  };
+  
+  function openDrawer(id) {
+    const a = byId[id];
+    if (!a) return;
+    const c = a.counts;
+    const parent = a.parent ? byId[a.parent] : null;
+    const sub = a.parent == null ? subtreeTotals(a.id) : null;
+    drawerBody.innerHTML = `
+      <div class="typechip" style="--dc:${cvar(a.type)}">${esc(a.type)} · ${esc(workLabel(a.work))}</div>
+      <h2>${esc(a.title)}</h2>
+      <div class="when mono">${fmtT(a.t0)} → ${fmtT(a.t1)} · ${fmtDur(a.t1 - a.t0)}${parent ? ` · dispatched by ${esc(parent.title || 'main thread')}` : ''}${a.model ? ` · ${esc(a.model)}` : ''}</div>
+      ${a.depth > 2 ? `<p class="status-note">Nested at depth ${a.depth} — shown in its nearest coordinator's worker column.</p>` : ''}
+      ${a.parentGuessed ? `<p class="status-note">Parent inferred — the recorded spawn parent could not be resolved.</p>` : ''}
+      ${STATUS_TEXT[a.status] ? `<p class="status-note"><b>${esc(STATUS_BADGE[a.status] || a.status)}</b> — ${STATUS_TEXT[a.status]}</p>` : ''}
+      <h3>Brief</h3><p>${esc(a.brief)}</p>
+      <h3>Outcome</h3><p>${esc(a.outcome)}</p>
+      <h3>Skills loaded</h3>
+      <p>${a.skills.length ? a.skills.map(esc).join(', ') : 'none recorded in the transcript'}</p>
+      <h3>Tool calls</h3>
+      <div class="counts"><span>${c.edits} edits</span><span>${c.bash} bash</span><span>${c.reads} reads</span>${c.spawns ? `<span>${c.spawns} agents spawned</span>` : ''}</div>
+      ${eventsHtml(a)}
+      <h3>Code changes</h3>
+      ${diffLine(a.diff)}
+      <h3>Tokens</h3>
+      ${tokensLine(a.tokens)}
+      ${a.parent == null ? `<h3>Session totals</h3>
+        <div class="counts"><span>+${sub.diff.added} −${sub.diff.removed} lines · ${sub.diff.files} files</span></div>
+        ${tokensLine(sub.tokens)}` : ''}`;
+    drawer.classList.add('open');
+  }
+
+  /* drawer stat renderers */
+  function diffLine(d) {
+    if (!d.added && !d.removed && !d.files) {
+      return '<div class="counts"><span>no file changes</span></div>';
+    }
+    return `<div class="counts"><span>+${d.added} −${d.removed} lines across ${d.files} files</span></div>`;
+  }
+  function tokensLine(tk) {
+    const total = tk.in + tk.out + tk.cacheRead + tk.cacheCreate;
+    return `<div class="counts"><span>${fmtTokens(tk.in)} input</span><span>${fmtTokens(tk.out)} output</span>`
+      + `<span>${fmtTokens(tk.cacheRead)} cache read</span><span>${fmtTokens(tk.cacheCreate)} cache create</span>`
+      + `<span>${fmtTokens(total)} total</span></div>`;
+  }
+  /* chronological timeline of the agent's OWN tool calls (not its children's) */
+  function eventsHtml(a) {
+    const evs = a.events;
+    if (!evs || !evs.length) return '';
+    const rows = evs.map((ev) => {
+      const cat = evCat(ev.tool);
+      const tgt = ev.target
+        ? (ev.spawned
+            ? `<span class="ev-target ev-spawn" data-goto="${esc(ev.spawned)}" title="open ${esc(ev.spawned)}">${esc(ev.target)}</span>`
+            : `<span class="ev-target">${esc(ev.target)}</span>`)
+        : '<span class="ev-target"></span>';
+      let ln = '';
+      if (ev.lines != null) {
+        ln = ev.tool === 'Read'
+          ? `<span class="ev-lines">${ev.lines} lines</span>`
+          : `<span class="ev-lines">+${ev.lines}</span>`;
+      }
+      return `<div class="ev-row"><span class="ev-dot cat-${cat}"></span>`
+        + `<span class="ev-time">${fmtT(T(ev.t))}</span>`
+        + `<span class="ev-tool">${esc(ev.tool)}</span>`
+        + tgt + ln + '</div>';
+    }).join('');
+    return `<div class="ev-timeline">${rows}</div>`;
+  }
+
+  /* element-wise diff+token sum over a root's entire subtree (main + descendants) */
+  function subtreeTotals(rootId) {
+    const kids = {};
+    for (const a of AGENTS) (kids[a.parent] = kids[a.parent] || []).push(a.id);
+    const diff = { added: 0, removed: 0, files: 0 };
+    const tokens = { in: 0, out: 0, cacheRead: 0, cacheCreate: 0 };
+    const stack = [rootId];
+    const seen = new Set();
+    while (stack.length) {
+      const id = stack.pop();
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const a = byId[id];
+      if (!a) continue;
+      for (const k in diff) diff[k] += a.diff[k];
+      for (const k in tokens) tokens[k] += a.tokens[k];
+      for (const cid of (kids[id] || [])) stack.push(cid);
+    }
+    return { diff, tokens };
+  }
+  function openMarkerDrawer(idx) {
+    const m = MARKERS[idx];
+    if (!m) return;
+    drawerBody.innerHTML = `
+      <div class="typechip" style="--dc:var(--ink-2)">marker</div>
+      <h2>${esc(m.label)}</h2>
+      <div class="when mono">${fmtT(T(m.at))}</div>`;
+    drawer.classList.add('open');
+  }
+  document.getElementById('drawerClose').addEventListener('click', () => drawer.classList.remove('open'));
+  drawerBody.addEventListener('click', (e) => {
+    const spawn = e.target.closest('.ev-spawn');
+    if (spawn) {
+      const id = spawn.dataset.goto;
+      if (byId[id]) { openDrawer(id); isolate(id); }
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') drawer.classList.remove('open'); });
+  
+  const board = document.getElementById('board');
+  
+  /* click-to-isolate: dim everything except the selected node's directed chain —
+     walk UP through its parents to root, and DOWN through its own descendants
+     only. Never flow back down into a parent's other children: if a coordinator
+     spawns 4 subagents and one is selected, its 3 uninvolved siblings stay
+     dimmed. Respawn partners (a real handoff relationship) stay linked. */
+  const allEdges = [...document.querySelectorAll('.edge')];
+  const allShapes = [...document.querySelectorAll('.shape[data-id]')];
+  const allNodeEls = [...document.querySelectorAll('.node[data-id]')];
+  const childrenOf = {};
+  AGENTS.forEach((a) => { if (a.parent) (childrenOf[a.parent] ||= []).push(a.id); });
+  function directedChain(id) {
+    const seen = new Set([id]);
+    let cur = byId[id];
+    while (cur && cur.parent && !seen.has(cur.parent)) { seen.add(cur.parent); cur = byId[cur.parent]; }
+    const stack = [id];
+    while (stack.length) {
+      const top = stack.pop();
+      for (const cid of (childrenOf[top] || [])) {
+        if (!seen.has(cid)) { seen.add(cid); stack.push(cid); }
+      }
+    }
+    const sel = byId[id];
+    if (sel && sel.respawnOf) seen.add(sel.respawnOf);
+    AGENTS.forEach((a) => { if (a.respawnOf === id) seen.add(a.id); });
+    return seen;
+  }
+  let isolated = null, hovered = null;
+  function focus(id) {
+    const set = id ? directedChain(id) : null;
+    allShapes.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
+    allNodeEls.forEach((p) => p.classList.toggle('dim', !!set && !set.has(p.dataset.id)));
+    allEdges.forEach((p) => {
+      const inSet = !!set && set.has(p.dataset.from) && set.has(p.dataset.to);
+      p.classList.toggle('dim', !!set && !inSet);
+      p.classList.toggle('hot', inSet);
+    });
+  }
+  function isolate(id) { isolated = id; focus(id); }
+  /* hovering a node previews its connected component (edges lit) without a click;
+     leaving reverts to whatever is click-isolated (if anything) */
+  board.addEventListener('mouseover', (e) => {
+    const el = e.target.closest('[data-id]');
+    const id = el ? el.dataset.id : null;
+    if (id === hovered) return;
+    hovered = id;
+    focus(id || isolated);
+  });
+  board.addEventListener('mouseleave', () => { hovered = null; focus(isolated); });
+  board.addEventListener('click', (e) => {
+    const markerEl = e.target.closest('[data-marker]');
+    if (markerEl) { openMarkerDrawer(+markerEl.dataset.marker); return; }
+    const el = e.target.closest('[data-id]');
+    if (el) {
+      openDrawer(el.dataset.id);
+      isolate(isolated === el.dataset.id ? null : el.dataset.id);
+    } else {
+      isolate(null);
+    }
+  });
+  board.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.dataset.marker !== undefined) {
+      e.preventDefault();
+      openMarkerDrawer(+e.target.dataset.marker);
+    } else if (e.target.dataset.id) {
+      e.preventDefault();
+      openDrawer(e.target.dataset.id);
+      isolate(isolated === e.target.dataset.id ? null : e.target.dataset.id);
+    }
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') isolate(null); });
+  
 }
-function isolate(id) { isolated = id; focus(id); }
-/* hovering a node previews its connected component (edges lit) without a click;
-   leaving reverts to whatever is click-isolated (if anything) */
-board.addEventListener('mouseover', (e) => {
-  const el = e.target.closest('[data-id]');
-  const id = el ? el.dataset.id : null;
-  if (id === hovered) return;
-  hovered = id;
-  focus(id || isolated);
-});
-board.addEventListener('mouseleave', () => { hovered = null; focus(isolated); });
-board.addEventListener('click', (e) => {
-  const markerEl = e.target.closest('[data-marker]');
-  if (markerEl) { openMarkerDrawer(+markerEl.dataset.marker); return; }
-  const el = e.target.closest('[data-id]');
-  if (el) {
-    openDrawer(el.dataset.id);
-    isolate(isolated === el.dataset.id ? null : el.dataset.id);
-  } else {
-    isolate(null);
+
+// Wait for data to load, then initialize
+let lastSessionCount = 0;
+(async () => {
+  if (DYNAMIC_MODE) {
+    DATA = await loadDynamicSessions();
+    lastSessionCount = (DATA.sessions || []).length;
   }
-});
-board.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  if (e.target.dataset.marker !== undefined) {
-    e.preventDefault();
-    openMarkerDrawer(+e.target.dataset.marker);
-  } else if (e.target.dataset.id) {
-    e.preventDefault();
-    openDrawer(e.target.dataset.id);
-    isolate(isolated === e.target.dataset.id ? null : e.target.dataset.id);
+  await initializeGraph();
+
+  // In dynamic mode, set up periodic refresh to detect new/deleted sessions
+  if (DYNAMIC_MODE && SESSIONS_DIR) {
+    setInterval(async () => {
+      try {
+        const indexResp = await fetch(`${SESSIONS_DIR}/index.json?t=${Date.now()}`);
+        if (!indexResp.ok) return;
+        const index = await indexResp.json();
+        const newSessionCount = index.sessions.length;
+
+        if (newSessionCount !== lastSessionCount) {
+          console.log(`Session count changed: ${lastSessionCount} → ${newSessionCount}, refreshing...`);
+          location.reload();
+        }
+      } catch (e) {
+        console.debug('Refresh check failed:', e);
+      }
+    }, 5000);  // Check every 5 seconds
   }
-});
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') isolate(null); });
+})().catch(e => console.error('Init error:', e));
 </script>

@@ -1,8 +1,18 @@
 {
   "env": {
-    "CLAUDE_CODE_TMUX_TRUECOLOR": "1"
+    "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+  },
+  "permissions": {
+    "deny": [
+      "Workflow",
+      "Artifact",
+      "DesignSync"
+    ]
   },
   "model": "opus[1m]",
+  "disableClaudeAiConnectors": true,
+  "disableBundledSkills": true,
   "hooks": {
     "PreToolUse": [
       {
@@ -41,7 +51,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/docker-skill-nudge.py\""
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/skill-nudge.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-macos-aarch64-none/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/hooks/yas-prompt-hook.py\""
           }
         ]
       }
@@ -80,9 +99,12 @@
       }
     ]
   },
+  "disableRemoteControl": true,
+  "disableWorkflows": true,
+  "disableArtifact": true,
   "statusLine": {
     "type": "command",
-    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/.python/cpython-3.15-macos-aarch64-none/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.3.3/claude/statusline_command.py\"",
+    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.13-macos-aarch64-none/bin/python3.13\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/claude/statusline_command.py\"",
     "padding": 1,
     "refreshInterval": 1
   },
@@ -122,9 +144,10 @@
       }
     }
   },
-  "effortLevel": "medium",
+  "effortLevel": "low",
   "tui": "fullscreen",
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
-  "remoteControlAtStartup": true
+  "remoteControlAtStartup": true,
+  "agentPushNotifEnabled": true
 }
