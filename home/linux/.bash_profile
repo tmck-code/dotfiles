@@ -63,8 +63,8 @@ if [ $TERM == "tmux-256color" ]; then
   [ -n "${DEBUG:-}" ] && echo "{"already in tmux?": true}"
 else
   [ -n "${DEBUG:-}" ] && echo "{"status": "launching tmux", "already in tmux?": false}"
-  # exec tmux -2
-  tmux -2
+  # if tmux is running, attach. otherwise, start new sesion
+  tmux has-session 2>/dev/null && tmux a || tmux -2
 fi
 
 if [ -f "$HOME/.bashrc" ]; then
