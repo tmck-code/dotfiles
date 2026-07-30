@@ -36,12 +36,12 @@ family = "CaskaydiaCove Nerd Font Mono"
 style = "ExtraLight Italic"
 
 [font.normal]
-# family = "Iosevka Nerd Font"
+family = "Iosevka Nerd Font"
 # family = "OperatorMono Nerd Font"
 # family = "Monofur Nerd Font Mono"
 # family = "HeavyData Nerd Font"
 # family = "FantasqueSansM Nerd Font Mono"
-family = "CaskaydiaCove Nerd Font Mono"
+# family = "CaskaydiaCove Nerd Font Mono"
 style = "ExtraLight"
 
 [keyboard]
