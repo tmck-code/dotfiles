@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+'''Apply a truecolor gradient across a string, one colour step per character.
+
+Emits raw ANSI SGR codes by default, or tmux `#[...]` format strings with --tmux
+(tmux does not interpret raw ANSI inside status-line #() output).
+
+    tmux-gradient '#ff0000' '#0000ff' 'hello world'
+    tmux-gradient --tmux --fg '#101010' 8fd75f ff5f5f ' dotfiles '
+'''
+
+from __future__ import annotations
+
+import argparse
+import sys
+from typing import Iterator
+
+RESET = '\033[0m'
+
+RGB = tuple[int, int, int]
+
+
+def parse_colour(s: str) -> RGB:
+    'Parse #rgb / #rrggbb (leading # optional) into an (r, g, b) triple'
+    h = s.lstrip('#')
+    if len(h) == 3:
+        h = ''.join(c * 2 for c in h)
+    if len(h) != 6:
+        raise argparse.ArgumentTypeError(f'not a hex colour: {s!r}')
+    try:
+        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f'not a hex colour: {s!r}') from None
+
+
+def lerp(start: RGB, end: RGB, n: int) -> Iterator[RGB]:
+    'Yield n colours stepping linearly from start to end (inclusive)'
+    if n <= 1:
+        yield start
+        return
+    for i in range(n):
+        t = i / (n - 1)
+        yield (
+            round(start[0] + (end[0] - start[0]) * t),
+            round(start[1] + (end[1] - start[1]) * t),
+            round(start[2] + (end[2] - start[2]) * t),
+        )
+
+
+def ansi(rgb: RGB, layer: str) -> str:
+    'SGR truecolor code for the fg (38) or bg (48) layer'
+    lead = '38' if layer == 'fg' else '48'
+    return f'\033[{lead};2;{rgb[0]};{rgb[1]};{rgb[2]}m'
+
+
+def tmux(rgb: RGB, layer: str) -> str:
+    'tmux format string for the fg or bg layer'
+    return '#[{}=#{:02x}{:02x}{:02x}]'.format(layer, *rgb)
+
+
+def render(text: str, start: RGB, end: RGB, layer: str, style: str, fg: RGB | None) -> str:
+    'Build the coloured string, always terminated by a reset'
+    code  = tmux if style == 'tmux' else ansi
+    reset = '#[default]' if style == 'tmux' else RESET
+    other = 'bg' if layer == 'fg' else 'fg'
+
+    prefix = code(fg, other) if fg else ''
+    parts  = [prefix]
+    parts += [f'{code(rgb, layer)}{ch}' for ch, rgb in zip(text, lerp(start, end, len(text)))]
+    parts.append(reset)
+    return ''.join(parts)
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(
+        prog        = 'tmux-gradient',
+        description = __doc__,
+        formatter_class = argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument('start', type=parse_colour, help='start colour, e.g. #ff0000')
+    p.add_argument('end',   type=parse_colour, help='end colour, e.g. #0000ff')
+    p.add_argument('text',  help='the text to colour')
+    p.add_argument('--layer',  choices=('bg', 'fg'), default='bg',
+                   help='which layer the gradient applies to (default: bg)')
+    p.add_argument('--fg', type=parse_colour, default=None,
+                   help='static colour for the *other* layer, e.g. the text on a bg gradient')
+    p.add_argument('--tmux', dest='style', action='store_const', const='tmux', default='ansi',
+                   help='emit tmux #[...] format strings instead of raw ANSI')
+    p.add_argument('-n', '--no-newline', action='store_true', help='do not print a trailing newline')
+    args = p.parse_args()
+
+    out = render(args.text, args.start, args.end, args.layer, args.style, args.fg)
+    sys.stdout.write(out if args.no_newline else out + '\n')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
