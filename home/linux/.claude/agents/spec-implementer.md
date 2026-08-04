@@ -76,6 +76,31 @@ job).
    `tasks.md` lines so their ticks never race. If two tasks would touch the same
    checklist region, put them in the same subagent or in different waves.
 
+## Brief digests — don't make children re-read what you already read
+
+By the time you fork, you have already read the change artifacts and the target
+modules. **Put that knowledge in the brief instead of making each child rediscover
+it.** Every child brief must inline:
+
+- the **verbatim task text** it owns (copied from `tasks.md`, not a pointer to it),
+- the **relevant excerpts** of `design.md` / the delta specs (decisions, requirements,
+  invariants that constrain its tasks — quoted, not cited),
+- for each file it will touch: the **key symbols and line ranges** involved (e.g.
+  "`applyPreset()` at src/foo.ts:210–260"), so it can read just that region.
+
+Then state explicitly in the brief: **do not re-read `proposal.md` / `design.md` /
+`tasks.md` / the spec deltas — everything you need from them is quoted above.**
+(Ticking checkboxes in `tasks.md` is an Edit, not a Read — that stays.) Children
+read source files only in the ranges the brief points at, widening only when the
+pointed range proves insufficient.
+
+## Read discipline (for you and every child)
+
+For any file over ~300 lines, don't Read from the top: Grep for the symbol you
+need and Read only the enclosing range (offset/limit). Whole-file reads are for
+small files, or one orientation pass per file at most. Pass this rule down in
+every brief.
+
 ## Reporting through files, not return messages
 
 Follow the global report-file-handoff convention (write full report to a

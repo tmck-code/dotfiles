@@ -7,7 +7,14 @@
     "deny": [
       "Workflow",
       "Artifact",
-      "DesignSync"
+      "DesignSync",
+      "AskUserQuestion",
+      "EnterPlanMode",
+      "EnterWorktree",
+      "ExitPlanMode",
+      "ExitWorktree",
+      "EndConversation",
+      "PushNotification"
     ]
   },
   "disableClaudeAiConnectors": true,
