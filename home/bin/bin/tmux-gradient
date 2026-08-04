@@ -1,97 +1,228 @@
-#!/usr/bin/env python3
-'''Apply a truecolor gradient across a string, one colour step per character.
+#!/bin/bash
+# Apply a truecolor gradient across a string, one colour step per character.
+#
+# Emits raw ANSI SGR codes by default, or tmux `#[...]` format strings with --tmux
+# (tmux does not interpret raw ANSI inside status-line #() output).
+#
+#   tmux-gradient '#ff0000' '#0000ff' 'hello world'
+#   tmux-gradient --tmux --fg '#101010' 8fd75f ff5f5f ' dotfiles '
+#
+# Colours accept #rgb, #rrggbb, rgb, rrggbb, or @N (entry N of the tmux-colours
+# palette, N clamped to 0..9).
+#
+# Usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--tmux] [-n|--no-newline] start end text
 
-Emits raw ANSI SGR codes by default, or tmux `#[...]` format strings with --tmux
-(tmux does not interpret raw ANSI inside status-line #() output).
+set -u
 
-    tmux-gradient '#ff0000' '#0000ff' 'hello world'
-    tmux-gradient --tmux --fg '#101010' 8fd75f ff5f5f ' dotfiles '
-'''
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+export LANG="${LANG:-en_US.UTF-8}"
 
-from __future__ import annotations
+RESET=$'\033[0m'
 
-import argparse
-import sys
-from typing import Iterator
+pallete_hex=("ffafaf" "ffd787" "d7ff87" "87ff87" "87ffd7" "87d7ff" "8787ff" "d787ff" "ff87d7" "ff87af")
 
-RESET = '\033[0m'
+usage() {
+  builtin printf 'usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--tmux] [-n|--no-newline] start end text\n'
+}
 
-RGB = tuple[int, int, int]
+# parse_colour COLOUR -> sets globals PC_R PC_G PC_B
+parse_colour() {
+  local s="$1" h idx expanded c1 c2 c3
+  if [ "${s:0:1}" = "@" ]; then
+    idx="${s:1}"
+    if [ "$idx" -gt 9 ] 2>/dev/null; then idx=9; fi
+    if ! [ "$idx" -ge 0 ] 2>/dev/null; then idx=0; fi
+    h="${pallete_hex[$idx]}"
+  else
+    h="$s"
+    if [ "${h:0:1}" = "#" ]; then h="${h:1}"; fi
+  fi
 
+  if [ "${#h}" -eq 3 ]; then
+    c1="${h:0:1}"; c2="${h:1:1}"; c3="${h:2:1}"
+    h="${c1}${c1}${c2}${c2}${c3}${c3}"
+  fi
 
-def parse_colour(s: str) -> RGB:
-    'Parse #rgb / #rrggbb (leading # optional) into an (r, g, b) triple'
-    h = s.lstrip('#')
-    if len(h) == 3:
-        h = ''.join(c * 2 for c in h)
-    if len(h) != 6:
-        raise argparse.ArgumentTypeError(f'not a hex colour: {s!r}')
-    try:
-        return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
-    except ValueError:
-        raise argparse.ArgumentTypeError(f'not a hex colour: {s!r}') from None
+  if [ "${#h}" -ne 6 ]; then
+    builtin printf "not a hex colour: '%s'\n" "$s" >&2
+    exit 1
+  fi
 
+  case "$h" in
+    *[!0-9a-fA-F]*)
+      builtin printf "not a hex colour: '%s'\n" "$s" >&2
+      exit 1
+      ;;
+  esac
 
-def lerp(start: RGB, end: RGB, n: int) -> Iterator[RGB]:
-    'Yield n colours stepping linearly from start to end (inclusive)'
-    if n <= 1:
-        yield start
-        return
-    for i in range(n):
-        t = i / (n - 1)
-        yield (
-            round(start[0] + (end[0] - start[0]) * t),
-            round(start[1] + (end[1] - start[1]) * t),
-            round(start[2] + (end[2] - start[2]) * t),
-        )
+  PC_R=$((16#${h:0:2}))
+  PC_G=$((16#${h:2:2}))
+  PC_B=$((16#${h:4:2}))
+}
 
+# round_half_even NUM DEN -> echoes into RHE_RESULT, rounding num/den to nearest,
+# ties-to-even (matches python's round() on the equivalent float division).
+round_half_even() {
+  local num="$1" den="$2" q r sign_r abs_r double
+  q=$((num / den))
+  r=$((num - q * den))
+  if [ "$r" -eq 0 ]; then
+    RHE_RESULT=$q
+    return
+  fi
+  if [ "$r" -gt 0 ]; then sign_r=1; abs_r=$r; else sign_r=-1; abs_r=$((-r)); fi
+  double=$((abs_r * 2))
+  if [ "$double" -gt "$den" ]; then
+    RHE_RESULT=$((q + sign_r))
+  elif [ "$double" -lt "$den" ]; then
+    RHE_RESULT=$q
+  else
+    if [ $((q % 2)) -eq 0 ]; then
+      RHE_RESULT=$q
+    else
+      RHE_RESULT=$((q + sign_r))
+    fi
+  fi
+}
 
-def ansi(rgb: RGB, layer: str) -> str:
-    'SGR truecolor code for the fg (38) or bg (48) layer'
-    lead = '38' if layer == 'fg' else '48'
-    return f'\033[{lead};2;{rgb[0]};{rgb[1]};{rgb[2]}m'
+# code_ansi R G B LAYER -> sets CODE_OUT
+code_ansi() {
+  local r="$1" g="$2" b="$3" layer="$4" lead
+  lead=38
+  [ "$layer" = "bg" ] && lead=48
+  CODE_OUT=$'\033['"${lead};2;${r};${g};${b}m"
+}
 
+# code_tmux R G B LAYER -> sets CODE_OUT
+code_tmux() {
+  local r="$1" g="$2" b="$3" layer="$4" hex
+  builtin printf -v hex '%02x%02x%02x' "$r" "$g" "$b"
+  CODE_OUT="#[${layer}=#${hex}]"
+}
 
-def tmux(rgb: RGB, layer: str) -> str:
-    'tmux format string for the fg or bg layer'
-    return '#[{}=#{:02x}{:02x}{:02x}]'.format(layer, *rgb)
+# ---------------------------------------------------------------------------
 
+layer="bg"
+style="ansi"
+no_newline=0
+have_fg=0
+fg_r=0 fg_g=0 fg_b=0
+positionals=()
 
-def render(text: str, start: RGB, end: RGB, layer: str, style: str, fg: RGB | None) -> str:
-    'Build the coloured string, always terminated by a reset'
-    code  = tmux if style == 'tmux' else ansi
-    reset = '#[default]' if style == 'tmux' else RESET
-    other = 'bg' if layer == 'fg' else 'fg'
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --layer)
+      layer="$2"
+      shift 2
+      ;;
+    --fg)
+      parse_colour "$2"
+      fg_r=$PC_R; fg_g=$PC_G; fg_b=$PC_B
+      have_fg=1
+      shift 2
+      ;;
+    --tmux)
+      style="tmux"
+      shift
+      ;;
+    -n|--no-newline)
+      no_newline=1
+      shift
+      ;;
+    --)
+      shift
+      while [ $# -gt 0 ]; do
+        positionals+=("$1")
+        shift
+      done
+      ;;
+    *)
+      positionals+=("$1")
+      shift
+      ;;
+  esac
+done
 
-    prefix = code(fg, other) if fg else ''
-    parts  = [prefix]
-    parts += [f'{code(rgb, layer)}{ch}' for ch, rgb in zip(text, lerp(start, end, len(text)))]
-    parts.append(reset)
-    return ''.join(parts)
+if [ "${#positionals[@]}" -lt 3 ]; then
+  usage >&2
+  exit 2
+fi
 
+start_arg="${positionals[0]}"
+end_arg="${positionals[1]}"
+text="${positionals[2]}"
 
-def main() -> int:
-    p = argparse.ArgumentParser(
-        prog        = 'tmux-gradient',
-        description = __doc__,
-        formatter_class = argparse.RawDescriptionHelpFormatter,
-    )
-    p.add_argument('start', type=parse_colour, help='start colour, e.g. #ff0000')
-    p.add_argument('end',   type=parse_colour, help='end colour, e.g. #0000ff')
-    p.add_argument('text',  help='the text to colour')
-    p.add_argument('--layer',  choices=('bg', 'fg'), default='bg',
-                   help='which layer the gradient applies to (default: bg)')
-    p.add_argument('--fg', type=parse_colour, default=None,
-                   help='static colour for the *other* layer, e.g. the text on a bg gradient')
-    p.add_argument('--tmux', dest='style', action='store_const', const='tmux', default='ansi',
-                   help='emit tmux #[...] format strings instead of raw ANSI')
-    p.add_argument('-n', '--no-newline', action='store_true', help='do not print a trailing newline')
-    args = p.parse_args()
+parse_colour "$start_arg"
+start_r=$PC_R; start_g=$PC_G; start_b=$PC_B
 
-    out = render(args.text, args.start, args.end, args.layer, args.style, args.fg)
-    sys.stdout.write(out if args.no_newline else out + '\n')
-    return 0
+parse_colour "$end_arg"
+end_r=$PC_R; end_g=$PC_G; end_b=$PC_B
 
+# split text into an array of characters (codepoint-aware under a UTF-8 locale)
+chars=()
+rest="$text"
+while [ -n "$rest" ]; do
+  chars+=("${rest:0:1}")
+  rest="${rest:1}"
+done
+n="${#chars[@]}"
 
-if __name__ == '__main__':
-    raise SystemExit(main())
+other="fg"
+[ "$layer" = "fg" ] && other="bg"
+
+out=""
+
+if [ "$have_fg" -eq 1 ]; then
+  if [ "$style" = "tmux" ]; then
+    code_tmux "$fg_r" "$fg_g" "$fg_b" "$other"
+  else
+    code_ansi "$fg_r" "$fg_g" "$fg_b" "$other"
+  fi
+  out+="$CODE_OUT"
+fi
+
+diff_r=$((end_r - start_r))
+diff_g=$((end_g - start_g))
+diff_b=$((end_b - start_b))
+
+if [ "$n" -le 1 ]; then
+  if [ "$n" -eq 1 ]; then
+    if [ "$style" = "tmux" ]; then
+      code_tmux "$start_r" "$start_g" "$start_b" "$layer"
+    else
+      code_ansi "$start_r" "$start_g" "$start_b" "$layer"
+    fi
+    out+="${CODE_OUT}${chars[0]}"
+  fi
+else
+  den=$((n - 1))
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    round_half_even $((start_r * den + diff_r * i)) "$den"; rr=$RHE_RESULT
+    round_half_even $((start_g * den + diff_g * i)) "$den"; gg=$RHE_RESULT
+    round_half_even $((start_b * den + diff_b * i)) "$den"; bb=$RHE_RESULT
+    if [ "$style" = "tmux" ]; then
+      code_tmux "$rr" "$gg" "$bb" "$layer"
+    else
+      code_ansi "$rr" "$gg" "$bb" "$layer"
+    fi
+    out+="${CODE_OUT}${chars[$i]}"
+    i=$((i + 1))
+  done
+fi
+
+if [ "$style" = "tmux" ]; then
+  out+="#[default]"
+else
+  out+="$RESET"
+fi
+
+if [ "$no_newline" -eq 1 ]; then
+  builtin printf '%s' "$out"
+else
+  builtin printf '%s\n' "$out"
+fi
