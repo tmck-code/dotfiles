@@ -10,7 +10,7 @@
 # Colours accept #rgb, #rrggbb, rgb, rrggbb, or @N (entry N of the tmux-colours
 # palette, N clamped to 0..9).
 #
-# Usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--tmux] [-n|--no-newline] start end text
+# Usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--step N] [--tmux] [-n|--no-newline] start end text
 
 set -u
 
@@ -22,7 +22,7 @@ RESET=$'\033[0m'
 pallete_hex=("ffafaf" "ffd787" "d7ff87" "87ff87" "87ffd7" "87d7ff" "8787ff" "d787ff" "ff87d7" "ff87af")
 
 usage() {
-  builtin printf 'usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--tmux] [-n|--no-newline] start end text\n'
+  builtin printf 'usage: tmux-gradient [--layer bg|fg] [--fg COLOUR] [--step N] [--tmux] [-n|--no-newline] start end text\n'
 }
 
 # parse_colour COLOUR -> sets globals PC_R PC_G PC_B
@@ -104,6 +104,7 @@ code_tmux() {
 
 layer="bg"
 style="ansi"
+step=1
 no_newline=0
 have_fg=0
 fg_r=0 fg_g=0 fg_b=0
@@ -123,6 +124,10 @@ while [ $# -gt 0 ]; do
       parse_colour "$2"
       fg_r=$PC_R; fg_g=$PC_G; fg_b=$PC_B
       have_fg=1
+      shift 2
+      ;;
+    --step)
+      step="$2"
       shift 2
       ;;
     --tmux)
@@ -202,15 +207,21 @@ else
   den=$((n - 1))
   i=0
   while [ "$i" -lt "$n" ]; do
-    round_half_even $((start_r * den + diff_r * i)) "$den"; rr=$RHE_RESULT
-    round_half_even $((start_g * den + diff_g * i)) "$den"; gg=$RHE_RESULT
-    round_half_even $((start_b * den + diff_b * i)) "$den"; bb=$RHE_RESULT
-    if [ "$style" = "tmux" ]; then
-      code_tmux "$rr" "$gg" "$bb" "$layer"
-    else
-      code_ansi "$rr" "$gg" "$bb" "$layer"
+    # only emit a colour every --step chars: tmux rewrites the whole status
+    # line on every refresh, so each escape is bytes on the wire 5s apart.
+    # The last char always gets one, so the gradient still lands on `end`.
+    if [ $((i % step)) -eq 0 ] || [ "$i" -eq "$den" ]; then
+      round_half_even $((start_r * den + diff_r * i)) "$den"; rr=$RHE_RESULT
+      round_half_even $((start_g * den + diff_g * i)) "$den"; gg=$RHE_RESULT
+      round_half_even $((start_b * den + diff_b * i)) "$den"; bb=$RHE_RESULT
+      if [ "$style" = "tmux" ]; then
+        code_tmux "$rr" "$gg" "$bb" "$layer"
+      else
+        code_ansi "$rr" "$gg" "$bb" "$layer"
+      fi
+      out+="$CODE_OUT"
     fi
-    out+="${CODE_OUT}${chars[$i]}"
+    out+="${chars[$i]}"
     i=$((i + 1))
   done
 fi
