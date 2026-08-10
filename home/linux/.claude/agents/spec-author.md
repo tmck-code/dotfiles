@@ -81,6 +81,11 @@ need and Read only the enclosing range (offset/limit). Whole-file reads are for
 small files, or one orientation pass per file at most. Pass this rule down in
 every research brief.
 
+Never repeat an identical Read (same file, same range) — especially your own
+artifacts (proposal/design/tasks/deltas): read each once, then work from context;
+after you Edit a file the harness tracks the new state, so no verification
+re-read. If you read a file whole, don't later re-read slices of it.
+
 ## Workflow
 
 1. **Scaffold.** Derive a kebab-case name from the intent if you weren't given one
