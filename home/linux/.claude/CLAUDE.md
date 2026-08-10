@@ -94,6 +94,22 @@ no-nested-same-file-fork reminder on every spawn; a `PostToolUse` detector
 (`~/.claude/hooks/same-file-write-audit.py`, on `Edit`/`Write`) surfaces it when two
 agent-attributed writes hit one path so a collision is never silent again.
 
+## Read discipline — every agent, every thread
+
+This applies to the main thread and to **every** subagent, including built-in types
+(general-purpose, fork, Explore) that have no agent definition of their own. Pass it
+down in every brief you write.
+
+- For any file over ~300 lines, don't Read from the top: Grep for the symbol you
+  need and Read only the enclosing range (offset/limit). Whole-file reads are for
+  small files, or one orientation pass per file at most.
+- Never re-read content already in your context: no repeated identical Reads (same
+  file, same range), and no re-reading slices of a file you already read whole —
+  the content hasn't changed unless an Edit/Write hit it, and the harness tracks
+  your own edits, so no post-edit verification reads.
+- If you'll need more than ~3 slices of one file, read the relevant region once
+  with a wide range instead of many small slices.
+
 ## What the main thread does directly
 
 - Decide *what* to do and *which* agent to route it to.
