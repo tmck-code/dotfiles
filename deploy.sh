@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # The .claude tree is routed to Claude Code's config dir so that e.g.
 # `CLAUDE_CONFIG_DIR=~/.claude.personal ./deploy.sh osx` installs it there.
 # Everything else installs under $HOME.
@@ -48,6 +50,17 @@ function install_os() {
   echo "- Installing dotfiles for OS: '${os}'"
 
   install_homedir "$os"
+
+  # Some paths only live under home/osx and are shared across all OSes.
+  case "$os" in
+    osx ) ;;
+    * )   for shared in .claude/skills/agent-graph; do
+            local dest; dest=$(dest_for "$shared")
+            echo "-- linking shared $shared"
+            mkdir -p "$(dirname "$dest")"
+            ln -svfn "$REPO_ROOT/home/osx/${shared}" "$dest"
+          done ;;
+  esac
 }
 
 case ${1:-} in
