@@ -1,14 +1,61 @@
 #!/bin/bash
+# Round-trip time to google.com, as a fixed-width 8-character field.
+#
+# The actual ping costs ~160ms +/- 50, which is far too slow to run inline on
+# every tmux status refresh. So this prints the last cached value immediately
+# (a few ms, no network) and kicks off a detached background refresh. The field
+# is fixed-width, so a stale value can never shift the status bar layout.
+#
+# DEBUG=1        trace
+# PINGLINE_SYNC=1  skip the cache, ping inline (for testing)
 
-set -euo pipefail
+set -uo pipefail
 [ -n "${DEBUG:-}" ] && set -x
 
-ping=$(ping google.com -c1 -t100 2>&1) || { echo "❌" && exit 1; }
+host="${PINGLINE_HOST:-google.com}"
+cache="${TMPDIR:-/tmp}/pingline.$UID"
+lock="$cache.lock"
 
-ping_ms=$(echo "$ping" |
-  jc --ping-s -u |
-  head -n 1 |
-  jq -rc '"\(.time_ms)"')
+# measure: prints the 8-char field for a fresh ping, or the failure marker
+measure() {
+  local out ms
+  # -t is a timeout on BSD ping but a TTL on GNU ping, so leave it at 100 —
+  # it is safe on both, and a slow ping no longer blocks anything anyway.
+  # pad ❌ by hand: it is 3 bytes but 2 display columns, so %8s would misalign
+  out=$(ping "$host" -c1 -t100 2>&1) || { printf '%6s❌\n' ''; return; }
+  ms=$(printf '%s\n' "$out" | jc --ping-s -u | head -n 1 | jq -rc '"\(.time_ms)"')
+  printf '%8s\n' "$(printf '%3.1fms' "$ms")"
+}
 
-ping_ms=$(printf "%3.1fms" "$ping_ms")
-printf "%8s\n" "$ping_ms"
+if [ -n "${PINGLINE_SYNC:-}" ]; then
+  measure
+  exit 0
+fi
+
+# serve the cached value first — a read builtin, no fork
+if [ -r "$cache" ]; then
+  # IFS= or read strips the leading pad spaces and breaks the fixed width
+  IFS= read -r cached < "$cache"
+  printf '%s\n' "$cached"
+else
+  printf '%8s\n' '--.-ms'
+fi
+
+# take the lock without forking, so only one refresh is ever in flight.
+# noclobber makes the redirect fail if the lock already exists.
+set -o noclobber
+if ! : 2>/dev/null > "$lock"; then
+  # A refresh is in flight. It holds the lock for ~150ms out of every 5s poll,
+  # so this branch is rare — worth a fork to check the lock is not simply
+  # wedged, which happens if a refresher is SIGKILLed before its EXIT trap.
+  [ -z "$(find "$lock" -mmin +1 2>/dev/null)" ] && exit 0
+  rm -f "$lock"
+  : 2>/dev/null > "$lock" || exit 0
+fi
+set +o noclobber
+
+# refresh detached: stdout must not be inherited, or tmux waits on it for EOF
+(
+  trap 'rm -f "$lock"' EXIT
+  measure > "$cache.tmp" && mv -f "$cache.tmp" "$cache"
+) >/dev/null 2>&1 &
