@@ -76,6 +76,37 @@ job).
    `tasks.md` lines so their ticks never race. If two tasks would touch the same
    checklist region, put them in the same subagent or in different waves.
 
+## Brief digests — don't make children re-read what you already read
+
+By the time you fork, you have already read the change artifacts and the target
+modules. **Put that knowledge in the brief instead of making each child rediscover
+it.** Every child brief must inline:
+
+- the **verbatim task text** it owns (copied from `tasks.md`, not a pointer to it),
+- the **relevant excerpts** of `design.md` / the delta specs (decisions, requirements,
+  invariants that constrain its tasks — quoted, not cited),
+- for each file it will touch: the **key symbols and line ranges** involved (e.g.
+  "`applyPreset()` at src/foo.ts:210–260"), so it can read just that region.
+
+Then state explicitly in the brief: **do not re-read `proposal.md` / `design.md` /
+`tasks.md` / the spec deltas — everything you need from them is quoted above.**
+(Ticking checkboxes in `tasks.md` is an Edit, not a Read — that stays.) Children
+read source files only in the ranges the brief points at, widening only when the
+pointed range proves insufficient.
+
+## Read discipline (for you and every child)
+
+For any file over ~300 lines, don't Read from the top: Grep for the symbol you
+need and Read only the enclosing range (offset/limit). Whole-file reads are for
+small files, or one orientation pass per file at most. Pass this rule down in
+every brief.
+
+Never re-read content already in your context: if you read a file whole, don't
+later re-read slices of it — the content hasn't changed unless an Edit/Write hit
+it (the harness tracks your edits; no post-edit verification read). And never
+repeat an identical Read (same file, same range) — that includes your own change
+artifacts (proposal/design/tasks/deltas): read each once, then work from context.
+
 ## Reporting through files, not return messages
 
 Follow the global report-file-handoff convention (write full report to a
@@ -95,12 +126,32 @@ forked subagent of this explicitly; it is not optional. The tasks are written wi
 exact file/line/function detail — follow them literally, and if a task's
 instruction contradicts the code reality, pause and report rather than guessing.
 
+## Gate cadence — scoped while iterating, one sweep at the end
+
+Full-suite gate runs are the dominant cost of a change (wall-clock and tokens).
+The cadence below is mandatory; put it **verbatim in every child brief**:
+
+- While iterating, run **only scoped verification**: the test file(s) your tasks
+  touch (e.g. `make backend-run CMD='pytest tests/test_x.py -q'`, or the repo's
+  scoped equivalent) plus the cheap lint/typecheck target at most **once per batch
+  of fixes**. Never run the full test suite (`make test` / `make test-ui` or
+  equivalents) from a child — that is the orchestrator's sweep, not yours.
+- **Batch before verifying.** Fix everything you currently know about, then verify
+  once. Do not re-run any gate after each one-line fix.
+- Pipe gate output through a short tail (`2>&1 | tail -20`) and use quiet flags
+  (`-q`); never dump full suite output into your context.
+
+You (the orchestrator) run the **full gate sweep exactly once**, after all waves
+land — via the repo's read-only gate-runner agent if one exists, else yourself.
+If the sweep fails, a fixer child re-runs **only the failed gate** after its fix;
+then confirm with that single gate, not a second full sweep.
+
 ## Non-negotiable gates
 
 1. **Tests.** After all waves land, the full suite is green, pass count = baseline +
    any tests the change added. A behaviour change with no test added/updated is not
-   done. Subagents run targeted subsets while iterating; you run the full suite once
-   yourself before declaring green.
+   done. Gate cadence per the section above: children scoped-only, one full sweep
+   at the end.
 2. **Repo invariants.** Honour whatever the repo's domain/architecture skill or docs
    declare as load-bearing — don't violate a documented invariant for convenience,
    and ensure your subagents don't either.

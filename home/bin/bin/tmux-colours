@@ -3,13 +3,18 @@
 # pallete=("160" "161" "125" "126" "90" "91" "55" "56" "20" "21" "20" "56" "55" "91" "90" "126" "125" "161" "160")
 # pallete=("210" "216" "222" "228" "192" "156" "120" "121" "122" "123" "117" "111" "105" "141" "177" "213" "212" "211")
 pallete=("217" "222" "192" "120" "122" "117" "105" "177" "212" "211")
+# same palette as 24-bit hex, for tmux-gradient
+pallete_hex=("ffafaf" "ffd787" "d7ff87" "87ff87" "87ffd7" "87d7ff" "8787ff" "d787ff" "ff87d7" "ff87af")
 # pallete=("198" "162" "126" "90" "54" "18" "18" "24" "30" "36" "42" "48")
 # pallete=("201" "165" "129" "93" "57" "21" "21" "27" "33" "39" "45" "51")
 
 idx="$1"
-if [ "$idx" -gt 13 ]; then
-  echo "#[${2:-bg}=colour${pallete[9]}]"
+[ "$idx" -gt 9 ] && idx=9
+
+# "hex" prints the bare hex colour (for tmux-gradient), anything else a #[fg=|bg=] spec
+if [ "${2:-bg}" = "hex" ]; then
+  echo "${pallete_hex[$idx]}"
 else
-  echo "#[${2:-bg}=colour${pallete[$1]}]"
+  echo "#[${2:-bg}=colour${pallete[$idx]}]"
 fi
 

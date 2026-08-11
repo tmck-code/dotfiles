@@ -69,6 +69,23 @@ more accurate than you grepping cold. Before you do your own reading:
 This only covers research grounding — you still write every artifact
 yourself; domain agents never author spec files.
 
+**Brief digests:** each research brief must inline what you already know —
+the clarified intent, the specific questions for that area, and any file/symbol
+pointers you already have — so the agent doesn't re-derive it. Tell it not to
+re-read anything quoted in the brief.
+
+## Read discipline (for you and every agent you spawn)
+
+For any file over ~300 lines, don't Read from the top: Grep for the symbol you
+need and Read only the enclosing range (offset/limit). Whole-file reads are for
+small files, or one orientation pass per file at most. Pass this rule down in
+every research brief.
+
+Never repeat an identical Read (same file, same range) — especially your own
+artifacts (proposal/design/tasks/deltas): read each once, then work from context;
+after you Edit a file the harness tracks the new state, so no verification
+re-read. If you read a file whole, don't later re-read slices of it.
+
 ## Workflow
 
 1. **Scaffold.** Derive a kebab-case name from the intent if you weren't given one
