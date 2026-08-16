@@ -107,6 +107,37 @@
   .legend .swatch { width: 11px; height: 11px; border-radius: 3px; }
   .legend svg { display: block; }
 
+  .session-filter {
+    max-width: 1500px; margin: 18px auto 0; padding: 12px 16px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .session-filter:empty { display: none; }
+  .sf-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 8px;
+  }
+  .sf-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+  .sf-actions button {
+    border: 1px solid var(--border); background: none; color: var(--ink-2);
+    border-radius: 6px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+  }
+  .sf-actions button:hover { color: var(--ink); border-color: var(--ink-2); }
+  .sf-list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 2px 14px; max-height: 220px; overflow-y: auto; padding-right: 4px;
+  }
+  .sf-row {
+    display: flex; align-items: baseline; gap: 6px; padding: 3px 2px;
+    font-size: 12px; color: var(--ink-2); cursor: pointer; border-radius: 5px;
+  }
+  .sf-row:hover { background: var(--band); }
+  .sf-row input { flex: 0 0 auto; margin: 0; cursor: pointer; }
+  .sf-title {
+    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; color: var(--ink);
+  }
+  .sf-meta { flex: 0 0 auto; font-size: 10.5px; color: var(--muted); }
+
   .board-wrap { margin: 8px 28px 48px; }
   .board-scroll {
     overflow-x: auto; background: var(--surface);
@@ -297,6 +328,7 @@
 </header>
 
 <div class="stats" id="stats"></div>
+<div class="session-filter" id="sessionFilter"></div>
 <div class="legend" id="legend"></div>
 
 <div class="board-wrap">
@@ -617,6 +649,42 @@ async function initializeGraph() {
   const htmlParts = [];
   let BOARD_W = 0, BOARD_H = 0;
 
+  /* ------------------------------------------------------ viewport culling --- */
+  /* Board coordinate space is 1:1 with CSS pixels (the SVG's viewBox is exactly
+     BOARD_W x BOARD_H, matching the width/height attrs and the #board div's own
+     px size). `.board-scroll` only has `overflow-x: auto` (see CSS above) — it
+     is NOT the vertical scroll container, the page itself is: the board just
+     grows tall and the document/body scrolls. So the x-range of what's visible
+     comes from `.board-scroll`'s own scrollLeft/clientWidth, but the y-range has
+     to come from the #board element's position relative to the viewport
+     (getBoundingClientRect) combined with the window's viewport height. This
+     mapping is robust to native ctrl+scroll page zoom too, since
+     getBoundingClientRect/clientWidth/innerHeight are all reported in the
+     already-zoomed CSS pixel space. CULL_MARGIN_MULT is the overscan, in
+     multiples of the viewport's own width/height, kept generous so scrolling
+     never shows visible pop-in and small graphs (which fit inside one
+     viewport+margin) render identically to the pre-culling behaviour. */
+  const CULL_MARGIN_MULT = 1.5;
+  function getViewportRect() {
+    const bs = document.querySelector('.board-scroll');
+    const boardEl = document.getElementById('board');
+    if (!bs || !boardEl) return null;
+    const vw = bs.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    if (!vw || !vh) return null;
+    const boardTop = boardEl.getBoundingClientRect().top;   // px from viewport top; <=0 once scrolled past
+    const mx = vw * CULL_MARGIN_MULT, my = vh * CULL_MARGIN_MULT;
+    const y0 = -boardTop, y1 = y0 + vh;
+    return {
+      x0: bs.scrollLeft - mx, y0: y0 - my,
+      x1: bs.scrollLeft + vw + mx, y1: y1 + my,
+    };
+  }
+  function nodeInRect(a, r) {
+    if (!r) return true;
+    return a.x0 + a.w >= r.x0 && a.x0 <= r.x1 && a.y0 + a.h >= r.y0 && a.y0 <= r.y1;
+  }
+
   svgParts.push(`<defs>
     <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
       <line x1="0" y1="0" x2="0" y2="7" stroke="var(--muted)" stroke-width="1.6" opacity="0.45"/>
@@ -771,8 +839,14 @@ async function initializeGraph() {
   AGENTS.forEach((a) => { if (a.parent) (childrenMap[a.parent] ||= []).push(a.id); });
 
   /* one entry per session (root + subtree), nodes in chronological pre-order so
-     rank == index and a parent is immediately followed by its first child. */
-  const sessions = ROOTS.slice().sort((p, q) => p.t0 - q.t0).map((r, i) => {
+     rank == index and a parent is immediately followed by its first child.
+     ALL_SESSIONS is the full, unfiltered list (used by the session-filter panel
+     and to compute the default visible set); `sessions` (below, `let` not
+     `const`) is the subset currently checked in that panel, and is what
+     layoutInternal/packSessions/applyAbs/paint actually walk — hiding a
+     session means it's simply never laid out or painted, not just visually
+     dimmed. */
+  const ALL_SESSIONS = ROOTS.slice().sort((p, q) => p.t0 - q.t0).map((r, i) => {
     const nodes = [];
     (function visit(id) {
       const a = byId[id];
@@ -784,6 +858,44 @@ async function initializeGraph() {
     })(r.id);
     return { root: r, idx: i + 1, nodes };
   });
+
+  /* -------------------------------------------------- session visibility --- */
+  /* Rendering all sessions at once on a large aggregated graph (100+ sessions,
+     1000+ agents) is what makes the page laggy to paint/scroll/zoom — the DOM/SVG
+     node count, not any inefficiency in layout. Default to only the most recent
+     sessions, capped by total agent count so one huge session can't alone blow
+     the budget; the user opts into more via the session-filter panel. Tweak the
+     default render size here, in one place. */
+  const DEFAULT_VISIBLE_AGENT_CAP = 200;
+  const VIS_STORAGE_KEY = 'agentgraph:visibleSessions:' + (SESSIONS_DIR || 'embed');
+
+  function loadStoredVisible() {
+    try {
+      const raw = localStorage.getItem(VIS_STORAGE_KEY);
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || !arr.length) return null;
+      const allIds = new Set(ALL_SESSIONS.map((s) => s.root.id));
+      const kept = arr.filter((id) => allIds.has(id));
+      return kept.length ? new Set(kept) : null;
+    } catch (e) { return null; /* file:// may throw, or nothing stored yet */ }
+  }
+  function saveVisible(set) {
+    try { localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify([...set])); } catch (e) { /* file:// may throw */ }
+  }
+  function computeDefaultVisibleSessions() {
+    const byRecency = ALL_SESSIONS.slice().sort((a, b) => b.root.t0 - a.root.t0);
+    const set = new Set();
+    let count = 0;
+    for (const s of byRecency) {
+      if (set.size > 0 && count + s.nodes.length > DEFAULT_VISIBLE_AGENT_CAP) break;
+      set.add(s.root.id);
+      count += s.nodes.length;
+    }
+    return set;
+  }
+  let visibleSessionIds = loadStoredVisible() || computeDefaultVisibleSessions();
+  let sessions = ALL_SESSIONS.filter((s) => visibleSessionIds.has(s.root.id));
 
   /* ---- per-session LOCAL TIME AXIS ----
      Within a session the FLOW axis (x) is a real time axis: a node's flow
@@ -1017,10 +1129,14 @@ async function initializeGraph() {
        parent, so a facing-edge elbow is a clean L/Z: a V–H–V elbow off the parent's
        BOTTOM into the child's TOP, with the horizontal turn in the row-gap just
        above the child (keeps it out of node interiors). */
+    /* only agents belonging to a currently-visible session get painted — this is
+       the actual node/edge-count reduction that keeps the page responsive. */
+    const visibleAgents = sessions.flatMap((s) => s.nodes);
+    const visibleIdSet = new Set(visibleAgents.map((a) => a.id));
     const edges = [];
     const CR = 7;   // elbow corner radius
     const GUT = DEPTH_GAP / 2;   // half the empty gutter between adjacent depth bands
-    for (const a of AGENTS) {
+    for (const a of visibleAgents) {
       if (!a.parent) continue;
       const p = byId[a.parent];
       if (!p) continue;
@@ -1037,7 +1153,7 @@ async function initializeGraph() {
       if (a.status === 'ok')
         edges.push({ from: a.id, to: a.parent, d: elbowV(acx + 7, a.y0, pcx + 7, p.y0 + p.h, yk + 5, CR),
           stroke: cvar(a.type), marker: `dot-${slug(a.type)}`, dash: '2.5 3.5', op: 0.55, w: 1.4, atStart: true });
-      if (a.respawnOf && byId[a.respawnOf]) {
+      if (a.respawnOf && byId[a.respawnOf] && visibleIdSet.has(a.respawnOf)) {
         const dead = byId[a.respawnOf];
         const dcx = dead.x0 + dead.w / 2;
         const d = elbowV(dcx, dead.y0 + dead.h, acx, a.y0, (dead.y0 + dead.h + a.y0) / 2, CR);
@@ -1047,8 +1163,18 @@ async function initializeGraph() {
     }
     pushEdges(edges, [8, -6]);
 
-    /* every agent (root included) is a node; flow-axis extent ∝ runtime */
-    for (const a of AGENTS) {
+    /* every agent (root included) is a node; flow-axis extent ∝ runtime.
+       Only nodes whose bbox intersects the scrolled viewport (+ generous
+       overscan margin) actually get shape/text SVG emitted — this is the DOM
+       node/text-composite reduction that keeps scroll/zoom smooth with 1000+
+       agents selected. Edges and decorative bands above are cheap enough
+       (far fewer elements, no per-node text) that they're left un-culled;
+       culling them too risks an edge visually starting/ending from nowhere
+       when its endpoint node is culled out. */
+    const vpRect = getViewportRect();
+    let culledCount = 0;
+    for (const a of visibleAgents) {
+      if (!nodeInRect(a, vpRect)) { culledCount++; continue; }
       const pad = nodePad(a);
       const tight = a.h < 70;
       paintNode(a, a.x0, a.y0, a.w, a.h, pad, tight);
@@ -1065,6 +1191,88 @@ async function initializeGraph() {
   relayoutAll();
 
   document.getElementById('board').style.width = BOARD_W + 'px';
+
+  /* -------------------------------------------- viewport culling: repaint --- */
+  /* Culling is recomputed on every scroll tick and on resize (the latter also
+     covers native ctrl+scroll page zoom, which doesn't fire `scroll` on
+     `.board-scroll` by itself but does rescale clientWidth/clientHeight of the
+     whole page including the scroll container, so a `resize`/visualViewport
+     listener is needed to re-cull after zooming, not just after scrolling).
+     Both are rAF-coalesced: the scroll/resize handlers themselves only ever
+     schedule a single repaint per animation frame, never call paint()
+     synchronously, so rapid scroll/zoom doesn't stack up redundant repaints. */
+  const boardScrollEl = document.querySelector('.board-scroll');
+  let cullRepaintScheduled = false;
+  function scheduleCullRepaint() {
+    if (cullRepaintScheduled) return;
+    cullRepaintScheduled = true;
+    requestAnimationFrame(() => { cullRepaintScheduled = false; paint(); });
+  }
+  /* horizontal scroll happens on `.board-scroll` itself; vertical scroll is the
+     page/window (see getViewportRect's comment above) — both need a listener. */
+  if (boardScrollEl) boardScrollEl.addEventListener('scroll', scheduleCullRepaint, { passive: true });
+  window.addEventListener('scroll', scheduleCullRepaint, { passive: true });
+  window.addEventListener('resize', scheduleCullRepaint);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleCullRepaint);
+
+  /* --------------------------------------------------- session-filter panel --- */
+  /* Recompute the filtered `sessions` from the checked set, persist it, and
+     repaint. This is the sole write path for visibleSessionIds; every checkbox
+     / select-all / select-none handler goes through it. */
+  function applySessionVisibility() {
+    sessions = ALL_SESSIONS.filter((s) => visibleSessionIds.has(s.root.id));
+    saveVisible(visibleSessionIds);
+    relayoutAll();
+    updateSessionFilterCount();
+  }
+  function updateSessionFilterCount() {
+    const countEl = document.getElementById('sfCount');
+    if (!countEl) return;
+    const totalAgents = ALL_SESSIONS.reduce((n, s) => n + s.nodes.length, 0);
+    const shownAgents = sessions.reduce((n, s) => n + s.nodes.length, 0);
+    countEl.textContent = `${sessions.length}/${ALL_SESSIONS.length} sessions · ${shownAgents}/${totalAgents} agents shown`;
+  }
+  function renderSessionFilter() {
+    const el = document.getElementById('sessionFilter');
+    if (!el || !ALL_SESSIONS.length) return;
+    const rows = ALL_SESSIONS.slice().sort((a, b) => b.root.t0 - a.root.t0).map((s) => {
+      const title = String(s.root.title || 'session').replace(/^Coordinator:\s*/i, '');
+      const checked = visibleSessionIds.has(s.root.id) ? ' checked' : '';
+      return `<label class="sf-row">
+        <input type="checkbox" data-session="${esc(s.root.id)}"${checked}/>
+        <span class="sf-title" title="${esc(title)}">#${s.idx} · ${esc(title)}</span>
+        <span class="sf-meta mono">${esc(fmtT(s.root.t0))} · ${s.nodes.length} agents</span>
+      </label>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="sf-head">
+        <span class="grp-label" id="sfCount"></span>
+        <span class="sf-actions">
+          <button type="button" id="sfAll">select all</button>
+          <button type="button" id="sfNone">select none</button>
+        </span>
+      </div>
+      <div class="sf-list">${rows}</div>`;
+    updateSessionFilterCount();
+    document.getElementById('sfAll').addEventListener('click', () => {
+      visibleSessionIds = new Set(ALL_SESSIONS.map((s) => s.root.id));
+      el.querySelectorAll('input[data-session]').forEach((cb) => { cb.checked = true; });
+      applySessionVisibility();
+    });
+    document.getElementById('sfNone').addEventListener('click', () => {
+      visibleSessionIds = new Set();
+      el.querySelectorAll('input[data-session]').forEach((cb) => { cb.checked = false; });
+      applySessionVisibility();
+    });
+    el.querySelectorAll('input[type=checkbox][data-session]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const id = cb.dataset.session;
+        if (cb.checked) visibleSessionIds.add(id); else visibleSessionIds.delete(id);
+        applySessionVisibility();
+      });
+    });
+  }
+  renderSessionFilter();
 
   /* ------------------------------------------- content-driven size measurement --- */
   /* After each paint, measure every node's true content HEIGHT (a._contentH) and feed

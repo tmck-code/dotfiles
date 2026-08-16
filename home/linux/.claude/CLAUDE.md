@@ -21,7 +21,9 @@ Hooks reinforce this: `~/.claude/hooks/nudge-delegate.py` nudges when a gate/edi
 
 ## Subagent handoff goes through files
 
-A subagent's return message is unreliable. Give every spawned subagent a report-file path (e.g. `<scratchpad>/<agent>-<task>.md`); it writes full findings there and returns only the path. Read the file — don't act on the return message alone. Nested subagents follow the same convention down every level.
+A subagent's return message is unreliable. Give every spawned subagent a report-file path matching `./.scratch/<agent>-<task>-<agent_id>.md`); it writes full findings there and returns only the path.
+Read the file — don't act on the return message alone.  Nested subagents follow the same convention down every level.
+The main agent should ensure that the directory exists, so nested subagents don't need to create it.
 
 ## Subagents must not share mutable working files
 
