@@ -30,10 +30,6 @@ it via the Skill tool — it's the source of truth for the architecture map and 
 invariants you must not break. Follow the repo's documented code-style conventions,
 and make sure every subagent you fork is told to follow them too.
 
-## Spawning agents
-
-If you need to spawn child agents, always pass `model: "haiku"` to keep costs down.
-
 ## Discover the change yourself (don't make the caller pre-read it)
 
 Run these and parse the JSON — this is the review the main agent would otherwise do
@@ -69,8 +65,9 @@ job).
    agent if one exists) and gets, in its prompt: the exact tasks it owns (with the
    file/line/function detail from `tasks.md`), the relevant context/invariants, the
    code-style rule, the instruction to run its task's targeted gate, the instruction
-   to **tick its own subtasks the moment each is done** (see below), and the
-   **report-file path** it must write its outcome to (see "Reporting through files").
+   to **tick its own subtasks the moment each is done** (see below), the no-poll
+   rule (see "Waiting is free — never poll"), and the **report-file path** it
+   must write its outcome to (see "Reporting through files").
 
 3. **Avoid checklist collisions.** Parallel subagents must own **disjoint** sets of
    `tasks.md` lines so their ticks never race. If two tasks would touch the same
@@ -107,6 +104,18 @@ it (the harness tracks your edits; no post-edit verification read). And never
 repeat an identical Read (same file, same range) — that includes your own change
 artifacts (proposal/design/tasks/deltas): read each once, then work from context.
 
+## Waiting is free — never poll
+
+After spawning a wave, **end your turn**. Children run in the background and you
+are re-invoked automatically when each completes — a completion notification is
+the **only** signal you act on. Never call `TaskOutput` to check on a running
+child, never re-list agents to see whether one finished, never probe for a
+report file before its child's completion notification arrives, and never run
+`sleep`/timer loops in Bash while waiting. One `TaskOutput` call per child is
+legitimate only *after* its completion notification — and even then prefer
+reading its report file. This rule goes **verbatim into every child brief**
+(children hold the Agent tool too and hit the same failure mode when they nest).
+
 ## Reporting through files, not return messages
 
 Follow the global report-file-handoff convention (write full report to a
@@ -114,7 +123,9 @@ scratchpad file, return only the path, read the file back rather than trusting
 the returned text; pass the same convention down to any nested forks). Give each
 subagent a distinct path up front, e.g. `<scratchpad>/spec-impl-<change>-<task-id>.md`,
 and tell it to include: tasks done, gate result, files touched, anything it
-paused on. Read each wave's report files before starting the next wave.
+paused on. As each completion notification arrives, read that child's report
+file **once**; start wave N+1 only in the turn where the **last** wave-N
+notification arrives — never check for stragglers on a timer.
 
 ## Ticking subtasks — as soon as they're done
 

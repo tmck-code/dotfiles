@@ -27,8 +27,8 @@ def main() -> int:
     nudge = (
         'Subagent-handoff reminder: returned messages are unreliable — the parent '
         'often sees only part of a long message, or none of it. In this spawn, give '
-        'the subagent a uniquely-named markdown report-file path in the scratchpad '
-        '(named after its task so siblings never collide), tell it to write its full '
+        'the subagent a uniquely-named markdown report-file path '
+        '(matching ./scratch/<agent>-<task>-<agent_id>.md), tell it to write its full '
         'report there BEFORE returning and to return only that path, then READ that '
         'file instead of acting on the returned text. Pass the same convention down '
         'to any children it spawns. '
