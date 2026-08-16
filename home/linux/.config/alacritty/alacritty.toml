@@ -31,3 +31,23 @@ lines = 240
 
 [env]
 WINIT_X11_SCALE_FACTOR='1.0'
+
+[font]
+size = 16.0
+# offset = { y = 50 }
+
+[font.bold]
+family = "Iosevka NF"
+style = "Bold"
+
+[font.bold_italic]
+family = "OperatorMono Nerd Font"
+style = "Bold Italic"
+
+[font.italic]
+family = "OperatorMono Nerd Font"
+style = "Book Italic"
+
+[font.normal]
+family = "Iosevka NF"
+style = "Light"
