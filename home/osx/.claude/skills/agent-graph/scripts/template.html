@@ -107,43 +107,63 @@
   .legend .swatch { width: 11px; height: 11px; border-radius: 3px; }
   .legend svg { display: block; }
 
-  .session-filter {
-    max-width: 1500px; margin: 18px auto 0; padding: 12px 16px 14px;
+  /* selection/zoom control panel: sort, zoom level, and the day/page scrubber */
+  .selection-panel {
+    max-width: 1500px; margin: 18px auto 0; padding: 0 28px;
+  }
+  .selection-panel:empty { display: none; }
+  .sel-box {
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px 14px; font-size: 12.5px; color: var(--ink-2);
   }
-  .session-filter:empty { display: none; }
-  .sf-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    flex-wrap: wrap; margin-bottom: 8px;
+  .sel-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sel-label {
+    font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
   }
-  .sf-actions { display: flex; gap: 8px; flex: 0 0 auto; }
-  .sf-actions button {
+  .sel-select, .sel-num {
+    background: var(--bg); border: 1px solid var(--border); color: var(--ink);
+    border-radius: 6px; padding: 4px 8px; font-size: 12px; cursor: pointer;
+  }
+  .sel-num { width: 56px; cursor: text; }
+  .sel-btn {
     border: 1px solid var(--border); background: none; color: var(--ink-2);
-    border-radius: 6px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+    border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
   }
-  .sf-actions button:hover { color: var(--ink); border-color: var(--ink-2); }
-  .sf-list {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 2px 14px; max-height: 220px; overflow-y: auto; padding-right: 4px;
+  .sel-btn:hover { color: var(--ink); border-color: var(--ink-2); }
+  .sel-btn.active { color: var(--ink); border-color: var(--ink-2); background: var(--band); }
+  .sel-count { font-size: 11px; color: var(--muted); }
+  .sel-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .sel-seg button {
+    border: none; background: none; color: var(--ink-2); padding: 4px 11px; font-size: 12px; cursor: pointer;
+    border-right: 1px solid var(--border);
   }
-  .sf-row {
-    display: flex; align-items: baseline; gap: 6px; padding: 3px 2px;
-    font-size: 12px; color: var(--ink-2); cursor: pointer; border-radius: 5px;
+  .sel-seg button:last-child { border-right: none; }
+  .sel-seg button.active { background: var(--ink-2); color: var(--surface); }
+  .sel-dir {
+    border: 1px solid var(--border); background: none; color: var(--ink-2);
+    border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 12px;
   }
-  .sf-row:hover { background: var(--band); }
-  .sf-row input { flex: 0 0 auto; margin: 0; cursor: pointer; }
-  .sf-title {
-    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap; color: var(--ink);
+
+  /* bottom command-bar / palette cluster: sort + zoom + scrubber pager */
+  .sel-box .sel-cluster {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 16px;
   }
-  .sf-meta { flex: 0 0 auto; font-size: 10.5px; color: var(--muted); }
+  .sc-scrub { display: flex; align-items: center; gap: 6px; overflow-x: auto; max-width: 480px; padding: 2px; }
+  .sc-tick {
+    flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: var(--border);
+    cursor: pointer; border: none; padding: 0;
+  }
+  .sc-tick.active { background: var(--ink-2); transform: scale(1.3); }
+  .sc-sep { width: 1px; align-self: stretch; background: var(--border); }
 
   .board-wrap { margin: 8px 28px 48px; }
   .board-scroll {
     overflow-x: auto; background: var(--surface);
     border: 1px solid var(--border); border-radius: 14px;
   }
-  .board { position: relative; }
+  .board { position: relative; transform-origin: 0 0; }
   .board svg { display: block; }
 
   .colhead {
@@ -328,7 +348,7 @@
 </header>
 
 <div class="stats" id="stats"></div>
-<div class="session-filter" id="sessionFilter"></div>
+<div class="selection-panel" id="selectionPanel"></div>
 <div class="legend" id="legend"></div>
 
 <div class="board-wrap">
@@ -648,6 +668,7 @@ async function initializeGraph() {
   const svgParts = [];
   const htmlParts = [];
   let BOARD_W = 0, BOARD_H = 0;
+  let boardScale = 1;   // current visual board scale, set by paint() from zoomScale()
 
   /* ------------------------------------------------------ viewport culling --- */
   /* Board coordinate space is 1:1 with CSS pixels (the SVG's viewBox is exactly
@@ -675,9 +696,16 @@ async function initializeGraph() {
     const boardTop = boardEl.getBoundingClientRect().top;   // px from viewport top; <=0 once scrolled past
     const mx = vw * CULL_MARGIN_MULT, my = vh * CULL_MARGIN_MULT;
     const y0 = -boardTop, y1 = y0 + vh;
+    /* scrollLeft/clientWidth/getBoundingClientRect are all in screen (scaled)
+       px, but node geometry (a.x0/a.y0/a.w/a.h) lives in the board's own
+       logical (unscaled) coordinate space — the board is painted at full
+       resolution and shrunk visually via CSS transform (see paint()). Divide
+       through by the current board scale to bring the rect back into that
+       same logical space before comparing against node boxes. */
+    const zs = boardScale || 1;
     return {
-      x0: bs.scrollLeft - mx, y0: y0 - my,
-      x1: bs.scrollLeft + vw + mx, y1: y1 + my,
+      x0: (bs.scrollLeft - mx) / zs, y0: (y0 - my) / zs,
+      x1: (bs.scrollLeft + vw + mx) / zs, y1: (y1 + my) / zs,
     };
   }
   function nodeInRect(a, r) {
@@ -747,7 +775,41 @@ async function initializeGraph() {
     const r = 9;
     return `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
   }
+  /* zoom-level node rendering, layered ON TOP of the existing viewport
+     culling below (paintNode is only called for nodes that already passed
+     nodeInRect) — 'regular' is the full render; 'more' and 'all' are
+     progressively cheaper/simpler renders selected by the zoom control
+     (selZoom). This is independent of the board-level visual zoom-out
+     (see zoomScale()) — cheaper per-node rendering is still worth it at
+     scale even though the board is also shrunk visually. */
   function paintNode(a, x, y, w, h, pad, tight) {
+    if (selZoom === 'all') return paintNodeMinimal(a, x, y, w, h);
+    if (selZoom === 'more') return paintNodeSimple(a, x, y, w, h, pad, tight);
+    return paintNodeFull(a, x, y, w, h, pad, tight);
+  }
+  /* zoom "all" — every session/day at once: bare rect + native <title> tooltip,
+     no HTML text composite at all (the expensive part at 1000+ agents). */
+  function paintNodeMinimal(a, x, y, w, h) {
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}"
+      fill="${cvar(a.type)}" fill-opacity="${a.parent == null ? 0.4 : 0.28}" stroke="${cvar(a.type)}" stroke-width="${a.parent == null ? 2 : 1}">
+      <title>${esc(a.title)}</title></path>`);
+    htmlParts.push(`<div class="node zoom-min" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+      style="left:${x}px; top:${y}px; width:${w}px; height:${h}px;" title="${esc(a.title)}"></div>`);
+  }
+  /* zoom "more" — ~5 units at once: title row only, no meta line / tool ticks. */
+  function paintNodeSimple(a, x, y, w, h, pad, tight) {
+    const sw = a.parent == null ? 2.6 : 1.5;
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}"
+      fill="var(--surface)" stroke="none"/>`);
+    svgParts.push(`<path class="shape" data-id="${esc(a.id)}" d="${rectPath(x, y, w, h)}"
+      fill="${cvar(a.type)}" fill-opacity="${a.parent == null ? 0.2 : 0.13}" stroke="${cvar(a.type)}" stroke-width="${sw}"/>`);
+    htmlParts.push(`<div class="node tight" data-id="${esc(a.id)}" data-work="${esc(a.work)}" tabindex="0" role="button"
+      style="left:${x}px; top:${y + pad}px; width:${w}px; height:${h - pad * 2}px; --nc:${cvar(a.type)};"
+      title="${esc(a.title)}">
+      <span class="t" title="${esc(a.title)}">${esc(a.title)}</span>
+    </div>`);
+  }
+  function paintNodeFull(a, x, y, w, h, pad, tight) {
     /* main thread (parentless root) gets a heavier border so it reads as the
        session's spine among its uniformly-shaped children. */
     const sw = a.parent == null ? 2.6 : 1.5;
@@ -859,43 +921,89 @@ async function initializeGraph() {
     return { root: r, idx: i + 1, nodes };
   });
 
-  /* -------------------------------------------------- session visibility --- */
-  /* Rendering all sessions at once on a large aggregated graph (100+ sessions,
-     1000+ agents) is what makes the page laggy to paint/scroll/zoom — the DOM/SVG
-     node count, not any inefficiency in layout. Default to only the most recent
-     sessions, capped by total agent count so one huge session can't alone blow
-     the budget; the user opts into more via the session-filter panel. Tweak the
-     default render size here, in one place. */
-  const DEFAULT_VISIBLE_AGENT_CAP = 200;
-  const VIS_STORAGE_KEY = 'agentgraph:visibleSessions:' + (SESSIONS_DIR || 'embed');
+  /* ============================================================
+     Session selection + zoom-level state: sort/paginate model backing
+     the selection panel (rendered further below). Rendering ALL sessions
+     at once on a large aggregated graph (100+ sessions, 1000+ agents) is
+     what makes the page laggy to paint/scroll/zoom — the DOM/SVG node
+     count, not layout cost — so the default view still only shows a
+     slice; the user pages/zooms into more. */
 
-  function loadStoredVisible() {
-    try {
-      const raw = localStorage.getItem(VIS_STORAGE_KEY);
-      if (!raw) return null;
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr) || !arr.length) return null;
-      const allIds = new Set(ALL_SESSIONS.map((s) => s.root.id));
-      const kept = arr.filter((id) => allIds.has(id));
-      return kept.length ? new Set(kept) : null;
-    } catch (e) { return null; /* file:// may throw, or nothing stored yet */ }
+  /* per-session metrics, computed once, used by every sort key below */
+  for (const s of ALL_SESSIONS) {
+    s.duration = Math.max(0, s.root.t1 - s.root.t0);
+    s.agentCount = s.nodes.length;
+    s.loc = s.nodes.reduce((n, a) => n + (a.diff.added || 0) + (a.diff.removed || 0), 0);
+    s.size = s.nodes.reduce((n, a) => n + (a.tokens.in || 0) + (a.tokens.out || 0)
+      + (a.tokens.cacheRead || 0) + (a.tokens.cacheCreate || 0), 0);
   }
-  function saveVisible(set) {
-    try { localStorage.setItem(VIS_STORAGE_KEY, JSON.stringify([...set])); } catch (e) { /* file:// may throw */ }
+
+  const SORT_KEYS = {
+    time:     { label: 'Time created',    get: (s) => s.root.t0 },
+    size:     { label: 'Size (tokens)',   get: (s) => s.size },
+    loc:      { label: 'LOC written',     get: (s) => s.loc },
+    duration: { label: 'Time taken',      get: (s) => s.duration },
+    agents:   { label: 'Agents used',     get: (s) => s.agentCount },
+  };
+  const ZOOM_LEVELS = ['regular', 'more', 'all']; // regular=1 unit/page, more=~5 units/page, all=everything
+
+  let selSortKey = 'time';
+  let selSortDir = 'desc';
+  let selZoom = 'regular';
+  let selPageSize = 10;   // user-configurable (5/10/20) — page size for non-time sorts
+  let selPageIndex = 0;   // current page/day index within the sorted unit list
+
+  const dayKeyOf = (t) => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+  const dayLabelOf = (t) => new Date(t).toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' });
+
+  function getSortedSessions() {
+    const key = SORT_KEYS[selSortKey] || SORT_KEYS.time;
+    const arr = ALL_SESSIONS.slice().sort((a, b) => key.get(a) - key.get(b));
+    if (selSortDir === 'desc') arr.reverse();
+    return arr;
   }
-  function computeDefaultVisibleSessions() {
-    const byRecency = ALL_SESSIONS.slice().sort((a, b) => b.root.t0 - a.root.t0);
-    const set = new Set();
-    let count = 0;
-    for (const s of byRecency) {
-      if (set.size > 0 && count + s.nodes.length > DEFAULT_VISIBLE_AGENT_CAP) break;
-      set.add(s.root.id);
-      count += s.nodes.length;
+  /* "units" are what a single page consists of: one calendar day's worth of
+     sessions when sorting by time (so pagination reads as day-by-day), or a
+     fixed-size chunk of `selPageSize` sessions for every other sort. Each
+     entry is an array of sessions. */
+  function getUnits() {
+    const sorted = getSortedSessions();
+    if (selSortKey === 'time') {
+      const units = [];
+      let curKey = null, curArr = null;
+      for (const s of sorted) {
+        const dk = dayKeyOf(s.root.t0);
+        if (dk !== curKey) { curArr = []; units.push(curArr); curKey = dk; }
+        curArr.push(s);
+      }
+      return units;
     }
-    return set;
+    const units = [];
+    for (let i = 0; i < sorted.length; i += selPageSize) units.push(sorted.slice(i, i + selPageSize));
+    return units;
   }
-  let visibleSessionIds = loadStoredVisible() || computeDefaultVisibleSessions();
-  let sessions = ALL_SESSIONS.filter((s) => visibleSessionIds.has(s.root.id));
+  function unitsPerPage() { return selZoom === 'all' ? Infinity : selZoom === 'more' ? 5 : 1; }
+  /* visual board scale for the current zoom level — independent of
+     unitsPerPage()/pagination above: this actually shrinks the rendered
+     board so more of it fits in the viewport at once. */
+  function zoomScale() { return selZoom === 'all' ? 0.22 : selZoom === 'more' ? 0.55 : 1; }
+  function pageCount() {
+    const upp = unitsPerPage();
+    const n = getUnits().length;
+    return upp === Infinity ? 1 : Math.max(1, Math.ceil(n / upp));
+  }
+  function computeVisibleSessions() {
+    const units = getUnits();
+    if (!units.length) return [];
+    const upp = unitsPerPage();
+    if (upp === Infinity) return units.flat();
+    const maxPage = Math.max(0, Math.ceil(units.length / upp) - 1);
+    selPageIndex = Math.min(Math.max(0, selPageIndex), maxPage);
+    const start = selPageIndex * upp;
+    return units.slice(start, start + upp).flat();
+  }
+
+  let sessions = [];
 
   /* ---- per-session LOCAL TIME AXIS ----
      Within a session the FLOW axis (x) is a real time axis: a node's flow
@@ -1183,14 +1291,21 @@ async function initializeGraph() {
     const boardEl = document.getElementById('board');
     boardEl.innerHTML = `<svg width="${BOARD_W}" height="${BOARD_H}" viewBox="0 0 ${BOARD_W} ${BOARD_H}"
       role="img" aria-label="Agent graph">${svgParts.join('')}</svg>${htmlParts.join('')}`;
-    boardEl.style.width = BOARD_W + 'px';
-    boardEl.style.height = BOARD_H + 'px';
+    /* the board is painted at full (logical) resolution and shrunk visually
+       via a CSS transform, keyed off the zoom level (zoomScale()). The
+       board's own layout box (its width/height style, which is what
+       .board-scroll's scrollable area is based on — transforms don't affect
+       ancestor scrollWidth/scrollHeight) is set to the SCALED size, so the
+       scroll region matches what's visually rendered instead of leaving
+       blank scrollable space past the shrunk content. */
+    boardScale = zoomScale();
+    boardEl.style.transform = `scale(${boardScale})`;
+    boardEl.style.width = (BOARD_W * boardScale) + 'px';
+    boardEl.style.height = (BOARD_H * boardScale) + 'px';
   }
 
   function relayoutAll() { layoutInternal(); packSessions(); applyAbs(); paint(); }
   relayoutAll();
-
-  document.getElementById('board').style.width = BOARD_W + 'px';
 
   /* -------------------------------------------- viewport culling: repaint --- */
   /* Culling is recomputed on every scroll tick and on resize (the latter also
@@ -1215,64 +1330,110 @@ async function initializeGraph() {
   window.addEventListener('resize', scheduleCullRepaint);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleCullRepaint);
 
-  /* --------------------------------------------------- session-filter panel --- */
-  /* Recompute the filtered `sessions` from the checked set, persist it, and
-     repaint. This is the sole write path for visibleSessionIds; every checkbox
-     / select-all / select-none handler goes through it. */
-  function applySessionVisibility() {
-    sessions = ALL_SESSIONS.filter((s) => visibleSessionIds.has(s.root.id));
-    saveVisible(visibleSessionIds);
+  /* ============================================================
+     Session selection / zoom control panel: sort, page/day scrubber,
+     zoom-level segmented control.
+     ============================================================ */
+
+  /* sole write path: recompute `sessions` from the current
+     sort/page/zoom state and repaint + re-render whichever panel is active. */
+  function applySelection() {
+    sessions = computeVisibleSessions();
     relayoutAll();
-    updateSessionFilterCount();
+    renderSelectionPanel();
   }
-  function updateSessionFilterCount() {
-    const countEl = document.getElementById('sfCount');
-    if (!countEl) return;
+
+  function sortOptionsHTML() {
+    return Object.entries(SORT_KEYS).map(([k, v]) =>
+      `<option value="${k}"${k === selSortKey ? ' selected' : ''}>${esc(v.label)}</option>`).join('');
+  }
+  function zoomSegHTML(idPrefix) {
+    const labels = { regular: 'regular', more: 'more', all: 'all' };
+    return `<span class="sel-seg" id="${idPrefix}Zoom">` + ZOOM_LEVELS.map((z) =>
+      `<button type="button" data-zoom="${z}" class="${z === selZoom ? 'active' : ''}">${labels[z]}</button>`).join('') + `</span>`;
+  }
+  function shownCounts() {
     const totalAgents = ALL_SESSIONS.reduce((n, s) => n + s.nodes.length, 0);
     const shownAgents = sessions.reduce((n, s) => n + s.nodes.length, 0);
-    countEl.textContent = `${sessions.length}/${ALL_SESSIONS.length} sessions · ${shownAgents}/${totalAgents} agents shown`;
+    return `${sessions.length}/${ALL_SESSIONS.length} sessions · ${shownAgents}/${totalAgents} agents shown`;
   }
-  function renderSessionFilter() {
-    const el = document.getElementById('sessionFilter');
-    if (!el || !ALL_SESSIONS.length) return;
-    const rows = ALL_SESSIONS.slice().sort((a, b) => b.root.t0 - a.root.t0).map((s) => {
-      const title = String(s.root.title || 'session').replace(/^Coordinator:\s*/i, '');
-      const checked = visibleSessionIds.has(s.root.id) ? ' checked' : '';
-      return `<label class="sf-row">
-        <input type="checkbox" data-session="${esc(s.root.id)}"${checked}/>
-        <span class="sf-title" title="${esc(title)}">#${s.idx} · ${esc(title)}</span>
-        <span class="sf-meta mono">${esc(fmtT(s.root.t0))} · ${s.nodes.length} agents</span>
-      </label>`;
+  function unitLabel() {
+    return selSortKey === 'time' ? 'day' : `${selPageSize}-session page`;
+  }
+  function pageLabel() {
+    const units = getUnits();
+    const upp = unitsPerPage();
+    if (upp === Infinity) return `all ${units.length} ${unitLabel()}${units.length === 1 ? '' : 's'}`;
+    const total = pageCount();
+    if (selSortKey === 'time') {
+      const start = selPageIndex * upp, end = Math.min(units.length, start + upp) - 1;
+      const s0 = units[start] && units[start][0];
+      const s1 = units[end] && units[end][0];
+      if (!s0) return `page ${selPageIndex + 1}/${total}`;
+      const lbl = s0 === s1 || !s1 ? dayLabelOf(s0.root.t0) : `${dayLabelOf(s0.root.t0)} – ${dayLabelOf(s1.root.t0)}`;
+      return `${lbl}  (${selPageIndex + 1}/${total})`;
+    }
+    return `page ${selPageIndex + 1}/${total}`;
+  }
+  function wireSortDirZoomPage(root) {
+    const sel = root.querySelector('[data-sel-sort]');
+    if (sel) sel.addEventListener('change', () => { selSortKey = sel.value; selPageIndex = 0; applySelection(); });
+    const dir = root.querySelector('[data-sel-dir]');
+    if (dir) dir.addEventListener('click', () => { selSortDir = selSortDir === 'desc' ? 'asc' : 'desc'; selPageIndex = 0; applySelection(); });
+    const sizeIn = root.querySelector('[data-sel-size]');
+    if (sizeIn) sizeIn.addEventListener('change', () => {
+      const v = parseInt(sizeIn.value, 10);
+      selPageSize = [5, 10, 20].includes(v) ? v : 10;
+      selPageIndex = 0; applySelection();
+    });
+    root.querySelectorAll('[data-zoom]').forEach((btn) => btn.addEventListener('click', () => {
+      selZoom = btn.dataset.zoom; applySelection();
+    }));
+    const prev = root.querySelector('[data-sel-prev]');
+    if (prev) prev.addEventListener('click', () => { selPageIndex--; applySelection(); });
+    const next = root.querySelector('[data-sel-next]');
+    if (next) next.addEventListener('click', () => { selPageIndex++; applySelection(); });
+  }
+
+  /* the one selection panel: bottom command-bar / palette — sort+zoom
+     combined cluster, scrubber pager */
+  function renderSelectionPanel() {
+    const el = document.getElementById('selectionPanel');
+    if (!el) return;
+    const units = getUnits();
+    const upp = unitsPerPage();
+    const isTime = selSortKey === 'time';
+    const ticks = units.map((u, i) => {
+      const active = upp !== Infinity && i >= selPageIndex * upp && i < selPageIndex * upp + upp;
+      const lbl = isTime ? dayLabelOf(u[0].root.t0) : `page ${i + 1}`;
+      return `<button type="button" class="sc-tick${active ? ' active' : ''}" data-tick="${i}" title="${esc(lbl)}"></button>`;
     }).join('');
-    el.innerHTML = `
-      <div class="sf-head">
-        <span class="grp-label" id="sfCount"></span>
-        <span class="sf-actions">
-          <button type="button" id="sfAll">select all</button>
-          <button type="button" id="sfNone">select none</button>
-        </span>
-      </div>
-      <div class="sf-list">${rows}</div>`;
-    updateSessionFilterCount();
-    document.getElementById('sfAll').addEventListener('click', () => {
-      visibleSessionIds = new Set(ALL_SESSIONS.map((s) => s.root.id));
-      el.querySelectorAll('input[data-session]').forEach((cb) => { cb.checked = true; });
-      applySessionVisibility();
-    });
-    document.getElementById('sfNone').addEventListener('click', () => {
-      visibleSessionIds = new Set();
-      el.querySelectorAll('input[data-session]').forEach((cb) => { cb.checked = false; });
-      applySessionVisibility();
-    });
-    el.querySelectorAll('input[type=checkbox][data-session]').forEach((cb) => {
-      cb.addEventListener('change', () => {
-        const id = cb.dataset.session;
-        if (cb.checked) visibleSessionIds.add(id); else visibleSessionIds.delete(id);
-        applySessionVisibility();
-      });
-    });
+    el.innerHTML = `<div class="sel-box"><div class="sel-cluster">
+      <select class="sel-select" data-sel-sort>${sortOptionsHTML()}</select>
+      <button type="button" class="sel-dir" data-sel-dir title="toggle ascending/descending">${selSortDir === 'desc' ? '↓' : '↑'}</button>
+      ${isTime ? '' : `<input class="sel-num" type="number" data-sel-size value="${selPageSize}" min="5" max="20" step="5" title="page size"/>`}
+      <span class="sc-sep"></span>
+      ${zoomSegHTML('sel')}
+      <span class="sc-sep"></span>
+      <button type="button" class="sel-btn" data-sel-prev>&larr;</button>
+      <div class="sc-scrub">${ticks}</div>
+      <button type="button" class="sel-btn" data-sel-next>&rarr;</button>
+      <span class="sc-sep"></span>
+      <span class="sel-count mono">${esc(pageLabel())} · ${esc(shownCounts())}</span>
+    </div></div>`;
+    el.querySelectorAll('[data-tick]').forEach((btn) => btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.tick, 10);
+      const upp2 = unitsPerPage();
+      selPageIndex = upp2 === Infinity ? 0 : Math.floor(i / upp2);
+      applySelection();
+    }));
+    wireSortDirZoomPage(el);
   }
-  renderSessionFilter();
+
+  /* initial default view: most recent day (time sort desc, page 0). This also
+     supersedes the placeholder relayoutAll() call above (run with `sessions`
+     still empty), doing the real first paint now that selection state exists. */
+  applySelection();
 
   /* ------------------------------------------- content-driven size measurement --- */
   /* After each paint, measure every node's true content HEIGHT (a._contentH) and feed
