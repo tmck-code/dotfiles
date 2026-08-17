@@ -985,8 +985,32 @@ async function initializeGraph() {
   function unitsPerPage() { return selZoom === 'all' ? Infinity : selZoom === 'more' ? 5 : 1; }
   /* visual board scale for the current zoom level — independent of
      unitsPerPage()/pagination above: this actually shrinks the rendered
-     board so more of it fits in the viewport at once. */
-  function zoomScale() { return selZoom === 'all' ? 0.67 : selZoom === 'more' ? 0.835 : 1; }
+     board so more of it fits in the viewport at once.
+
+     'all' is computed dynamically as containerWidth / BOARD_W (fit-to-width),
+     rather than a static magic number: BOARD_W varies a lot depending on how
+     many sessions are currently selected / how they're sorted / page size, so
+     a fixed scale can't generalize (a static 0.67 was found to still overflow
+     horizontally on a large 124-session/1147-agent selection). Measured fresh
+     every call (never cached) since BOARD_W and the container's clientWidth
+     can both change between calls (session/page/sort change, window resize).
+     Clamped to never zoom IN past 1 (Math.min(1, ...)) and floored so a
+     degenerate near-zero BOARD_W can't blow the scale up unboundedly.
+     'more' is derived as the arithmetic midpoint between 1 and the current
+     'all' value, so it stays consistent as 'all' moves. Must be called after
+     layoutInternal()/packSessions() have already recomputed BOARD_W for the
+     current selection (paint() satisfies this via relayoutAll()'s call order). */
+  function computeAllScale() {
+    const bs = document.querySelector('.board-scroll');
+    const containerWidth = (bs && bs.clientWidth) || window.innerWidth || 1;
+    const w = BOARD_W || 1;
+    return Math.max(0.05, Math.min(1, containerWidth / w));
+  }
+  function zoomScale() {
+    if (selZoom === 'regular') return 1;
+    const allScale = computeAllScale();
+    return selZoom === 'all' ? allScale : (1 + allScale) / 2;
+  }
   function pageCount() {
     const upp = unitsPerPage();
     const n = getUnits().length;
@@ -1329,6 +1353,22 @@ async function initializeGraph() {
   window.addEventListener('scroll', scheduleCullRepaint, { passive: true });
   window.addEventListener('resize', scheduleCullRepaint);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleCullRepaint);
+  /* resizing the window changes .board-scroll's clientWidth, which the 'all'/'more'
+     fit-to-width scale (see zoomScale()) depends on — re-derive boardScale and
+     re-apply the board's transform+size on resize whenever zoomed, so it doesn't
+     go stale. Cheap (no repaint / re-cull needed just for this — scheduleCullRepaint
+     above already handles re-culling on the same resize event). */
+  function reapplyBoardScaleOnResize() {
+    if (selZoom === 'regular') return;
+    const boardEl = document.getElementById('board');
+    if (!boardEl) return;
+    boardScale = zoomScale();
+    boardEl.style.transform = `scale(${boardScale})`;
+    boardEl.style.width = (BOARD_W * boardScale) + 'px';
+    boardEl.style.height = (BOARD_H * boardScale) + 'px';
+  }
+  window.addEventListener('resize', reapplyBoardScaleOnResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', reapplyBoardScaleOnResize);
 
   /* ============================================================
      Session selection / zoom control panel: sort, page/day scrubber,
