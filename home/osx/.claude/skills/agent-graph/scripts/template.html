@@ -986,7 +986,7 @@ async function initializeGraph() {
   /* visual board scale for the current zoom level — independent of
      unitsPerPage()/pagination above: this actually shrinks the rendered
      board so more of it fits in the viewport at once. */
-  function zoomScale() { return selZoom === 'all' ? 0.22 : selZoom === 'more' ? 0.55 : 1; }
+  function zoomScale() { return selZoom === 'all' ? 0.67 : selZoom === 'more' ? 0.835 : 1; }
   function pageCount() {
     const upp = unitsPerPage();
     const n = getUnits().length;
