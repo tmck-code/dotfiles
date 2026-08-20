@@ -61,8 +61,12 @@ job).
    cluster of tightly-coupled tasks — in its own nested subagent rather than editing
    inline. Spawn independent subagents **in parallel** (multiple Agent calls in one
    message); chain dependent ones **in sequence**, feeding the prior wave's outcome
-   into the next. Each subagent is `general-purpose` (or a repo-specific editor
-   agent if one exists) and gets, in its prompt: the exact tasks it owns (with the
+   into the next. Prefer a repo-specific editor agent whose type matches the task's
+   domain (its definition pins the right model); otherwise use `general-purpose`
+   **with an explicit `model: "sonnet"` parameter** — a spawn without `model`
+   inherits the session's (expensive) model, and `subagent_type: "fork"` always
+   runs the parent model ignoring overrides, so never use `fork` for
+   implementation work. Each subagent gets, in its prompt: the exact tasks it owns (with the
    file/line/function detail from `tasks.md`), the relevant context/invariants, the
    code-style rule, the instruction to run its task's targeted gate, the instruction
    to **tick its own subtasks the moment each is done** (see below), the no-poll

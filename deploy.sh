@@ -50,17 +50,6 @@ function install_os() {
   echo "- Installing dotfiles for OS: '${os}'"
 
   install_homedir "$os"
-
-  # Some paths only live under home/osx and are shared across all OSes.
-  case "$os" in
-    osx ) ;;
-    * )   for shared in .claude/skills/agent-graph; do
-            local dest; dest=$(dest_for "$shared")
-            echo "-- linking shared $shared"
-            mkdir -p "$(dirname "$dest")"
-            ln -svfn "$REPO_ROOT/home/osx/${shared}" "$dest"
-          done ;;
-  esac
 }
 
 case ${1:-} in
