@@ -1,38 +1,43 @@
 # CLAUDE.md — global working agreement
 
-Applies in every repo. Project `CLAUDE.md` layers on top and wins on conflict.
+Applies in every repo; project `CLAUDE.md` wins on conflict.
+
+## Style
+
+Python: use `python-style`/`pytest-style` skills. Follow a repo's
+`CODING_STANDARDS.md` if present.
 
 ## Skills are leased on demand
 
-Before concluding "I can't do X", run `skill-overseer`: `overseer.py search <query>` to find a disabled skill, `overseer.py enable <skill>` to lease it for this session. `overseer.py release <skill>` when done; `overseer.py reap` at session start.
+Before "I can't do X": `overseer.py search <query>` → `enable <skill>` → use it →
+`release <skill>`. Run `overseer.py reap` at session start.
 
 ## Coordinator, not worker
 
-Route, don't perform — subagents absorb the noise (discovery sweeps, test/lint output, debug iteration), you absorb verdicts.
-
-- Gates (tests, lint, typecheck, build) → delegate. A failing gate is a delegation trigger, not a cue to debug inline.
-- Multi-file discovery → the `Explore` subagent, not inline grep/read sweeps.
-- Heavy/risky edits or debug loops → a subagent, kept off the main thread until green.
-- The research→implementation handover is the trap: once a subagent returns a plan, *writing the code* is its own delegable unit — hand it off rather than implementing inline just because you hold the context.
-- Parallelise independent subagents in one message.
-- Main thread does directly: decide what/who, hold the plan, talk to the user, and trivial one-line edits (never a failing test).
-
-Hooks reinforce this: `~/.claude/hooks/nudge-delegate.py` nudges when a gate/edit that should be delegated runs inline (driven by `delegate-routing.json`, project table overrides user default).
+Route, don't perform — subagents absorb noise (discovery, gate output, debug
+loops), you absorb verdicts. Delegate: gates, multi-file discovery (`Explore`),
+heavy/risky edits, and — once a subagent returns a plan — writing the code too.
+Parallelise independent subagents in one message. Do directly: decide what/who,
+hold the plan, talk to the user, trivial one-line edits. Backstopped by
+`nudge-delegate.py`.
 
 ## Subagent handoff goes through files
 
-A subagent's return message is unreliable. Give every spawned subagent a report-file path matching `./.scratch/<agent>-<task>-<agent_id>.md`); it writes full findings there and returns only the path.
-Read the file — don't act on the return message alone.  Nested subagents follow the same convention down every level.
-The main agent should ensure that the directory exists, so nested subagents don't need to create it.
+Give each spawned subagent a report path `./.scratch/<agent>-<task>-<agent_id>.md`;
+it writes findings there, returns only the path. Read the file, not the return
+message — nested subagents too; ensure `.scratch/` exists before spawning.
 
 ## Subagents must not share mutable working files
 
-Two agents with overlapping missions (or a parent and a child it forks) can silently overwrite each other's edits to the same file. Guardrails:
+Sole-writer rule: an agent owns its brief's files alone; children mustn't touch
+them. Scratch work: a per-agent subdir, never shared. Parallel editors on one
+deliverable: separate git worktrees (`isolation: "worktree"`). Split ownership by
+file/module, not mission. Handoffs point to code on disk, not a restated summary.
+Backstopped by `subagent-file-handoff.py` and `same-file-write-audit.py`.
 
-- Sole-writer rule: each editor agent owns the files in its brief alone, and must not fork a child touching those same files.
-- Scratch work goes in a per-agent subdir, never a shared flat namespace.
-- Parallel editors on one deliverable get separate git worktrees (`isolation: "worktree"`).
-- Split ownership by file/module, not by mission — never two agents "implement X" against the same files.
-- Handoffs point to code on disk as the source of truth, not a restated summary.
+## Browser automation goes through browser_batch
 
-Hooks reinforce this: `~/.claude/hooks/subagent-file-handoff.py` (on every spawn) and `~/.claude/hooks/same-file-write-audit.py` (flags collisions on `Edit`/`Write`).
+Never make a lone `mcp__claude-in-chrome__*` call — it nags on exactly one per
+turn. Include `browser_batch` in the *first* ToolSearch select list; batch
+navigate/resize/click/type/screenshot into one call, or pair an unbatchable step
+with another browser call in the same message.
