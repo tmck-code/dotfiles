@@ -5,112 +5,46 @@
   },
   "permissions": {
     "deny": [
-      "Workflow",
-      "Artifact",
-      "DesignSync",
-      "AskUserQuestion",
-      "EnterPlanMode",
-      "EnterWorktree",
-      "ExitPlanMode",
-      "ExitWorktree",
-      "EndConversation",
-      "PushNotification"
+      "Artifact", "AskUserQuestion", "DesignSync", "EndConversation", "EnterPlanMode",
+      "EnterWorktree", "ExitPlanMode", "ExitWorktree", "PushNotification", "Workflow"
     ]
   },
+  "model": "sonnet",
   "disableClaudeAiConnectors": true,
   "disableBundledSkills": true,
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/nudge-delegate.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "Agent|Task",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-file-handoff.py\""
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/same-file-write-audit.py\""
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/skill-nudge.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-linux-x86_64-gnu/bin/python3.15\" \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/hooks/yas-prompt-hook.py\""
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/handoff-nudge.py\""
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!' || true"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!' || true"
-          }
-        ]
-      }
-    ]
-  },
   "disableRemoteControl": true,
   "disableWorkflows": true,
   "disableArtifact": true,
+  "remoteControlAtStartup": false,
+  "effortLevel": "low",
+  "tui": "fullscreen",
+  "autoMemoryEnabled": false,
+  "skipDangerousModePermissionPrompt": true,
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Bash|Edit|Write", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/nudge-delegate.py\""}]},
+      {"matcher": "Agent|Task", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-file-handoff.py\""}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/same-file-write-audit.py\""}]}
+    ],
+    "UserPromptSubmit": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/skill-nudge.py\""}]},
+      {"matcher": "", "hooks": [{"type": "command", "command": "\"/home/freman/.claude/plugins/cache/yet-another-statusline/yas/0.7.1/.python/cpython-3.13-linux-x86_64-gnu/bin/python3.13\" \"/home/freman/.claude/plugins/cache/yet-another-statusline/yas/0.7.1/hooks/yas-prompt-hook.py\""}]}
+    ],
+    "SubagentStop": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/handoff-nudge.py\""}]}
+    ],
+    "Notification": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!' || true"}]}
+    ],
+    "Stop": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!' || true"}]}
+    ]
+  },
   "statusLine": {
     "type": "command",
-    "command": "\"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache/yet-another-statusline/yas/0.4.8/.python/cpython-3.15-linux-x86_64-gnu/bin/python3.15\" \"${YAS_DEV_ROOT:-$HOME/dev/yet-another-statusline}/claude/statusline_command.py\"",
+    "command": "\"/home/freman/.claude/plugins/cache/yet-another-statusline/yas/0.7.1/.python/cpython-3.13-linux-x86_64-gnu/bin/python3.13\" \"/home/freman/dev/yet-another-statusline/claude/statusline_command.py\"",
     "padding": 1,
     "refreshInterval": 1
   },
@@ -136,28 +70,6 @@
     "yas@yet-another-statusline": false
   },
   "extraKnownMarketplaces": {
-    "claude-plugins-official": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "caveman": {
-      "source": {
-        "source": "github",
-        "repo": "juliusbrussee/caveman"
-      }
-    },
-    "rocky": {
-      "source": {
-        "source": "github",
-        "repo": "hpbyte/rocky"
-      }
-    }
-  },
-  "effortLevel": "low",
-  "tui": "fullscreen",
-  "autoMemoryEnabled": false,
-  "skipDangerousModePermissionPrompt": true,
-  "remoteControlAtStartup": true
+    "claude-plugins-official": {"source": {"source": "github", "repo": "anthropics/claude-plugins-official"}}
+  }
 }
