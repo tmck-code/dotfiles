@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Fail the commit if home/{linux,osx}/.claude/settings.json have drifted apart,
+# ignoring keys that are deliberately per-machine or OS-specific.
+# Bypass with: SKIP_SETTINGS_DRIFT=1 git commit ...
+set -euo pipefail
+
+[[ "${SKIP_SETTINGS_DRIFT:-}" == "1" ]] && exit 0
+
+repo_root=$(git rev-parse --show-toplevel)
+linux="$repo_root/home/linux/.claude/settings.json"
+osx="$repo_root/home/osx/.claude/settings.json"
+
+[[ -f "$linux" && -f "$osx" ]] || exit 0
+command -v jq >/dev/null || { echo "pre-commit: jq not found, skipping settings drift check" >&2; exit 0; }
+
+# Deliberately per-machine: model, remoteControlAtStartup, agentPushNotifEnabled.
+# OS-specific: notification/stop hooks, statusline, and the yas prompt hook
+# (per-OS python build paths). Disabled (false) plugin entries are noise, ignore.
+normalise() {
+  jq --sort-keys '
+    del(.model, .remoteControlAtStartup, .agentPushNotifEnabled,
+        .statusLine, .hooks.Notification, .hooks.Stop)
+    | .hooks.UserPromptSubmit |= map(select(all(.hooks[]; .command | contains("yas") | not)))
+    | .enabledPlugins |= with_entries(select(.value))
+  ' "$1"
+}
+
+if ! diff -u <(normalise "$linux") <(normalise "$osx"); then
+  echo >&2
+  echo "pre-commit: home/linux and home/osx .claude/settings.json have drifted (see diff above)." >&2
+  echo "Reconcile them, or bypass with SKIP_SETTINGS_DRIFT=1 git commit ..." >&2
+  exit 1
+fi

@@ -1,13 +1,20 @@
 {
   "env": {
     "CLAUDE_CODE_TMUX_TRUECOLOR": "1",
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
   },
   "permissions": {
     "deny": [
-      "Workflow",
       "Artifact",
-      "DesignSync"
+      "AskUserQuestion",
+      "DesignSync",
+      "EndConversation",
+      "EnterPlanMode",
+      "EnterWorktree",
+      "ExitPlanMode",
+      "ExitWorktree",
+      "PushNotification",
+      "Workflow"
     ]
   },
   "model": "opus[1m]",
@@ -120,13 +127,11 @@
   "enabledPlugins": {
     "skill-creator@claude-plugins-official": false,
     "frontend-design@claude-plugins-official": false,
-    "caveman@caveman": false,
     "feature-dev@claude-plugins-official": false,
     "claude-code-setup@claude-plugins-official": false,
     "playground@claude-plugins-official": false,
     "hookify@claude-plugins-official": false,
     "linear@claude-plugins-official": false,
-    "rocky@rocky": false,
     "playwright@claude-plugins-official": false,
     "code-simplifier@claude-plugins-official": false,
     "pyright-lsp@claude-plugins-official": false,
@@ -138,18 +143,6 @@
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
-      }
-    },
-    "caveman": {
-      "source": {
-        "source": "github",
-        "repo": "juliusbrussee/caveman"
-      }
-    },
-    "rocky": {
-      "source": {
-        "source": "github",
-        "repo": "hpbyte/rocky"
       }
     }
   },
