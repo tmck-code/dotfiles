@@ -23,9 +23,11 @@ hold the plan, talk to the user, trivial one-line edits. Backstopped by
 
 ## Subagent handoff goes through files
 
-Give each spawned subagent a report path `./.scratch/<agent>-<task>-<agent_id>.md`;
+Give each spawned subagent a report path
+`.scratch/<branch-shelf>/<agent>-<task>-<agent_id>.md`, where `<branch-shelf>` is
+the current branch's shelf under the repo root (see the `dewey-decimal` skill);
 it writes findings there, returns only the path. Read the file, not the return
-message — nested subagents too; ensure `.scratch/` exists before spawning.
+message — nested subagents too; ensure the shelf exists before spawning.
 
 ## Subagents must not share mutable working files
 
