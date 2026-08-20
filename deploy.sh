@@ -43,6 +43,7 @@ function install_general() {
   mv -v "$HOME/.bashrc" "$HOME/.bashrc.bak" || echo "- No bashrc, skipping backup!"
   install_homedir general
   install_homedir bin
+  git -C "$REPO_ROOT" config core.hooksPath .githooks
 }
 
 function install_os() {
