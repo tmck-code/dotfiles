@@ -37,7 +37,7 @@ size = 16.0
 # offset = { y = 50 }
 
 [font.bold]
-family = "Iosevka NF"
+family = "IosevkaTerm NF"
 style = "Bold"
 
 [font.bold_italic]
@@ -49,5 +49,5 @@ family = "OperatorMono Nerd Font"
 style = "Book Italic"
 
 [font.normal]
-family = "Iosevka NF"
+family = "IosevkaTerm NF"
 style = "Light"
