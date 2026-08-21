@@ -32,15 +32,6 @@
         ]
       },
       {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/explore-scratch-write-guard.py\""
-          }
-        ]
-      },
-      {
         "matcher": "Agent|Task",
         "hooks": [
           {
