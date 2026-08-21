@@ -34,10 +34,10 @@ WINIT_X11_SCALE_FACTOR='1.0'
 
 [font]
 size = 16.0
-# offset = { y = 50 }
+builtin_box_drawing = true
 
 [font.bold]
-family = "IosevkaTerm NF"
+family = "Iosevka NF"
 style = "Bold"
 
 [font.bold_italic]
@@ -49,5 +49,5 @@ family = "OperatorMono Nerd Font"
 style = "Book Italic"
 
 [font.normal]
-family = "IosevkaTerm NF"
-style = "Light"
+family = "Iosevka NF"
+style = "Regular"
