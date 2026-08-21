@@ -1,14 +1,22 @@
 ---
 name: excalidraw-diagram
-description: Convert a mermaid `classDiagram` (with `direction LR`) into an Excalidraw `.excalidraw` file styled to match the repo's hand-drawn diagram conventions (elbow arrows, UML class boxes, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram (from a mermaid class diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
+description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, or `flowchart`/`graph` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables or rounded flowchart nodes, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, or flowchart/architecture diagram (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
 ---
 
 # Excalidraw Diagram
 
-Generates and renders Excalidraw diagrams. Today the only generation path is
-mermaid `classDiagram` → `.excalidraw` JSON; direct prompt/code → `.excalidraw`
-generation (skipping mermaid as an intermediate) is a planned future addition,
-not yet implemented — don't imply it works.
+Generates and renders Excalidraw diagrams. Generation always goes through
+mermaid as the intermediate — direct prompt/code → `.excalidraw` (skipping
+mermaid) is a planned future addition, not yet implemented; don't imply it
+works. `convert.py` picks its path from the input's diagram directive:
+
+| Input | Output |
+| --- | --- |
+| `classDiagram` | pastel UML class boxes + composition arrows |
+| `erDiagram` | ERD tables + crowfoot relationship arrows |
+| `flowchart` / `graph` | rounded nodes, subgraph containers, labelled arrows |
+
+### classDiagram → UML boxes
 
 Each mermaid `class` becomes a UML-style box (rectangle + title text +
 divider line + member text), and each composition edge (`*--` / `--*`)
@@ -16,10 +24,83 @@ becomes an elbowed arrow with a diamond at the "owner" end, bound to the two
 boxes' rectangles.
 
 Styling (font, box padding, member-line spacing, elbow routing, diamond
-placement) was reverse-engineered from `yas-structure.excalidraw` in the repo
-root — the maintainer's hand-converted reference for this exact diagram
-(from PR #120). Boxes are colored from a small pastel palette, cycled per
+placement) was reverse-engineered from a hand-converted reference diagram of
+this exact kind. Boxes are colored from a small pastel palette, cycled per
 box; no attempt is made to match colors to specific box roles.
+
+### erDiagram → ERD tables
+
+Each entity becomes a database-table box: a colored header band with the
+entity's white centered title, a matching light body tint, and one monospace
+row per attribute separated by grey (`#ced4da`) full-width divider lines.
+Rows are `name`/`type`/`key` space-padded into aligned columns and colored by
+key — PK `#e67700`, UK `#2f9e44`, FK `#c92a2a`, plain `#1e1e1e`. Header/tint
+pairs cycle per entity from a six-colour palette.
+
+Relationships become elbowed arrows bound to both tables, with crowfoot
+arrowheads mapped from the mermaid cardinality (`||` → one, `|o`/`o|` →
+zero-or-one, `}o`/`o{` → many, `}|`/`|{` → one-or-many); a `..` link renders
+dashed, `--` solid, and the `: "label"` becomes a bound arrow label.
+
+This styling was reverse-engineered from a hand-drawn ERD reference
+diagram, which contained two equivalent table styles; the tinted-body one
+("style B") is what's implemented. Its
+geometry was drawn at a large zoom, so every constant in `scripts/convert.py`
+is expressed as a ratio of `ERD_ROW_FONT` (see the `ERD_*` block).
+
+See `example-erd.mmd` for a worked input.
+
+### flowchart → boxes and arrows
+
+Each node becomes a shape (rounded rectangle by default) with its label
+centre-bound inside it, coloured from `classDef`/`class`/`style` if the
+diagram declares any and left neutral otherwise; a diagram that declares no
+styles at all gets the pastel palette cycled over its nodes instead. Each
+`subgraph` becomes a dashed rounded container drawn behind its members, with
+its title sitting *above* the container's top edge and flush to its left
+edge (as in the hand-drawn reference).
+
+Styling here is taken from the decision tree in the same reference diagram:
+`FONT_FAMILY = 8` (Comic Shanns; used for node labels, edge labels and
+cluster titles alike), 8px corner radius, a saturated stroke over a matching
+pale fill, and the label in the stroke colour.
+
+Layout collapses every subgraph to a single node of a *cluster graph* and
+runs the same longest-path column assignment over that, so a subgraph's
+members always stay together in one column and containers never interleave.
+Cycles are broken deterministically — edges are taken in declaration order
+and any that would close a cycle is dropped — so both the column assignment
+and the intra-cluster member order (by longest-path depth) describe the
+diagram's flow and don't vary between runs.
+
+Spacing is derived from what has to fit in it:
+
+- the vertical gap between two stacked members is `NODE_GAP` (46) for an
+  unlabelled edge, grown to the edge label's height + `2 * LABEL_PAD` when
+  the two are joined by a labelled edge;
+- the horizontal gutter between two columns is `COL_GAP` (150) or, if wider,
+  the widest label on an edge crossing that gutter plus label and routing
+  padding;
+- long edge labels are word-wrapped to `EDGE_LABEL_WRAP` (24) chars, which
+  both stops them sticking out sideways over neighbouring boxes and keeps the
+  gutters sane;
+- the vertical gap above a titled cluster reserves the title band
+  (`TITLE_TEXT_H + TITLE_GAP`), since the title now lives outside the box.
+
+Arrows are routed by an obstacle-avoiding orthogonal router
+(`route()`/`_shortest()`): every node box except the two endpoints, every
+cluster title, and every cluster container that belongs to neither endpoint
+is inflated by `ROUTE_MARGIN` and treated as solid; candidate lanes are those
+inflated edges, the endpoints' anchor stubs, and a ring `ROUTE_RING` outside
+the whole diagram bbox (so a route can go all the way around). Dijkstra over
+that lane grid minimises length + `TURN_PENALTY` per elbow across all 16
+side-anchor pairs, biased toward anchors that face the other endpoint.
+Arrows are emitted as Excalidraw's native elbow arrows (`elbowed: true`) with
+both bindings kept, so a later hand-nudge in the app re-routes orthogonally
+instead of collapsing back to a diagonal.
+
+See `example-flowchart.mmd` / `.png` for a worked input — subgraphs, a
+cylinder node, `<br/>` labels, `classDef`, and `linkStyle`.
 
 ## Quick start
 
@@ -30,7 +111,9 @@ python3 .claude/skills/excalidraw-diagram/scripts/convert.py <input.mmd> <output
 Open the output in https://excalidraw.com (or the desktop/VS Code app) via
 File → Open.
 
-## Scope (v1)
+## Scope
+
+### classDiagram
 
 Only supports:
 
@@ -42,19 +125,61 @@ Layering (left-to-right columns) is computed from longest-path depth from
 root nodes (nodes with no incoming edge); boxes within a column are stacked
 and vertically centered. Other mermaid diagram types (flowchart, sequence,
 ER, etc.) and other edge styles (inheritance `<|--`, association `-->`,
-aggregation `o--`) are **not** supported — extend `parse_mermaid` /
-`EDGE_RE` in `scripts/convert.py` if you need them.
+aggregation `o--`) are **not** supported by this path — extend
+`parse_mermaid` / `EDGE_RE` in `scripts/convert.py` if you need them.
+
+### flowchart
+
+Supports `flowchart`/`graph` with any direction keyword (the keyword is
+parsed but ignored — layout is always left-to-right), and:
+
+- shapes `[x]`, `(x)`, `([x])`, `[[x]]`, `[(x)]`, `((x))`, `{x}`, `{{x}}`,
+  `>x]`, with or without quotes, and `<br/>` for line breaks
+- `subgraph ID["Title"] ... end`, including nesting (a nested subgraph's
+  members are laid out in the innermost one)
+- links `-->`, `---`, `-.->`, `-.-`, `==>`, `===`, `->`, with `|label|` or
+  the `-- label -->` form
+- `classDef`, `class`, `style` (`fill`, `stroke`, `stroke-width`) and
+  `linkStyle <indices> stroke:...,stroke-width:...`
+
+Not supported: `direction` inside a subgraph, edge chains
+(`A --> B --> C`), multi-target edges (`A --> B & C`), `click`/`href`, and
+mermaid's remaining shape and link syntaxes. Excalidraw has no cylinder
+shape, so `[(db)]` renders as a rounded rectangle.
+
+### erDiagram
+
+Supports:
+
+- `ENTITY { <type> <name> [PK|FK|UK[, ...]] ["comment"] }` attribute blocks
+  (mermaid's type-then-name order; rendered name-then-type), bare `ENTITY`,
+  and the `ENTITY["label"]` alias form
+- relationships `A <card>--<card> B : label` and the dotted `..` variant,
+  with cardinalities `||`, `|o`/`o|`, `}o`/`o{`, `}|`/`|{`
+
+Attribute comments are parsed but not rendered. Columns are laid out
+left-to-right by the same longest-path depth rule as `classDiagram`, and an
+arrow is always drawn from the left-hand column to the right-hand one
+(cardinalities swap with it, so the crowfoot stays on the correct entity).
 
 ## Notes
 
 - Box width/height and text-line spacing are heuristics calibrated against
-  the reference file's real element geometry (see constants at the top of
+  the hand-drawn reference's real element geometry (see constants at the top of
   `scripts/convert.py`: `CHAR_W`, `MEMBER_LINE_H`, `BASE_HEIGHT`, etc.), not
   an exact text-measurement engine — expect a few px of slack, same as the
   hand-converted reference.
-- Arrow routing is simple Manhattan (two elbows), not pixel-identical to a
-  hand-drawn version, but valid elbowed excalidraw arrows bound to both
-  rectangles.
+- `classDiagram`/`erDiagram` arrow routing is simple Manhattan (two elbows),
+  not pixel-identical to a hand-drawn version, but valid elbowed excalidraw
+  arrows bound to both rectangles. `flowchart` uses the obstacle-avoiding
+  router described above instead.
+- Excalidraw (and the headless export) repositions a *bound* arrow label onto
+  the arrow's own route midpoint, so the longest-segment position the
+  generator writes into the label's `x`/`y` is advisory only. The gap sizing
+  above is what actually keeps labels off the boxes.
+- The flowchart router's anchors are the midpoints of a node's bounding-box
+  sides, so on a diamond or ellipse an arrow leaves near the bbox corner;
+  Excalidraw's binding tidies this up when the shape is dragged.
 
 ## Rendering to an image (screenshot)
 
@@ -69,6 +194,11 @@ ever writes into the directory you bind-mount — it never writes "real"
 output anywhere else — so afterwards you move/copy the produced file(s)
 wherever you want (e.g. into `.scratch/` for throwaway work, or straight to
 their final destination).
+
+The build context must contain real files: if the skill's `scripts/*` are
+symlinks (e.g. into a dotfiles repo), `COPY` follows the build context rather
+than the link and the build fails — `cp -L` the skill into a temp dir and
+build from there.
 
 ```bash
 docker build -t excalidraw-diagram-export .claude/skills/excalidraw-diagram
@@ -106,6 +236,10 @@ Requirements:
 
 ### Both routes
 
+- ERD tables rely on Excalidraw's monospace face (`fontFamily: 3`) to keep
+  their name/type/key columns aligned. The headless export has no such font
+  (see below), so exported ERD rows look ragged even though they line up
+  perfectly in Excalidraw itself — don't "fix" the padding based on a PNG.
 - Text is rendered with a fallback system font, not the exact embedded
   Excalidraw webfont — jsdom has no `FontFace`/font-loading API, so font
   inlining is skipped (`skipInliningFonts: true`). Geometry, colors, and

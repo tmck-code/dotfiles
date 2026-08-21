@@ -1,8 +1,19 @@
 #!/usr/bin/env python3
-"""Convert a mermaid `classDiagram` (direction LR) into an Excalidraw file.
+"""Convert a mermaid `classDiagram` or `erDiagram` into an Excalidraw file.
 
-Scope (v1): classDiagram + `direction LR` + composition edges (`*--`/`--*`)
-+ optional member lists. No other mermaid diagram types are supported.
+Three input paths:
+
+- `classDiagram` (direction LR) + composition edges (`*--`/`--*`) + optional
+  member lists -> pastel UML boxes (the original v1 behaviour).
+- `erDiagram` + entity attribute blocks + crowfoot relationships -> ERD
+  tables styled after a hand-drawn ERD reference (colored header band,
+  matching light body tint, mono rows, grey row dividers, PK/UK/FK colored
+  rows).
+- `flowchart` / `graph` + subgraphs + `classDef`/`class`/`style`/`linkStyle`
+  -> rounded boxes styled after a hand-drawn decision-tree reference. See
+  `flowchart.py`.
+
+The diagram type is taken from the first directive line in the input.
 
 Usage: convert.py <input.mmd> <output.excalidraw>
 """
@@ -34,6 +45,48 @@ PALETTE = [
     "#fff0f4",  # pink
     "#fff5f5",  # red-tint
 ]
+
+# --- ERD table styling -------------------------------------------------
+# Geometry reverse-engineered from the tables in a hand-drawn ERD
+# reference diagram. Those were drawn at a huge zoom;
+# every ratio below is that file's geometry divided through by its row
+# font size, then re-multiplied by ERD_ROW_FONT.
+ERD_ROW_FONT = 20.0
+ERD_FONT_FAMILY = 3  # code / monospace
+ERD_TITLE_FONT = ERD_ROW_FONT * 1.385
+ERD_ROW_H = ERD_ROW_FONT * 2.307
+ERD_HEADER_H = ERD_ROW_FONT * 3.075
+ERD_TITLE_OFFSET_Y = ERD_ROW_FONT * 0.847
+ERD_PAD_X = ERD_ROW_FONT * 0.77
+ERD_CHAR_W = ERD_ROW_FONT * 0.6  # excalidraw's mono face
+ERD_MIN_WIDTH = 260.0
+ERD_COL_GAP = 160.0
+ERD_ROW_GAP = 60.0
+ERD_DIVIDER_COLOR = "#ced4da"
+ERD_BORDER_COLOR = "#1e1e1e"
+ERD_TITLE_COLOR = "#ffffff"
+ERD_TEXT_COLOR = "#1e1e1e"
+ERD_KEY_COLORS = {"PK": "#e67700", "UK": "#2f9e44", "FK": "#c92a2a"}
+# (header band / body tint) pairs, cycled per entity — "style B" from the
+# reference diagram, i.e. a tinted body rather than a transparent one.
+ERD_PALETTE = [
+    ("#1971c2", "#e7f5ff"),  # blue
+    ("#2f9e44", "#ebfbee"),  # green
+    ("#9c36b5", "#f8f0fc"),  # purple
+    ("#e8590c", "#fff4e6"),  # orange
+    ("#0c8599", "#e3fafc"),  # cyan
+    ("#c2255c", "#fff0f6"),  # pink
+]
+# mermaid crowfoot cardinality -> excalidraw arrowhead
+ERD_ARROWHEADS = {
+    "||": "crowfoot_one",
+    "|o": "circle_outline",
+    "o|": "circle_outline",
+    "}o": "crowfoot_many",
+    "o{": "crowfoot_many",
+    "}|": "crowfoot_one_or_many",
+    "|{": "crowfoot_one_or_many",
+}
 
 
 def new_id():
@@ -287,7 +340,273 @@ def make_arrow(owner_node, other_node):
     return arrow
 
 
+# --- erDiagram ---------------------------------------------------------
+
+ER_ENTITY_OPEN_RE = re.compile(r'^(\w+)\s*(?:\["([^"]+)"\])?\s*\{$')
+ER_ENTITY_BARE_RE = re.compile(r'^(\w+)\s*(?:\["([^"]+)"\])?$')
+ER_ATTR_RE = re.compile(
+    r'^(?P<type>\S+)\s+(?P<name>\w+)'
+    r'(?:\s+(?P<keys>(?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*))?'
+    r'(?:\s+"(?P<comment>[^"]*)")?$'
+)
+ER_REL_RE = re.compile(
+    r'^(\w+)\s+(\|\||\|o|\}o|\}\|)(--|\.\.)(\|\||o\||o\{|\|\{)\s+(\w+)'
+    r'\s*(?::\s*(?:"([^"]*)"|(\S.*?))\s*)?$'
+)
+
+
+class Entity(Node):
+    def __init__(self, entity_id, label):
+        super().__init__(entity_id, label)
+        self.attrs = []  # list of (name, type, keys)
+        self.rows = []   # rendered row strings, filled by size_entity
+
+
+def parse_er(text):
+    """Parse an `erDiagram` into (entities, relationships).
+
+    Relationships are (left_id, right_id, left_card, right_card, dotted, label).
+    """
+    lines = [l.strip() for l in text.splitlines()]
+    entities = {}
+    rels = []
+
+    def ensure(eid, label=None):
+        if eid not in entities:
+            entities[eid] = Entity(eid, label or eid)
+        elif label:
+            entities[eid].label = label
+        return entities[eid]
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line or line.startswith("erDiagram") or line.startswith("direction") \
+                or line.startswith("%%"):
+            i += 1
+            continue
+
+        m = ER_REL_RE.match(line)
+        if m:
+            left, lcard, link, rcard, right, qlabel, plabel = m.groups()
+            ensure(left)
+            ensure(right)
+            rels.append((left, right, lcard, rcard, link == "..",
+                         qlabel if qlabel is not None else (plabel or "")))
+            i += 1
+            continue
+
+        m = ER_ENTITY_OPEN_RE.match(line)
+        if m:
+            entity = ensure(m.group(1), m.group(2))
+            i += 1
+            while i < len(lines) and lines[i] != "}":
+                attr = lines[i].strip()
+                am = ER_ATTR_RE.match(attr) if attr else None
+                if am:
+                    keys = am.group("keys") or ""
+                    keys = ",".join(k.strip() for k in keys.split(",") if k.strip())
+                    entity.attrs.append((am.group("name"), am.group("type"), keys))
+                i += 1
+            i += 1
+            continue
+
+        m = ER_ENTITY_BARE_RE.match(line)
+        if m:
+            ensure(m.group(1), m.group(2))
+            i += 1
+            continue
+
+        i += 1
+    return entities, rels
+
+
+def size_entity(entity):
+    """Lay out the attribute columns and set the entity's box size."""
+    if entity.attrs:
+        name_w = max(len(a[0]) for a in entity.attrs) + 2
+        type_w = max(len(a[1]) for a in entity.attrs) + 3
+    else:
+        name_w = type_w = 0
+    entity.rows = [
+        (f"{name:<{name_w}}{type_:<{type_w}}{keys}".rstrip(), keys)
+        for name, type_, keys in entity.attrs
+    ]
+    widest = max([len(r[0]) for r in entity.rows] or [0])
+    title_w = len(entity.label) * ERD_TITLE_FONT * 0.6
+    entity.width = max(
+        ERD_MIN_WIDTH,
+        widest * ERD_CHAR_W + 2 * ERD_PAD_X,
+        title_w + 2 * ERD_PAD_X,
+    )
+    entity.height = ERD_HEADER_H + ERD_ROW_H * len(entity.rows)
+
+
+def er_layout(entities):
+    for entity in entities.values():
+        size_entity(entity)
+    max_col = max((e.col for e in entities.values()), default=0)
+    columns = {c: [] for c in range(max_col + 1)}
+    for entity in entities.values():
+        columns[entity.col].append(entity)
+    x = 0.0
+    for c in range(max_col + 1):
+        col_entities = columns[c]
+        total_h = (sum(e.height for e in col_entities)
+                   + ERD_ROW_GAP * max(0, len(col_entities) - 1))
+        y = -total_h / 2.0
+        for e in col_entities:
+            e.x = x
+            e.y = y
+            y += e.height + ERD_ROW_GAP
+        x += max((e.width for e in col_entities), default=ERD_MIN_WIDTH) + ERD_COL_GAP
+
+
+def _base(el_id, el_type, x, y, width, height, group_ids, **extra):
+    el = {
+        "id": el_id, "type": el_type,
+        "x": x, "y": y, "width": width, "height": height,
+        "angle": 0, "strokeColor": ERD_BORDER_COLOR,
+        "backgroundColor": "transparent", "fillStyle": "solid",
+        "strokeWidth": 1, "strokeStyle": "solid", "roughness": 0,
+        "opacity": 100, "groupIds": group_ids, "frameId": None,
+        "roundness": None, "seed": 1, "version": 1, "versionNonce": 1,
+        "isDeleted": False, "boundElements": [], "updated": 1, "link": None,
+        "locked": False,
+    }
+    el.update(extra)
+    return el
+
+
+def _erd_text(text, x, y, width, color, font_size, align, group_ids):
+    return _base(
+        new_id(), "text", x, y, width, font_size * 1.25, group_ids,
+        strokeColor=color, text=text, originalText=text,
+        fontSize=font_size, fontFamily=ERD_FONT_FAMILY,
+        textAlign=align, verticalAlign="top", containerId=None,
+        autoResize=False, lineHeight=1.25,
+    )
+
+
+def make_erd_table(entity, accent, tint):
+    """Return the excalidraw elements for one ERD table (style B: tinted body)."""
+    group_ids = [new_id()]
+    els = []
+
+    # body tint, then the header band, then the outer border on top
+    els.append(_base(new_id(), "rectangle", entity.x, entity.y,
+                     entity.width, entity.height, group_ids,
+                     strokeColor=accent, backgroundColor=tint))
+    els.append(_base(new_id(), "rectangle", entity.x, entity.y,
+                     entity.width, ERD_HEADER_H, group_ids,
+                     strokeColor=accent, backgroundColor=accent))
+    rect_id = new_id()
+    entity.rect_id = rect_id
+    els.append(_base(rect_id, "rectangle", entity.x, entity.y,
+                     entity.width, entity.height, group_ids,
+                     strokeColor=ERD_BORDER_COLOR, strokeWidth=2))
+
+    els.append(_erd_text(entity.label, entity.x,
+                         entity.y + ERD_TITLE_OFFSET_Y, entity.width,
+                         ERD_TITLE_COLOR, ERD_TITLE_FONT, "center", group_ids))
+
+    text_w = entity.width - 2 * ERD_PAD_X
+    row_text_dy = (ERD_ROW_H - ERD_ROW_FONT * 1.25) / 2.0
+    for idx, (row, keys) in enumerate(entity.rows):
+        top = entity.y + ERD_HEADER_H + idx * ERD_ROW_H
+        els.append(_base(new_id(), "line", entity.x, top, entity.width, 0.0,
+                         group_ids, strokeColor=ERD_DIVIDER_COLOR,
+                         points=[[0, 0], [entity.width, 0]],
+                         startBinding=None, endBinding=None,
+                         startArrowhead=None, endArrowhead=None,
+                         lastCommittedPoint=None, polygon=False,
+                         boundElements=None))
+        color = ERD_TEXT_COLOR
+        for key in keys.split(","):
+            if key in ERD_KEY_COLORS:
+                color = ERD_KEY_COLORS[key]
+                break
+        els.append(_erd_text(row, entity.x + ERD_PAD_X, top + row_text_dy,
+                             text_w, color, ERD_ROW_FONT, "left", group_ids))
+    return els
+
+
+def make_er_arrow(left, right, lcard, rcard, dotted, label):
+    """Elbowed relationship arrow with crowfoot arrowheads at both ends."""
+    start_x = left.x + left.width
+    start_y = left.y + left.height / 2.0
+    end_x = right.x
+    end_y = right.y + right.height / 2.0
+    mid_x = (start_x + end_x) / 2.0
+    dx_end = end_x - start_x
+    points = [
+        [0, 0],
+        [mid_x - start_x, 0],
+        [mid_x - start_x, end_y - start_y],
+        [dx_end, end_y - start_y],
+    ]
+    arrow = _base(
+        new_id(), "arrow", start_x, start_y, abs(dx_end), abs(end_y - start_y),
+        [], strokeWidth=2, strokeStyle="dashed" if dotted else "solid",
+        points=points, lastCommittedPoint=None,
+        startBinding={"elementId": left.rect_id, "mode": "orbit",
+                      "fixedPoint": [1.0, 0.5]},
+        endBinding={"elementId": right.rect_id, "mode": "orbit",
+                    "fixedPoint": [0.0, 0.5]},
+        startArrowhead=ERD_ARROWHEADS.get(lcard),
+        endArrowhead=ERD_ARROWHEADS.get(rcard),
+        elbowed=True, fixedSegments=None,
+        startIsSpecial=None, endIsSpecial=None,
+    )
+    els = [arrow]
+    if label:
+        text = _erd_text(label, mid_x, (start_y + end_y) / 2.0,
+                         len(label) * ERD_CHAR_W, ERD_TEXT_COLOR,
+                         ERD_ROW_FONT * 0.7, "center", [])
+        text["containerId"] = arrow["id"]
+        text["verticalAlign"] = "middle"
+        arrow["boundElements"] = [{"id": text["id"], "type": "text"}]
+        els.append(text)
+    return els
+
+
+def convert_er(mermaid_text):
+    entities, rels = parse_er(mermaid_text)
+    compute_columns(entities, [(l, r, None, None) for l, r, *_ in rels])
+    er_layout(entities)
+
+    elements = []
+    for idx, entity in enumerate(entities.values()):
+        accent, tint = ERD_PALETTE[idx % len(ERD_PALETTE)]
+        elements.extend(make_erd_table(entity, accent, tint))
+
+    bound = {eid: [] for eid in entities}
+    for left, right, lcard, rcard, dotted, label in rels:
+        a, b = entities[left], entities[right]
+        if a.col > b.col:  # always draw left-to-right
+            a, b = b, a
+            lcard, rcard = rcard, lcard
+        arrow_els = make_er_arrow(a, b, lcard, rcard, dotted, label)
+        elements.extend(arrow_els)
+        bound[a.id].append(arrow_els[0]["id"])
+        bound[b.id].append(arrow_els[0]["id"])
+
+    by_id = {e["id"]: e for e in elements}
+    for entity in entities.values():
+        if bound[entity.id]:
+            by_id[entity.rect_id]["boundElements"] = [
+                {"id": aid, "type": "arrow"} for aid in bound[entity.id]
+            ]
+    return elements
+
+
 def convert(mermaid_text):
+    if re.search(r'^\s*(?:flowchart|graph)\s', mermaid_text, re.M):
+        from flowchart import convert_flowchart
+        return document(convert_flowchart(mermaid_text))
+    if re.search(r'^\s*erDiagram\b', mermaid_text, re.M):
+        elements = convert_er(mermaid_text)
+        return document(elements)
     nodes, edges = parse_mermaid(mermaid_text)
     outgoing = compute_columns(nodes, edges)
     layout(nodes, outgoing)
@@ -316,6 +635,10 @@ def convert(mermaid_text):
                 {"id": aid, "type": "arrow"} for aid in bound
             ]
 
+    return document(elements)
+
+
+def document(elements):
     return {
         "type": "excalidraw",
         "version": 2,

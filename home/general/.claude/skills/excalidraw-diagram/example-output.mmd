@@ -1,0 +1,28 @@
+classDiagram
+    direction LR
+    class ROOT["~/.app/"] {
+        +settings.toml
+    }
+    class STATE["state/"] {
+        +version.json
+    }
+    class CACHE["cache/"] {
+        +settings.toml.cache
+    }
+    class RUNTIME["runtime/"] {
+        +events.log
+        +rate.log
+        +render.log
+    }
+    class SIGNALS["signals/"] {
+        +last-input.json
+        +terminal-width
+    }
+    class SESSIONS["sessions/"] {
+        +~id~.json
+    }
+    ROOT *-- STATE
+    ROOT *-- CACHE
+    ROOT *-- RUNTIME
+    RUNTIME *-- SIGNALS
+    RUNTIME *-- SESSIONS
