@@ -41,20 +41,18 @@ Every test follows this order — no exceptions, no skipping steps:
 
 ```python
 def test_<behaviour>(self):
-    # setup
     html = '<p>hello</p>'
-
-    # run
     result = parse(html)
 
-    # expected
     expected = 'hello'
-
-    # assert
     assert result == expected
 ```
 
-- One blank line between each section.
+- setup / run / expected / assert name the *phases* for the reader. They are
+  not literal comments — never emit `# setup`, `# run`, `# expected` or
+  `# assert` into a test body.
+- Use blank lines, not comments, to separate the phases, and only where they
+  aid reading. A short test needs no internal breaks at all.
 - `result` holds the actual value; `expected` holds the expected value.
 - Put `result` before `expected` in the assert: `assert result == expected`.
 - For void calls being tested for side effects, omit `result`/`expected` and assert directly.
@@ -100,6 +98,7 @@ def test_<behaviour>(self):
 ### Comments
 
 - No banner comments (`# ===== Section =====` etc.).
+- No phase-marker comments (`# setup`, `# run`, `# expected`, `# assert`).
 - Only add a comment when the why is non-obvious — a hidden constraint, a workaround, a subtle invariant.
 - A docstring on a test is acceptable when the behaviour being tested is subtle; keep it to one short line.
 
@@ -123,6 +122,6 @@ def test_<behaviour>(self):
 - [ ] Every test: setup → result → expected → assert shape
 - [ ] Whole-object comparison, not index access
 - [ ] No numbers in test function names
-- [ ] No banner comments
+- [ ] No banner comments, no phase-marker comments
 - [ ] `tmp_path` / `tmp_home` used for all filesystem writes
 - [ ] Tests pass with `pytest -x -p no:randomly` and with `pytest -n auto`

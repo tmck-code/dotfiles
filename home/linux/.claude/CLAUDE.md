@@ -37,6 +37,17 @@ deliverable: separate git worktrees (`isolation: "worktree"`). Split ownership b
 file/module, not mission. Handoffs point to code on disk, not a restated summary.
 Backstopped by `subagent-file-handoff.py` and `same-file-write-audit.py`.
 
+## Subagents own files, not the working tree
+
+File ownership does not constrain git. `git stash`, `checkout -- .`, `restore`,
+`reset`, `clean`, `switch`, `rebase`, `merge`, `cherry-pick` and `revert` mutate
+the *whole tree* and will silently revert sibling agents' in-flight edits. A
+subagent wanting a baseline diff uses `git diff <ref> -- <its own paths>` or
+`git show <ref>:<path>`; to undo its own edit it rewrites the file. Parallel
+editors that genuinely need tree-level git get `isolation: "worktree"`.
+Backstopped by `subagent-git-tree-guard.py`, which denies these outright for
+subagents outside a linked worktree.
+
 ## Browser automation goes through browser_batch
 
 Never make a lone `mcp__claude-in-chrome__*` call — it nags on exactly one per
