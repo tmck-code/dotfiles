@@ -1,0 +1,40 @@
+flowchart LR
+    subgraph EXTERNAL["External world"]
+        API["Upstream API"]
+    end
+
+    subgraph BROKER["Job broker"]
+        HANDSHAKE["Handshake form"]
+        TOKENS["Token store (short-lived)"]
+        WORKER["Job runner"]
+    end
+
+    subgraph PLATFORM["Application platform"]
+        APPDB[("App database")]
+        VAULT["Credential store"]
+        ROLE["Worker identity (worker-{tenant})"]
+        SVC["Web service"]
+    end
+
+    subgraph SINK["Destination"]
+        OBJ[("Object store<br/>exports/{tenant}/")]
+    end
+
+    API -->|"credential<br/>(short-lived)"| HANDSHAKE
+    HANDSHAKE --> TOKENS
+    TOKENS --> WORKER
+    WORKER -->|extract| API
+    WORKER -->|"bulk export"| OBJ
+
+    SVC -->|"create paused job,<br/>request form, confirm state"| HANDSHAKE
+    SVC --> APPDB
+    SVC --> ROLE
+    ROLE -->|ReadSecret - audit logged| VAULT
+    VAULT -.->|"machine-to-machine service key"| SVC
+
+    classDef secret fill:#ffe3e3,stroke:#c92a2a,stroke-width:2px
+    classDef nonsecret fill:#e7f5ff,stroke:#1971c2
+    class TOKENS,VAULT secret
+    class APPDB,WORKER,SVC,ROLE,HANDSHAKE nonsecret
+
+    linkStyle 0,1,2 stroke:#c92a2a,stroke-width:2px

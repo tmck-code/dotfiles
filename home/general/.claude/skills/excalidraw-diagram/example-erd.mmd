@@ -1,0 +1,29 @@
+erDiagram
+    DOCUMENTS["documents"] {
+        integer id PK
+        datetime(tz) created_at
+        datetime(tz) updated_at
+        varchar(64) body_hash UK "dedupe key"
+        varchar(2048) url
+        json metadata
+        datetime(tz) last_fetched_at
+        integer source_id FK
+    }
+    SNAPSHOTS["snapshots"] {
+        integer id PK
+        datetime(tz) created_at
+        datetime(tz) updated_at
+        varchar(2048) url
+        varchar(64) body_hash UK
+        blob body "raw bytes as fetched"
+        datetime(tz) last_fetched_at
+        integer document_id FK
+    }
+    SOURCES["sources"] {
+        integer id PK
+        varchar(255) name UK
+        varchar(2048) base_url
+        boolean enabled
+    }
+    DOCUMENTS ||--o{ SNAPSHOTS : "fetched from"
+    SOURCES |o..o{ DOCUMENTS : "publishes"
