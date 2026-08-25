@@ -1,6 +1,6 @@
 ---
 name: excalidraw-diagram
-description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, or `flowchart`/`graph` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables or rounded flowchart nodes, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, or flowchart/architecture diagram (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
+description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, or `gantt` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes or gantt timeline bars, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, or gantt/timeline chart (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
 ---
 
 # Excalidraw Diagram
@@ -15,6 +15,7 @@ works. `convert.py` picks its path from the input's diagram directive:
 | `classDiagram` | pastel UML class boxes + composition arrows |
 | `erDiagram` | ERD tables + crowfoot relationship arrows |
 | `flowchart` / `graph` | rounded nodes, subgraph containers, labelled arrows |
+| `gantt` | section bands, unit grid, rounded task bars, axis ticks, title pill |
 
 ### classDiagram → UML boxes
 
@@ -102,6 +103,24 @@ instead of collapsing back to a diagonal.
 See `example-flowchart.mmd` / `.png` for a worked input — subgraphs, a
 cylinder node, `<br/>` labels, `classDef`, and `linkStyle`.
 
+### gantt → banded timeline
+
+Each `section` becomes a full-width band tinted from a (bar fill, band
+tint) palette cycled per section, with the section name wrapped (and
+hyphenated if a word is too long) into a label column on the left. Each
+task gets its own row inside its band and is drawn as a rounded solid bar
+(`GANTT_UNIT_W` = 95 px per axis unit, 31 px tall, 2 px stroke). The task
+name is centred inside the bar when it fits; otherwise it is set to the
+right of the bar in a smaller face over a band-tinted backing rectangle so
+it stays readable across the grid lines. One vertical grid line per axis
+unit spans all bands, with a tick label beneath (zero-padded to two digits
+for `%S`/`%M`/`%H` `axisFormat`s), and the `title` sits in a hand-drawn
+(roughness 2) pill above the chart.
+
+Styling was reverse-engineered from a hand-converted reference of this
+exact kind; the constants live in the `GANTT_*` block of
+`scripts/gantt.py`. See `example-gantt.mmd` / `.png` for a worked input.
+
 ## Quick start
 
 ```bash
@@ -161,6 +180,18 @@ Attribute comments are parsed but not rendered. Columns are laid out
 left-to-right by the same longest-path depth rule as `classDiagram`, and an
 arrow is always drawn from the left-hand column to the right-hand one
 (cardinalities swap with it, so the crowfoot stays on the correct entity).
+
+### gantt
+
+Supports `title`, `axisFormat`, `section`, and tasks of the form
+`name : [tags,] [id,] [start,] end|duration` where `start` is a plain
+number or `after <id>` (omitted → previous task's end), a bare-number `end`
+is absolute and a suffixed one (`5s`, `2d`) is a duration. `dateFormat` is
+parsed but ignored: times are always treated as plain numbers on a unit
+axis, so real calendar dates (`2024-01-01`) are **not** supported. Tags
+(`done`/`active`/`crit`/`milestone`) are accepted and ignored — every bar
+is drawn the same way. `excludes`, `todayMarker`, `tickInterval` and
+`weekday` are skipped.
 
 ## Notes
 
@@ -240,7 +271,9 @@ Requirements:
   their name/type/key columns aligned. The headless export has no such font
   (see below), so exported ERD rows look ragged even though they line up
   perfectly in Excalidraw itself — don't "fix" the padding based on a PNG.
-- Text is rendered with a fallback system font, not the exact embedded
-  Excalidraw webfont — jsdom has no `FontFace`/font-loading API, so font
-  inlining is skipped (`skipInliningFonts: true`). Geometry, colors, and
-  layout are otherwise exact.
+- jsdom has no `FontFace` API, so font inlining is skipped
+  (`skipInliningFonts: true`); instead `export_image.mjs` points fontconfig
+  at the skill's bundled `fonts/` dir (Excalifont, Comic Shanns — sources in
+  `fonts/README.md`) before calling `rsvg-convert`, so both routes render
+  the real faces with no font install. Fonts there must be `.ttf`/`.otf` —
+  rsvg cannot load `.woff2`.

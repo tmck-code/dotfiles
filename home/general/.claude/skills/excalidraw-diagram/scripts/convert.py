@@ -12,6 +12,9 @@ Three input paths:
 - `flowchart` / `graph` + subgraphs + `classDef`/`class`/`style`/`linkStyle`
   -> rounded boxes styled after a hand-drawn decision-tree reference. See
   `flowchart.py`.
+- `gantt` + sections + `name : start, end` tasks -> banded timeline with
+  rounded bars and a unit grid, styled after a hand-converted reference. See
+  `gantt.py`.
 
 The diagram type is taken from the first directive line in the input.
 
@@ -604,6 +607,9 @@ def convert(mermaid_text):
     if re.search(r'^\s*(?:flowchart|graph)\s', mermaid_text, re.M):
         from flowchart import convert_flowchart
         return document(convert_flowchart(mermaid_text))
+    if re.search(r'^\s*gantt\b', mermaid_text, re.M):
+        from gantt import convert_gantt
+        return document(convert_gantt(mermaid_text))
     if re.search(r'^\s*erDiagram\b', mermaid_text, re.M):
         elements = convert_er(mermaid_text)
         return document(elements)
