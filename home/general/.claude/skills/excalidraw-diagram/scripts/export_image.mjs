@@ -12,6 +12,27 @@ import { readFile, writeFile } from "fs/promises";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import path from "path";
+import { fileURLToPath } from "url";
+import { existsSync, mkdtempSync, writeFileSync } from "fs";
+import { tmpdir } from "os";
+
+// Point fontconfig at the skill's bundled fonts/ dir (Excalifont, Comic
+// Shanns) so rsvg-convert finds them without a system install. System fonts
+// stay available as fallbacks via <include>.
+function fontconfigEnv() {
+  const fontsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "fonts");
+  if (!existsSync(fontsDir)) return process.env;
+  const cacheDir = path.join(mkdtempSync(path.join(tmpdir(), "excalidraw-fc-")), "cache");
+  const conf = path.join(path.dirname(cacheDir), "fonts.conf");
+  writeFileSync(conf, `<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${fontsDir}</dir>
+  <cachedir>${cacheDir}</cachedir>
+  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
+</fontconfig>
+`);
+  return { ...process.env, FONTCONFIG_FILE: conf };
+}
 
 const execFileAsync = promisify(execFile);
 
@@ -53,7 +74,7 @@ if (ext === ".svg") {
   const svgPath = outputPath.replace(/\.png$/i, ".svg");
   await writeFile(svgPath, svg.outerHTML);
   try {
-    await execFileAsync("rsvg-convert", [svgPath, "-o", outputPath]);
+    await execFileAsync("rsvg-convert", [svgPath, "-o", outputPath], { env: fontconfigEnv() });
   } catch (err) {
     console.error(
       "rsvg-convert failed or is not installed. SVG was written to " +

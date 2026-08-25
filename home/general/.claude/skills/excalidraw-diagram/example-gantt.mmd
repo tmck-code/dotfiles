@@ -1,0 +1,12 @@
+gantt
+    title Before — track1, warm (15.8s)
+    dateFormat s
+    axisFormat %S
+    section main thread
+    decode            :0, 1
+    beats (madmom)    :1, 10
+    snare/grid/struct :10, 11
+    notation (pyin)   :11, 16
+    section background
+    waveform/spectrum/fingerprint/stereo :10, 11
+    synth HPSS (serial, 22 core-s) :11, 16
