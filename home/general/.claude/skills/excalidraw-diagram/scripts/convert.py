@@ -15,6 +15,9 @@ Three input paths:
 - `gantt` + sections + `name : start, end` tasks -> banded timeline with
   rounded bars and a unit grid, styled after a hand-converted reference. See
   `gantt.py`.
+- `pie` (optionally `showData`) + `"label" : value` slices -> a hand-drawn
+  pie chart with solid-filled wedges, percentage labels and a swatch legend,
+  styled after a hand-drawn reference pie. See `pie.py`.
 
 The diagram type is taken from the first directive line in the input.
 
@@ -610,6 +613,9 @@ def convert(mermaid_text):
     if re.search(r'^\s*gantt\b', mermaid_text, re.M):
         from gantt import convert_gantt
         return document(convert_gantt(mermaid_text))
+    if re.search(r'^\s*pie\b', mermaid_text, re.M):
+        from pie import convert_pie
+        return document(convert_pie(mermaid_text))
     if re.search(r'^\s*erDiagram\b', mermaid_text, re.M):
         elements = convert_er(mermaid_text)
         return document(elements)
