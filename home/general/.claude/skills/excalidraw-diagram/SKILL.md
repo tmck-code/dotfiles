@@ -1,6 +1,6 @@
 ---
 name: excalidraw-diagram
-description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, or `gantt` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes or gantt timeline bars, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, or gantt/timeline chart (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
+description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, `gantt`, or `pie` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes, gantt timeline bars or pie wedges, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, gantt/timeline chart, or pie chart (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
 ---
 
 # Excalidraw Diagram
@@ -16,6 +16,7 @@ works. `convert.py` picks its path from the input's diagram directive:
 | `erDiagram` | ERD tables + crowfoot relationship arrows |
 | `flowchart` / `graph` | rounded nodes, subgraph containers, labelled arrows |
 | `gantt` | section bands, unit grid, rounded task bars, axis ticks, title pill |
+| `pie` | filled wedges, in-slice percentages, swatch legend |
 
 ### classDiagram → UML boxes
 
@@ -121,6 +122,30 @@ Styling was reverse-engineered from a hand-converted reference of this
 exact kind; the constants live in the `GANTT_*` block of
 `scripts/gantt.py`. See `example-gantt.mmd` / `.png` for a worked input.
 
+### pie → filled wedges
+
+Values are normalised to fractions of their total and drawn clockwise from 12
+o'clock into a `PIE_RADIUS`-radius circle. Each slice is a solid-filled
+`line` element whose points run centre → rim → arc samples (every
+`PIE_ARC_STEP` degrees) → centre, so it stays a closed wedge if it is nudged
+in the app; the base ellipse underneath carries the last slice's fill, so any
+seam between wedges shows that colour rather than white. Slice colours cycle
+`PIE_PALETTE`.
+
+Each slice gets its percentage centred on its mid-angle at
+`PIE_SLICE_LABEL_R` of the radius — a narrow slice is only as wide as its
+chord there, so the label slides outward (capped at `PIE_SLICE_LABEL_R_MAX`)
+until the chord can hold it and then shrinks its face down to a
+`PIE_SLICE_MIN_FONT` floor; slices under `PIE_MIN_LABEL_SWEEP` degrees get no
+label at all. A legend of colour swatches plus labels sits to the right of the circle,
+vertically centred on it. `showData` puts the raw value in the legend label
+alongside the name; `title` is a plain centred line above the whole chart (the
+reference has no title pill).
+
+Styling was reverse-engineered from a hand-drawn reference pie (roughness 1,
+1px black stroke, solid fills); the constants live in the `PIE_*` block of
+`scripts/pie.py`. See `example-pie.mmd` / `.png` for a worked input.
+
 ## Quick start
 
 ```bash
@@ -193,6 +218,13 @@ axis, so real calendar dates (`2024-01-01`) are **not** supported. Tags
 is drawn the same way. `excludes`, `todayMarker`, `tickInterval` and
 `weekday` are skipped.
 
+### pie
+
+Supports `pie` / `pie showData`, an optional `title`, and slices of the form
+`"Label" : <number>`. The label must be quoted (mermaid's own requirement).
+Negative values are not meaningful and are not guarded against. A one-slice
+pie draws as a bare filled circle, since a 100% wedge is degenerate.
+
 ## Notes
 
 - Box width/height and text-line spacing are heuristics calibrated against
@@ -217,6 +249,12 @@ is drawn the same way. `excludes`, `todayMarker`, `tickInterval` and
 `scripts/export_image.mjs` renders any `.excalidraw` file to SVG and/or PNG,
 headlessly (no browser needed) via Excalidraw's own official export API
 (`@excalidraw/utils`'s `exportToSvg`, run under jsdom).
+
+**Always print the `file://` URL of every PNG/SVG produced**, as the last
+step of the render — resolve the output path to absolute
+(`realpath <output>`) and print `file://<absolute-path>`, one line per file.
+Do this whether the render came from the Docker route or the local npm
+route, and do it even when the user didn't ask for the path explicitly.
 
 ### Recommended: Docker
 
