@@ -650,7 +650,34 @@ def convert(mermaid_text):
     return document(elements)
 
 
+def finalise(elements):
+    """Fill the fields Excalidraw's current element schema (and the
+    Excalidraw+ REST API validator) require but the emitters don't set:
+    a fractional `index` per element, and `mode` + `fixedPoint` on every
+    arrow binding. fixedPoint is the arrow endpoint normalised to the bound
+    shape's box.
+    """
+    by_id = {e["id"]: e for e in elements}
+    for i, el in enumerate(elements):
+        el["index"] = "a" + format(i, "04d")
+        if el.get("type") != "arrow":
+            continue
+        pts = el["points"]
+        for key, pt in (("startBinding", pts[0]), ("endBinding", pts[-1])):
+            binding = el.get(key)
+            if not binding:
+                continue
+            shape = by_id[binding["elementId"]]
+            ax, ay = el["x"] + pt[0], el["y"] + pt[1]
+            fx = (ax - shape["x"]) / shape["width"] if shape["width"] else 0.5
+            fy = (ay - shape["y"]) / shape["height"] if shape["height"] else 0.5
+            binding["fixedPoint"] = [min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))]
+            binding["mode"] = "orbit"
+    return elements
+
+
 def document(elements):
+    finalise(elements)
     return {
         "type": "excalidraw",
         "version": 2,

@@ -23,6 +23,15 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_TOOL_INPUT\" | grep -Eq '(npm|pnpm|yarn) (i|install|add)' && { echo 'BLOCKED: package install requires explicit human approval'; exit 2; }; exit 0"
+          }
+        ]
+      },
+      {
         "matcher": "Bash|Edit|Write",
         "hooks": [
           {
