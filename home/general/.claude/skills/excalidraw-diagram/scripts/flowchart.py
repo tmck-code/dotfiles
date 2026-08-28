@@ -256,7 +256,7 @@ def parse_flowchart(text):
                 "a": a.id, "b": b.id,
                 "label": wrap_label(clean_label(m.group("label"))),
                 "dotted": link.startswith("-."),
-                "arrowhead": "arrow" if link.endswith(">") else None,
+                "arrowhead": "triangle" if link.endswith(">") else None,
             })
             continue
 
@@ -656,6 +656,8 @@ def route(a, b, obstacles, bbox):
                 cost += 30.0
             if bd[0] * toward[0] + bd[1] * toward[1] >= 0:
                 cost += 30.0
+            if _FLOW_AXIS == "y":  # top-down: prefer vertical anchors
+                cost += 400.0 * (abs(ad[0]) + abs(bd[0]))
             if cost < best_cost:
                 best_cost = cost
                 best_path = _collapse([abp] + path + [bbp])
@@ -707,10 +709,52 @@ def make_edge(a, b, edge, style, obstacles, bbox):
     return els
 
 
+_FLOW_AXIS = "x"
+
+
+def _transpose(nodes, groups):
+    """Re-lay the LR layout as TD: each column becomes a row of groups placed
+    side by side; members inside a group stack horizontally.
+    """
+    for group in groups:
+        pad = 0 if group.title is None else CLUSTER_PAD
+        members = [nodes[m] for m in group.members]
+        group.width = sum(n.width for n in members) + sum(group.gaps) + 2 * pad
+        group.height = max(n.height for n in members) + 2 * pad
+    y = 0.0
+    for col in sorted({g.col for g in groups}):
+        in_row = [g for g in groups if g.col == col]
+        in_row.sort(key=lambda g: g.y)
+        total_w = sum(g.width for g in in_row) + CLUSTER_GAP * (len(in_row) - 1)
+        row_h = max(g.height + (0 if g.title is None else TITLE_TEXT_H + TITLE_GAP)
+                    for g in in_row)
+        x = -total_w / 2.0
+        for group in in_row:
+            group.x = x
+            group.y = y + (0 if group.title is None else TITLE_TEXT_H + TITLE_GAP)
+            pad = 0 if group.title is None else CLUSTER_PAD
+            node_x = group.x + pad
+            for slot, member in enumerate(group.members):
+                node = nodes[member]
+                node.x = node_x
+                node.y = group.y + pad + (group.height - 2 * pad - node.height) / 2.0
+                node_x += node.width
+                if slot < len(group.gaps):
+                    node_x += group.gaps[slot]
+            x += group.width + CLUSTER_GAP
+        y += row_h + COL_GAP
+
+
 def convert_flowchart(text):
     nodes, edges, clusters, classdefs, linkstyles = parse_flowchart(text)
     resolve_styles(nodes, classdefs)
     groups = layout(nodes, edges, clusters)
+    m = DIRECTIVE_RE.search(text)
+    global _FLOW_AXIS
+    _FLOW_AXIS = "x"
+    if m and (m.group(1) or "").upper() in ("TD", "TB"):
+        _FLOW_AXIS = "y"
+        _transpose(nodes, groups)
 
     elements = []
     for group in groups:  # containers first, so they sit behind their members

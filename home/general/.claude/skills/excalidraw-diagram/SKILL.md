@@ -174,8 +174,9 @@ aggregation `o--`) are **not** supported by this path — extend
 
 ### flowchart
 
-Supports `flowchart`/`graph` with any direction keyword (the keyword is
-parsed but ignored — layout is always left-to-right), and:
+Supports `flowchart`/`graph` with any direction keyword — `TD`/`TB` lays
+out top-down (columns become rows, arrows biased to top/bottom anchors);
+anything else is left-to-right — and:
 
 - shapes `[x]`, `(x)`, `([x])`, `[[x]]`, `[(x)]`, `((x))`, `{x}`, `{{x}}`,
   `>x]`, with or without quotes, and `<br/>` for line breaks
@@ -226,6 +227,14 @@ Negative values are not meaningful and are not guarded against. A one-slice
 pie draws as a bare filled circle, since a 100% wedge is degenerate.
 
 ## Notes
+
+- Output is upload-ready for the Excalidraw+ REST API: `document()` runs
+  `finalise()`, which sets each element's fractional `index` and each arrow
+  binding's `mode`/`fixedPoint` (the API validator rejects files without
+  them). Import = `POST /collections/{id}/scenes` then
+  `PUT /scenes/{id}/content` with the `.excalidraw` JSON as the body
+  (`Authorization: Bearer $EXCALIDRAW_API_KEY`).
+- Flowchart arrows use `triangle` heads.
 
 - Box width/height and text-line spacing are heuristics calibrated against
   the hand-drawn reference's real element geometry (see constants at the top of
@@ -280,7 +289,9 @@ docker run --rm -v "$(pwd):/data" excalidraw-diagram-export \
 
 Both the input and output paths are resolved relative to whatever host
 directory you bind-mount to `/data` (the repo root in the example above).
-Use `.svg` as the output extension for SVG instead of PNG.
+Use `.svg` as the output extension for SVG instead of PNG. Add `--dark`
+(before or after the paths) for a dark-background export using Excalidraw's
+own dark-mode theme.
 
 ### Fallback: local npm install
 

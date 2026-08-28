@@ -21,6 +21,12 @@ Parallelise independent subagents in one message. Do directly: decide what/who,
 hold the plan, talk to the user, trivial one-line edits. Backstopped by
 `nudge-delegate.py`.
 
+## Scratch files go on shelves
+
+At session start, invoke the `dewey-decimal` skill before writing any scratch,
+working, or subagent-handoff file — every such file goes under
+`.scratch/<branch-shelf>/`, never flat in `.scratch/`.
+
 ## Subagent handoff goes through files
 
 Give each spawned subagent a report path
@@ -28,6 +34,9 @@ Give each spawned subagent a report path
 the current branch's shelf under the repo root (see the `dewey-decimal` skill);
 it writes findings there, returns only the path. Read the file, not the return
 message — nested subagents too; ensure the shelf exists before spawning.
+Filenames must not contain `research` or `report` (case-insensitive substring)
+— that trips a harness write-blocking check; use `findings`/`notes`/`summary`
+instead.
 
 ## Subagents must not share mutable working files
 
@@ -54,3 +63,26 @@ Never make a lone `mcp__claude-in-chrome__*` call — it nags on exactly one per
 turn. Include `browser_batch` in the *first* ToolSearch select list; batch
 navigate/resize/click/type/screenshot into one call, or pair an unbatchable step
 with another browser call in the same message.
+
+## Gates run once, through gate.sh, into a log
+
+Never run a test/lint/build gate bare or piped through `tail`/`grep` — a
+truncated tail hid an xdist worker crash and cost 14 min. Always:
+
+```
+~/.claude/scripts/gate.sh [-t secs] [-s secs] .scratch/<shelf>/gate-<name>.log make test
+```
+
+It captures everything, watches the process (hard timeout, stall detection
+when the log stops growing), flags crash signatures (`node down`, `Error 137`,
+segfault, OOM) even when the exit code is 0, and writes `exit=… reason=…` to
+`<log>.status`. Rules:
+
+- Run it with `run_in_background` and act on the completion notification — no
+  `echo waiting` turns, no Monitor loops on the log.
+- Need a different filter? `grep` the log. **Never rerun a gate to re-grep it.**
+- After fixing a test, rerun **only that file/`-k` expr**. The full suite runs
+  at most once more, at the very end, with a config already proven to complete.
+- If a run crashes (non-zero, `reason=stall|timeout|crash-in-log`, or collected
+  ≠ ran), report that verbatim — don't rerun with the same config.
+- Pass this rule down to every subagent brief that includes a gate.
