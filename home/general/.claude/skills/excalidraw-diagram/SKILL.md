@@ -1,6 +1,6 @@
 ---
 name: excalidraw-diagram
-description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, `gantt`, or `pie` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes, gantt timeline bars or pie wedges, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, gantt/timeline chart, or pie chart (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
+description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, `gantt`, `pie`, or `sequenceDiagram` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes, gantt timeline bars, pie wedges, sequence lifelines, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, gantt/timeline chart, pie chart, or sequence diagram (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
 ---
 
 # Excalidraw Diagram
@@ -17,6 +17,7 @@ works. `convert.py` picks its path from the input's diagram directive:
 | `flowchart` / `graph` | rounded nodes, subgraph containers, labelled arrows |
 | `gantt` | section bands, unit grid, rounded task bars, axis ticks, title pill |
 | `pie` | filled wedges, in-slice percentages, swatch legend |
+| `sequenceDiagram` | participant headers, lifelines, labelled message arrows, notes, block frames |
 
 ### classDiagram → UML boxes
 
@@ -146,6 +147,65 @@ Styling was reverse-engineered from a hand-drawn reference pie (roughness 1,
 1px black stroke, solid fills); the constants live in the `PIE_*` block of
 `scripts/pie.py`. See `example-pie.mmd` / `.png` for a worked input.
 
+### sequenceDiagram → lifelines and messages
+
+Each `participant` becomes a rounded grey (`#eaeaea` on `#666`) header box
+with its label bound inside it; each `actor` becomes a stick figure — an
+ellipse head, four `#000` strokes for body, arms and legs, and its name as
+free text below — instead of a box. The whole participant row is repeated,
+identically, as a mirrored footer at the bottom of the diagram, and a thin
+`#999` lifeline runs between the two.
+
+Messages are 2-point horizontal arrows bound to both participants' header
+boxes (an actor's binds to its head ellipse), with the label bound to the
+arrow itself. The single-dash forms (`->`, `->>`, `-x`, `-)`) draw solid and
+the double-dash ones (`-->`, `-->>`, `--x`, `--)`) dotted. A self-message
+(`A->>A`) is the one non-horizontal case: a four-point hook out to the right
+of its own lifeline, with the label set beside it. `note over A[,B]` and
+`note left of` / `note right of` become dashed `#EDF2AE` boxes with bound
+text; a two-party `note over` is the span between the two lifelines plus a
+25px overhang each side, and the text is word-wrapped to fit it.
+
+Only the participant "legend" rows — the header labels and actor names, top
+and bottom — are set in Excalifont (`fontFamily 5`), as in the reference.
+Everything drawn between them (message labels, notes, keyword tabs, branch
+descriptions) is Comic Shanns (`fontFamily 8`), as elsewhere in this skill.
+Comic Shanns is the wider face, so `SEQ_CHAR_W` is `0.58` rather than the
+reference's Excalifont-sized `0.55`; that feeds the gutter solver and the
+note boxes, which otherwise let labels crowd the neighbouring lifelines.
+
+`autonumber` prefixes each message's label with its 1-based index (`1. `,
+`2. `, …) rather than emitting a separate badge element next to the arrow —
+one fewer element, and the number survives being dragged or re-worded in the
+app.
+
+`rect <colour>` draws a single background rectangle (emitted first, so it has
+the lowest index and sits *behind* everything) around the bounding box of
+what it encloses. `par`/`and`, `alt`/`else`, `loop` and `opt` draw no
+rectangle at all: four dotted `#adb5bd` lines, one dotted divider per extra
+branch, a `#e9ecef` keyword tab straddling the top-left corner, and each
+branch's description as free text in square brackets under its own top line.
+Blocks nest, so layout is a recursive walk over a parsed event tree; a nested
+frame is inset by `SEQ_FRAME_INSET` per level so its edges never land exactly
+on its parent's.
+
+Column spacing is `w_a/2 + w_b/2 + 50` (mermaid's actorMargin) or, if wider,
+whatever the labels crossing that gutter need — every message and note
+contributes a minimum-span constraint over the gutters it spans, and a span
+that is too narrow is widened proportionally across those gutters. The
+constraints interact, so they are iterated to a fixed point. Vertically
+everything is one rhythm: `SEQ_GAP` (42) of air between items, an item being
+`20 + 26 * (extra label lines)` tall for a message and `42 + 28.75 * (extra
+lines)` for a note.
+
+Styling was reverse-engineered from a conversion of `example-sequence.mmd`
+made by Excalidraw's *own* mermaid importer; the constants live in the
+`SEQ_*` block of `scripts/sequence.py`. Three of that reference's losses are
+deliberately not reproduced: it keeps `<br/>` as literal text (here it is a
+real newline), it drops `autonumber` entirely, and it renders `-x` with a
+plain arrowhead (that last one is unavoidable — see Scope). See
+`example-sequence.mmd` / `.png` for a worked input.
+
 ## Quick start
 
 ```bash
@@ -226,12 +286,51 @@ Supports `pie` / `pie showData`, an optional `title`, and slices of the form
 Negative values are not meaningful and are not guarded against. A one-slice
 pie draws as a bare filled circle, since a 100% wedge is degenerate.
 
+### sequenceDiagram
+
+Supports:
+
+- `participant Id` / `actor Id`, with or without `as Label`; an id used in a
+  message but never declared is registered on first use as a plain
+  participant labelled with its own id
+- `autonumber` (no argument forms — the counter always starts at 1 and steps
+  by 1)
+- messages `->>`, `-->>`, `->`, `-->`, `-x`, `--x`, `-)`, `--)`, including
+  self-messages, and `<br/>` for line breaks in any label
+- `note over A`, `note over A,B`, `note left of A`, `note right of A`
+- `rect <colour>` — `rgb(r, g, b)`, a hex value or a bare CSS colour name,
+  passed through to Excalidraw's `backgroundColor` as written
+- `par`/`and`, `alt`/`else`, `loop`, `opt`, including nesting
+
+Not supported:
+
+- activation bars. `activate`/`deactivate` lines and the `+`/`-` suffixes on
+  a message target are parsed and then ignored, so a diagram that uses them
+  still renders — it just has no activation rectangles on its lifelines.
+- `box` participant grouping, `critical`/`option`, `break`, `link`/`links`,
+  and `%%{init}%%` directives. These are skipped; a `box ... end` in
+  particular will leave its `end` unbalanced, so strip it first.
+- Excalidraw has only `triangle`, `arrow`, `bar`, `dot`, `diamond` and the
+  crowfoot heads, with no cross or open head, so `-x`/`--x` (lost message)
+  and `-)`/`--)` (async) all render with the same triangle head as `->>`.
+  Only the solid/dotted stroke distinguishes the single- from the
+  double-dash forms. The reference conversion has the same limitation.
+
+Text widths are the same `chars × font × CHAR_W` heuristic used everywhere
+else in this skill, so header boxes and gutters carry a few px of slack
+rather than being measured exactly.
+
 ## Notes
 
 - Output is upload-ready for the Excalidraw+ REST API: `document()` runs
   `finalise()`, which sets each element's fractional `index` and each arrow
   binding's `mode`/`fixedPoint` (the API validator rejects files without
-  them). To publish one, use `scripts/upload_scene.py` (below).
+  them). To publish one, use `scripts/upload_scene.py` (below). `fixedPoint`
+  is deliberately *not* clamped to `[0, 1]`: a sequence message binds to its
+  participant's header box while sitting far below it, so its `fy` is
+  legitimately much greater than 1 (as it is in the hand-converted
+  reference). Every other path anchors on the shape's own edge, where the
+  clamp was a no-op anyway.
 - Flowchart arrows use `triangle` heads.
 
 - Box width/height and text-line spacing are heuristics calibrated against

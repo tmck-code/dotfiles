@@ -18,6 +18,10 @@ Three input paths:
 - `pie` (optionally `showData`) + `"label" : value` slices -> a hand-drawn
   pie chart with solid-filled wedges, percentage labels and a swatch legend,
   styled after a hand-drawn reference pie. See `pie.py`.
+- `sequenceDiagram` + `participant`/`actor` declarations, messages, notes and
+  `par`/`loop`/`alt`/`opt`/`rect` blocks -> participant headers over grey
+  lifelines with bound message labels, styled after a reference conversion of
+  this skill's own example. See `sequence.py`.
 
 The diagram type is taken from the first directive line in the input.
 
@@ -616,6 +620,9 @@ def convert(mermaid_text):
     if re.search(r'^\s*pie\b', mermaid_text, re.M):
         from pie import convert_pie
         return document(convert_pie(mermaid_text))
+    if re.search(r'^\s*sequenceDiagram\b', mermaid_text, re.M):
+        from sequence import convert_sequence
+        return document(convert_sequence(mermaid_text))
     if re.search(r'^\s*erDiagram\b', mermaid_text, re.M):
         elements = convert_er(mermaid_text)
         return document(elements)
@@ -671,7 +678,11 @@ def finalise(elements):
             ax, ay = el["x"] + pt[0], el["y"] + pt[1]
             fx = (ax - shape["x"]) / shape["width"] if shape["width"] else 0.5
             fy = (ay - shape["y"]) / shape["height"] if shape["height"] else 0.5
-            binding["fixedPoint"] = [min(1.0, max(0.0, fx)), min(1.0, max(0.0, fy))]
+            # not clamped to [0,1]: a sequence message binds to its participant's
+            # *header* box while sitting far below it, so fy is legitimately > 1
+            # (the hand-converted reference does the same). Every other path
+            # anchors on the shape's own edge, so this is a no-op there.
+            binding["fixedPoint"] = [round(fx, 6), round(fy, 6)]
             binding["mode"] = "orbit"
     return elements
 
