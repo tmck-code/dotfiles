@@ -23,19 +23,27 @@ hold the plan, talk to the user, trivial one-line edits. Backstopped by
 
 ## Scratch files go on shelves
 
-At session start, invoke the `dewey-decimal` skill before writing any scratch,
-working, or subagent-handoff file — every such file goes under
-`.scratch/<branch-shelf>/`, never flat in `.scratch/`.
+At session start, invoke the `dewey-decimal` skill before writing any scratch
+or working file — every such file goes under `.scratch/<branch-shelf>/`, never
+flat in `.scratch/`. (Subagent handoff files are not these; see below.)
 
-## Subagent handoff goes through files
+## Subagent handoff is captured mechanically
 
-Give each spawned subagent a report path
-`.scratch/<branch-shelf>/<agent>-<task>-<agent_id>.md`, where `<branch-shelf>` is
-the current branch's shelf under the repo root (see the `dewey-decimal` skill);
-it writes findings there, returns only the path. Read the file, not the return
-message — nested subagents too; ensure the shelf exists before spawning.
-Filenames must not contain `research`/`report`/`notes` (case-insensitive substring)
-— that trips a harness write-blocking check; use `findings`/`summary` instead.
+Never brief a subagent with a report path and never ask it to write one. The
+harness refuses subagent report-file writes outright — *"Subagents should return
+findings as text, not write report files"* — and the guard keys on neither the
+filename nor the size, so no naming trick evades it. Asking anyway costs a
+round-trip and loses the findings.
+
+A subagent instead ends with its findings as its **final message**. From there it
+is automatic: `subagent-report-capture.py` (SubagentStop) writes that text to
+`/tmp/claude-<uid>/<cwd>/<session>/scratchpad/subagent-reports/`, and
+`subagent-report-announce.py` (PostToolUse) announces the path to you. Read that
+file, never the returned message — the notification channel truncates long
+returns and drops some entirely. The announcement arrives on your next
+`Agent`/`Task`/`TaskOutput`/`SendMessage` call, so if a subagent has finished and
+you have not seen a path, make one. Pass this down: children hand off the same
+way.
 
 ## Subagents must not share mutable working files
 
