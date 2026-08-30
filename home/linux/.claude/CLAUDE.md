@@ -34,9 +34,8 @@ Give each spawned subagent a report path
 the current branch's shelf under the repo root (see the `dewey-decimal` skill);
 it writes findings there, returns only the path. Read the file, not the return
 message — nested subagents too; ensure the shelf exists before spawning.
-Filenames must not contain `research` or `report` (case-insensitive substring)
-— that trips a harness write-blocking check; use `findings`/`notes`/`summary`
-instead.
+Filenames must not contain `research`/`report`/`notes` (case-insensitive substring)
+— that trips a harness write-blocking check; use `findings`/`summary` instead.
 
 ## Subagents must not share mutable working files
 
