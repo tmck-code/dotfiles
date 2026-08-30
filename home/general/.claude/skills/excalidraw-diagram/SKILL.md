@@ -231,9 +231,7 @@ pie draws as a bare filled circle, since a 100% wedge is degenerate.
 - Output is upload-ready for the Excalidraw+ REST API: `document()` runs
   `finalise()`, which sets each element's fractional `index` and each arrow
   binding's `mode`/`fixedPoint` (the API validator rejects files without
-  them). Import = `POST /collections/{id}/scenes` then
-  `PUT /scenes/{id}/content` with the `.excalidraw` JSON as the body
-  (`Authorization: Bearer $EXCALIDRAW_API_KEY`).
+  them). To publish one, use `scripts/upload_scene.py` (below).
 - Flowchart arrows use `triangle` heads.
 
 - Box width/height and text-line spacing are heuristics calibrated against
@@ -252,6 +250,45 @@ pie draws as a bare filled circle, since a 100% wedge is degenerate.
 - The flowchart router's anchors are the midpoints of a node's bounding-box
   sides, so on a diamond or ellipse an arrow leaves near the bbox corner;
   Excalidraw's binding tidies this up when the shape is dragged.
+
+## Uploading to Excalidraw+
+
+`scripts/upload_scene.py` publishes a rendered `.excalidraw` file to a
+collection. Stdlib only, no npm or Docker needed.
+
+```bash
+# list collections (id + name)
+scripts/upload_scene.py --list-collections
+
+# create a scene in a collection, named after the file stem
+scripts/upload_scene.py diagram.excalidraw --collection generated
+
+# name it explicitly, and pin it
+scripts/upload_scene.py diagram.excalidraw -c generated -n 'Handoff pipeline' -p
+
+# re-upload over an existing scene, leaving its id and URL stable
+scripts/upload_scene.py diagram.excalidraw --scene-id APdEs2LYqDr
+```
+
+`--collection` takes either a collection id or its name (case-insensitive);
+names are resolved by listing collections, and an ambiguous or unknown name
+errors out with the known names rather than guessing. The file is parsed and
+checked for an `elements` key *before* any scene is created, so a malformed
+input can't leave an empty scene behind. After upload the script reads the
+content back and warns if the stored element count differs from the local one.
+
+The key comes from `$EXCALIDRAW_API_KEY` (or `--api-key`); mint one in
+Excalidraw+ workspace settings, where it is shown exactly once.
+
+Two API details worth knowing, both learned the hard way:
+
+- The base URL is `https://api.excalidraw.com/api/v1` — note the doubled path
+  segment. The bare `/v1` and `/v2` forms return a 404 whose body looks like a
+  routing error rather than an auth failure, which is easy to misread.
+- `GET /collections` pages at 5 by default, so a collection can be entirely
+  invisible in an unpaginated first response. The script follows `hasNextPage`.
+
+The API is in public beta; endpoints and payload shapes may still change.
 
 ## Rendering to an image (screenshot)
 
