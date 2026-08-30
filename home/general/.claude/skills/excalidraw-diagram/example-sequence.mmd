@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    actor C as Main agent (coordinator)
+    participant H as Claude Code harness
+    participant PRE as PreToolUse hook<br/>subagent-file-handoff.py
+    participant S as Subagent
+    participant STOP as SubagentStop hook<br/>subagent-report-capture.py
+    participant POST as PostToolUse hook<br/>subagent-report-announce.py
+    participant F as Filesystem
+
+    C->>H: Agent / Task spawn with brief
+    H->>PRE: PreToolUse fires
+    PRE-->>C: additionalContext:<br/>"no report path, findings as final message"
+    H->>F: write agent-ID.meta.json sidecar<br/>(agentType, description, toolUseId, spawnDepth)
+    H->>S: launch
+
+    rect rgb(254, 226, 226)
+        note over S,H: the failure mode this design removes
+        S-xH: Write .scratch/...md
+        H--xS: REFUSED - "Subagents should return<br/>findings as text, not write report files"
+    end
+
+    S->>S: end with findings as final message
+
+    par capture (subagent side)
+        S->>STOP: SubagentStop fires<br/>payload carries last_assistant_message
+        STOP->>F: read meta.json for description + toolUseId
+        STOP->>F: write full text to<br/>/tmp/claude-UID/.../subagent-reports/*.md
+        STOP->>F: drop breadcrumb in<br/>/tmp/claude-handoff-SESSION/
+        note over STOP: emits nothing on stdout -<br/>its additionalContext would land<br/>in the SUBAGENT, not the parent
+    and notify (parent side)
+        S->>H: task notification
+        H->>C: prose return (truncated, sometimes dropped)
+    end
+
+    C->>H: next Agent / Task / TaskOutput / SendMessage
+    H->>POST: PostToolUse fires
+    POST->>F: drain breadcrumbs, delete each (announce once)
+    POST-->>C: additionalContext: report file paths
+    C->>F: read the real findings
