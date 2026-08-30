@@ -59,6 +59,15 @@
             "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/same-file-write-audit.py\""
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task|TaskOutput|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-report-announce.py\""
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -87,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/handoff-nudge.py\""
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/subagent-report-capture.py\""
           }
         ]
       }
