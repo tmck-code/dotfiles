@@ -58,9 +58,9 @@ SHAPES = [
     ("[(", ")]", "rectangle", True),    # cylinder / database
     ("((", "))", "ellipse", False),
     ("([", "])", "rectangle", True),    # stadium
-    ("[[", "]]", "rectangle", False),   # subroutine
+    ("[[", "]]", "rectangle", True),   # subroutine
     ("{{", "}}", "diamond", False),     # hexagon
-    ("[", "]", "rectangle", False),
+    ("[", "]", "rectangle", True),
     ("(", ")", "rectangle", True),
     ("{", "}", "diamond", False),
     (">", "]", "rectangle", True),      # asymmetric
@@ -360,15 +360,24 @@ def longest_path_columns(ids, pairs):
     return col
 
 
-def layout(nodes, edges, clusters):
-    """Lay out clusters (and un-clustered nodes) into left-to-right columns.
+def layout(nodes, edges, clusters, vertical=False):
+    """Lay out clusters (and un-clustered nodes) into ordered tiers.
 
-    Every subgraph is collapsed to a single node of a cluster graph, so a
-    subgraph's members always stay together in one column and the container
+    Tiers run left-to-right (`vertical=False`) or top-to-bottom
+    (`vertical=True`); within a tier, groups/members spread along the cross
+    axis. Every subgraph is collapsed to a single node of a cluster graph, so
+    a subgraph's members always stay together in one tier and the container
     boxes never interleave.
     """
     for node in nodes.values():
         size_node(node)
+
+    # a node's extent along the flow (tier) axis vs. the spread (cross) axis
+    def tier_extent(n):
+        return n.height if vertical else n.width
+
+    def cross_extent(n):
+        return n.width if vertical else n.height
 
     # each un-clustered node becomes a cluster of one, with no container drawn
     groups = list(clusters)
@@ -381,7 +390,7 @@ def layout(nodes, edges, clusters):
 
     owner = {nid: node.cluster for nid, node in nodes.items()}
 
-    # order each cluster's members so intra-cluster edges mostly flow down
+    # order each cluster's members so intra-cluster edges mostly flow forward
     for group in groups:
         if len(group.members) > 1:
             order = {m: i for i, m in enumerate(group.members)}
@@ -403,44 +412,55 @@ def layout(nodes, edges, clusters):
                    key=lambda p: (gorder[p[0]], gorder[p[1]]))
     cols = longest_path_columns([g.id for g in groups], pairs)
 
-    # gap between two vertically adjacent members, grown to fit the label of
-    # any edge joining them (the reference pulled such pairs 117-127px apart
-    # for a two-line label, and left 54px where the edge had no label)
+    # gap between two cross-adjacent members, grown to fit the label of any
+    # edge joining them (the reference pulled such pairs 117-127px apart for
+    # a two-line label, and left 54px where the edge had no label)
     def pair_gap(top, bottom):
         gap = NODE_GAP
         for edge in edges:
             if {edge["a"], edge["b"]} == {top, bottom} and edge["label"]:
-                _, label_h = text_size(edge["label"], EDGE_LABEL_FONT)
-                gap = max(gap, label_h + 2 * LABEL_PAD)
+                label_w, label_h = text_size(edge["label"], EDGE_LABEL_FONT)
+                gap = max(gap, (label_w if vertical else label_h) + 2 * LABEL_PAD)
         return gap
 
     for group in groups:
         group.col = cols[group.id]
         group.gaps = [pair_gap(a, b)
                       for a, b in zip(group.members, group.members[1:])]
-        inner_h = sum(nodes[m].height for m in group.members) + sum(group.gaps)
-        inner_w = max(nodes[m].width for m in group.members)
+        cross_total = (sum(cross_extent(nodes[m]) for m in group.members)
+                        + sum(group.gaps))
+        tier_total = max(tier_extent(nodes[m]) for m in group.members)
         if group.title is None:
-            group.width, group.height = inner_w, inner_h
+            g_tier, g_cross = tier_total, cross_total
         else:
-            group.width = inner_w + 2 * CLUSTER_PAD
-            group.height = inner_h + 2 * CLUSTER_PAD
+            g_tier = tier_total + 2 * CLUSTER_PAD
+            g_cross = cross_total + 2 * CLUSTER_PAD
+        if vertical:
+            group.height, group.width = g_tier, g_cross
+        else:
+            group.width, group.height = g_tier, g_cross
 
     max_col = max(cols.values(), default=0)
 
-    # the gutter between two columns must fit the widest label of an edge that
+    def group_tier(g):
+        return g.height if vertical else g.width
+
+    def group_cross(g):
+        return g.width if vertical else g.height
+
+    # the gutter between two tiers must fit the widest label of an edge that
     # crosses it, plus the routing lanes either side
     gutters = {}
     for edge in edges:
         ca, cb = cols[owner[edge["a"]]], cols[owner[edge["b"]]]
         if ca == cb or not edge["label"]:
             continue
-        label_w, _ = text_size(edge["label"], EDGE_LABEL_FONT)
-        need = label_w + 2 * LABEL_PAD + 2 * ROUTE_MARGIN
+        label_w, label_h = text_size(edge["label"], EDGE_LABEL_FONT)
+        need = (label_h if vertical else label_w) + 2 * LABEL_PAD + 2 * ROUTE_MARGIN
         boundary = min(ca, cb)
         gutters[boundary] = max(gutters.get(boundary, COL_GAP), need)
 
-    x = 0.0
+    tier_pos = 0.0
     for col in range(max_col + 1):
         in_col = [g for g in groups if g.col == col]
         if not in_col:
@@ -450,28 +470,36 @@ def layout(nodes, edges, clusters):
         def reserve(group):
             return 0.0 if group.title is None else TITLE_TEXT_H + TITLE_GAP
 
-        total_h = (sum(g.height + reserve(g) for g in in_col)
-                   + CLUSTER_GAP * max(0, len(in_col) - 1))
-        col_w = max(g.width for g in in_col)
-        y = -total_h / 2.0
+        total_cross = (sum(group_cross(g) + reserve(g) for g in in_col)
+                        + CLUSTER_GAP * max(0, len(in_col) - 1))
+        col_tier = max(group_tier(g) for g in in_col)
+        cross = -total_cross / 2.0
         for group in in_col:
-            y += reserve(group)
-            group.x = x + (col_w - group.width) / 2.0
-            group.y = y
-            inner_x = group.x + (0 if group.title is None else CLUSTER_PAD)
-            inner_w = group.width - (0 if group.title is None else 2 * CLUSTER_PAD)
-            node_y = group.y + (0 if group.title is None else CLUSTER_PAD)
+            cross += reserve(group)
+            g_tier_pos = tier_pos + (col_tier - group_tier(group)) / 2.0
+            g_cross_pos = cross
+            if vertical:
+                group.y, group.x = g_tier_pos, g_cross_pos
+            else:
+                group.x, group.y = g_tier_pos, g_cross_pos
+            inner_cross = g_cross_pos + (0 if group.title is None else CLUSTER_PAD)
+            inner_cross_extent = (group_cross(group)
+                                  - (0 if group.title is None else 2 * CLUSTER_PAD))
+            node_tier = g_tier_pos + (0 if group.title is None else CLUSTER_PAD)
             for slot, member in enumerate(group.members):
                 node = nodes[member]
                 node.slot = slot
                 node.group = group
-                node.x = inner_x + (inner_w - node.width) / 2.0
-                node.y = node_y
-                node_y += node.height
+                nc = inner_cross + (inner_cross_extent - cross_extent(node)) / 2.0
+                if vertical:
+                    node.y, node.x = node_tier, nc
+                else:
+                    node.x, node.y = node_tier, nc
+                node_tier += tier_extent(node)
                 if slot < len(group.gaps):
-                    node_y += group.gaps[slot]
-            y += group.height + CLUSTER_GAP
-        x += col_w + gutters.get(col, COL_GAP)
+                    node_tier += group.gaps[slot]
+            cross += group_cross(group) + CLUSTER_GAP
+        tier_pos += col_tier + gutters.get(col, COL_GAP)
     return groups
 
 
