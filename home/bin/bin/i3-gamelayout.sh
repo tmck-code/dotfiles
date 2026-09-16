@@ -17,7 +17,7 @@ i3-msg -t get_tree |
 
 function wait_for_window() {
   local class_name="$1"
-  local limit=20
+  local limit=30
   local i=0
   until i3-client grab --grab --exists "$class_name"; do
     if [ $i -ge $limit ]; then
