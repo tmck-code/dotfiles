@@ -112,32 +112,12 @@ positionals=()
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    --layer)
-      layer="$2"
-      shift 2
-      ;;
-    --fg)
-      parse_colour "$2"
-      fg_r=$PC_R; fg_g=$PC_G; fg_b=$PC_B
-      have_fg=1
-      shift 2
-      ;;
-    --step)
-      step="$2"
-      shift 2
-      ;;
-    --tmux)
-      style="tmux"
-      shift
-      ;;
-    -n|--no-newline)
-      no_newline=1
-      shift
-      ;;
+    -h|--help) usage && exit 0 ;;
+    --layer) layer="$2"; shift 2 ;;
+    --fg) parse_colour "$2" && fg_r=$PC_R; fg_g=$PC_G; fg_b=$PC_B; have_fg=1; shift 2 ;;
+    --step) step="$2"; shift 2 ;;
+    --tmux) style="tmux"; shift ;;
+    -n|--no-newline) no_newline=1; shift ;;
     --)
       shift
       while [ $# -gt 0 ]; do
@@ -145,10 +125,7 @@ while [ $# -gt 0 ]; do
         shift
       done
       ;;
-    *)
-      positionals+=("$1")
-      shift
-      ;;
+    *) positionals+=("$1"); shift ;;
   esac
 done
 

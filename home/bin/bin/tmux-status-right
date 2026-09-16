@@ -8,15 +8,15 @@
 # One job means one output event, so one repaint.
 #
 # Emits the segment between the leading arrow and the trailing style, i.e. the
-# .tmux.conf keeps `#H #[fg=colour208]<arrow> ` before and the reset after.
+# .tmux.conf keeps `#H #[fg=#e07600]<arrow> ` before and the reset after.
 
 set -u
 
 # , spelled in raw UTF-8 bytes: bash 3.2 (macOS /bin/bash) has no $'\uXXXX'
 SEP=$'\xee\x83\x82'
 
-ping_seg=$(tmux-gradient --tmux --fg ffffff ff8700 af0000 " 🌐 $(pingline) ")
+ping_seg=$(tmux-gradient --tmux --fg ffffff e07600 d63802 " 🌐 $(pingline) ")
 clock_seg=$(tmux-gradient --tmux --fg 1c1c1c 87d75f 5fd7d7 " $(date +'%m/%d %H:%M:%S') ")
 
-printf '#[bold]%s#[nobold,fg=colour113,bg=colour124]%s #[bold]%s\n' \
+printf '#[bold]%s#[nobold,fg=#87d75f,bg=#d63802]%s #[bold]%s\n' \
   "$ping_seg" "$SEP" "$clock_seg"
