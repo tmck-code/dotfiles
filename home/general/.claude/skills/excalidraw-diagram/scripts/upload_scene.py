@@ -9,8 +9,8 @@ Excalidraw+ workspace settings; it is shown exactly once.
 
   ./upload_scene.py diagram.excalidraw --collection generated
   ./upload_scene.py diagram.excalidraw --collection private   # personal keys only
-  ./upload_scene.py diagram.excalidraw --collection mFUPur2mwj --name 'My scene'
-  ./upload_scene.py diagram.excalidraw --scene-id APdEs2LYqDr    # replace in place
+  ./upload_scene.py diagram.excalidraw --collection <collection-id> --name 'My scene'
+  ./upload_scene.py diagram.excalidraw --scene-id <scene-id>      # replace in place
   ./upload_scene.py --list-collections
 '''
 from __future__ import annotations

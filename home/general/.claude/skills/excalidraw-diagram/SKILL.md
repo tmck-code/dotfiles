@@ -360,10 +360,10 @@ Colors encode information, not decoration. Every color choice should come from `
 
 ---
 
-## Flowchart House Style (Lexer)
+## Flowchart House Style
 
-Derived from the user's hand-edit pass on "Identity resolution — bird's-eye
-pipeline" (`AGdGHYQB3tL`). Apply to any diagram with boxes/ovals connected by
+Derived from the user's hand-edit pass over a generated pipeline diagram.
+Apply to any diagram with boxes/ovals connected by
 arrows — flowcharts, ER diagrams, sequence/state/class diagrams. Does not
 apply to pure charts (pie, xychart-beta) or mindmaps.
 
