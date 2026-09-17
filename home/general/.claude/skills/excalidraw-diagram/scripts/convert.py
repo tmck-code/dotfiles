@@ -25,7 +25,21 @@ Three input paths:
 
 The diagram type is taken from the first directive line in the input.
 
-Usage: convert.py <input.mmd> <output.excalidraw>
+Usage: convert.py <input.mmd> <output.excalidraw> [--sloppiness 1|2|3]
+
+`--scale` multiplies all geometry and font sizes (default 1.5), matching the
+size a converted diagram is normally resized to by hand. Stroke widths are
+left alone, as Excalidraw does on a drag-resize.
+
+`--corners sharp|round` sets the corner style of boxes. Omitted, each diagram
+type keeps its own native style (ERD tables are sharp; flowchart boxes and
+gantt bars are rounded). It never touches arrows or lines, where `roundness`
+means curve smoothing rather than corners.
+
+`--sloppiness` maps to Excalidraw's sloppiness control: 1 = architect (clean,
+the default), 2 = artist, 3 = cartoonist. It applies to shapes only —
+arrows and straight lines always stay at the cleanest setting so connectors
+and dividers remain crisp.
 """
 import json
 import re
@@ -72,6 +86,7 @@ ERD_CHAR_W = ERD_ROW_FONT * 0.6  # excalidraw's mono face
 ERD_MIN_WIDTH = 260.0
 ERD_COL_GAP = 160.0
 ERD_ROW_GAP = 60.0
+ERD_RANK_GAP = 120.0  # gap between ranks in `direction TB` layouts
 ERD_DIVIDER_COLOR = "#ced4da"
 ERD_BORDER_COLOR = "#1e1e1e"
 ERD_TITLE_COLOR = "#ffffff"
@@ -352,15 +367,15 @@ def make_arrow(owner_node, other_node):
 
 # --- erDiagram ---------------------------------------------------------
 
-ER_ENTITY_OPEN_RE = re.compile(r'^(\w+)\s*(?:\["([^"]+)"\])?\s*\{$')
-ER_ENTITY_BARE_RE = re.compile(r'^(\w+)\s*(?:\["([^"]+)"\])?$')
+ER_ENTITY_OPEN_RE = re.compile(r'^([\w-]+)\s*(?:\["([^"]+)"\])?\s*\{$')
+ER_ENTITY_BARE_RE = re.compile(r'^([\w-]+)\s*(?:\["([^"]+)"\])?$')
 ER_ATTR_RE = re.compile(
     r'^(?P<type>\S+)\s+(?P<name>\w+)'
     r'(?:\s+(?P<keys>(?:PK|FK|UK)(?:\s*,\s*(?:PK|FK|UK))*))?'
     r'(?:\s+"(?P<comment>[^"]*)")?$'
 )
 ER_REL_RE = re.compile(
-    r'^(\w+)\s+(\|\||\|o|\}o|\}\|)(--|\.\.)(\|\||o\||o\{|\|\{)\s+(\w+)'
+    r'^([\w-]+)\s+(\|\||\|o|\}o|\}\|)(--|\.\.)(\|\||o\||o\{|\|\{)\s+([\w-]+)'
     r'\s*(?::\s*(?:"([^"]*)"|(\S.*?))\s*)?$'
 )
 
@@ -452,13 +467,27 @@ def size_entity(entity):
     entity.height = ERD_HEADER_H + ERD_ROW_H * len(entity.rows)
 
 
-def er_layout(entities):
+def er_layout(entities, vertical=False):
     for entity in entities.values():
         size_entity(entity)
     max_col = max((e.col for e in entities.values()), default=0)
     columns = {c: [] for c in range(max_col + 1)}
     for entity in entities.values():
         columns[entity.col].append(entity)
+    if vertical:
+        # ranks stack top-to-bottom; entities within a rank sit side by side
+        y = 0.0
+        for c in range(max_col + 1):
+            rank = columns[c]
+            total_w = (sum(e.width for e in rank)
+                       + ERD_COL_GAP * max(0, len(rank) - 1))
+            x = -total_w / 2.0
+            for e in rank:
+                e.x = x
+                e.y = y
+                x += e.width + ERD_COL_GAP
+            y += max((e.height for e in rank), default=0.0) + ERD_RANK_GAP
+        return
     x = 0.0
     for c in range(max_col + 1):
         col_entities = columns[c]
@@ -541,28 +570,44 @@ def make_erd_table(entity, accent, tint):
     return els
 
 
-def make_er_arrow(left, right, lcard, rcard, dotted, label):
+def make_er_arrow(left, right, lcard, rcard, dotted, label, vertical=False):
     """Elbowed relationship arrow with crowfoot arrowheads at both ends."""
-    start_x = left.x + left.width
-    start_y = left.y + left.height / 2.0
-    end_x = right.x
-    end_y = right.y + right.height / 2.0
-    mid_x = (start_x + end_x) / 2.0
-    dx_end = end_x - start_x
-    points = [
-        [0, 0],
-        [mid_x - start_x, 0],
-        [mid_x - start_x, end_y - start_y],
-        [dx_end, end_y - start_y],
-    ]
+    if vertical:
+        start_x = left.x + left.width / 2.0
+        start_y = left.y + left.height
+        end_x = right.x + right.width / 2.0
+        end_y = right.y
+        mid_y = (start_y + end_y) / 2.0
+        dx_end = end_x - start_x
+        points = [
+            [0, 0],
+            [0, mid_y - start_y],
+            [dx_end, mid_y - start_y],
+            [dx_end, end_y - start_y],
+        ]
+        start_fixed, end_fixed = [0.5, 1.0], [0.5, 0.0]
+    else:
+        start_x = left.x + left.width
+        start_y = left.y + left.height / 2.0
+        end_x = right.x
+        end_y = right.y + right.height / 2.0
+        mid_x = (start_x + end_x) / 2.0
+        dx_end = end_x - start_x
+        points = [
+            [0, 0],
+            [mid_x - start_x, 0],
+            [mid_x - start_x, end_y - start_y],
+            [dx_end, end_y - start_y],
+        ]
+        start_fixed, end_fixed = [1.0, 0.5], [0.0, 0.5]
     arrow = _base(
         new_id(), "arrow", start_x, start_y, abs(dx_end), abs(end_y - start_y),
         [], strokeWidth=2, strokeStyle="dashed" if dotted else "solid",
         points=points, lastCommittedPoint=None,
         startBinding={"elementId": left.rect_id, "mode": "orbit",
-                      "fixedPoint": [1.0, 0.5]},
+                      "fixedPoint": start_fixed},
         endBinding={"elementId": right.rect_id, "mode": "orbit",
-                    "fixedPoint": [0.0, 0.5]},
+                    "fixedPoint": end_fixed},
         startArrowhead=ERD_ARROWHEADS.get(lcard),
         endArrowhead=ERD_ARROWHEADS.get(rcard),
         elbowed=True, fixedSegments=None,
@@ -570,7 +615,8 @@ def make_er_arrow(left, right, lcard, rcard, dotted, label):
     )
     els = [arrow]
     if label:
-        text = _erd_text(label, mid_x, (start_y + end_y) / 2.0,
+        text = _erd_text(label, (start_x + end_x) / 2.0,
+                         (start_y + end_y) / 2.0,
                          len(label) * ERD_CHAR_W, ERD_TEXT_COLOR,
                          ERD_ROW_FONT * 0.7, "center", [])
         text["containerId"] = arrow["id"]
@@ -580,10 +626,15 @@ def make_er_arrow(left, right, lcard, rcard, dotted, label):
     return els
 
 
+ER_DIRECTION_RE = re.compile(r'^\s*direction\s+(TB|TD|BT|LR|RL)\s*$', re.M)
+
+
 def convert_er(mermaid_text):
+    m = ER_DIRECTION_RE.search(mermaid_text)
+    vertical = bool(m) and m.group(1) in ("TB", "TD", "BT")
     entities, rels = parse_er(mermaid_text)
     compute_columns(entities, [(l, r, None, None) for l, r, *_ in rels])
-    er_layout(entities)
+    er_layout(entities, vertical=vertical)
 
     elements = []
     for idx, entity in enumerate(entities.values()):
@@ -596,7 +647,8 @@ def convert_er(mermaid_text):
         if a.col > b.col:  # always draw left-to-right
             a, b = b, a
             lcard, rcard = rcard, lcard
-        arrow_els = make_er_arrow(a, b, lcard, rcard, dotted, label)
+        arrow_els = make_er_arrow(a, b, lcard, rcard, dotted, label,
+                                  vertical=vertical)
         elements.extend(arrow_els)
         bound[a.id].append(arrow_els[0]["id"])
         bound[b.id].append(arrow_els[0]["id"])
@@ -610,7 +662,42 @@ def convert_er(mermaid_text):
     return elements
 
 
-def convert(mermaid_text):
+# Diagrams are emitted at a compact base size; everything is scaled up by this
+# factor so a converted diagram lands on the canvas at a comfortable working
+# size (measured from a hand-resized reference scene, which came out at
+# ~1.48x). Stroke widths are deliberately not scaled — Excalidraw leaves them
+# alone when you drag-resize a selection, and the thinner relative stroke is
+# part of the look.
+DEFAULT_SCALE = 1.5
+SCALED_KEYS = ("x", "y", "width", "height", "fontSize")
+
+
+def apply_scale(elements, scale):
+    """Scale geometry and type size by `scale`, leaving stroke widths alone."""
+    if scale == 1:
+        return elements
+    for el in elements:
+        for key in SCALED_KEYS:
+            if isinstance(el.get(key), (int, float)):
+                el[key] = el[key] * scale
+        points = el.get("points")
+        if points:
+            el["points"] = [[x * scale, y * scale] for x, y in points]
+        roundness = el.get("roundness")
+        if isinstance(roundness, dict) and "value" in roundness:
+            roundness["value"] = roundness["value"] * scale
+    return elements
+
+
+def convert(mermaid_text, sloppiness=1, corners=None, scale=DEFAULT_SCALE):
+    doc = _convert(mermaid_text)
+    apply_sloppiness(doc["elements"], sloppiness)
+    apply_corners(doc["elements"], corners)
+    apply_scale(doc["elements"], scale)
+    return doc
+
+
+def _convert(mermaid_text):
     if re.search(r'^\s*(?:flowchart|graph)\s', mermaid_text, re.M):
         from flowchart import convert_flowchart
         return document(convert_flowchart(mermaid_text))
@@ -687,6 +774,54 @@ def finalise(elements):
     return elements
 
 
+# Excalidraw sloppiness (1/2/3 in the UI) -> the element `roughness` field.
+SLOPPINESS_ROUGHNESS = {1: 0, 2: 1, 3: 2}
+SLOPPY_TYPES = {"rectangle", "ellipse", "diamond"}
+
+
+def apply_sloppiness(elements, sloppiness):
+    """Set `roughness` on shapes from a 1/2/3 sloppiness level.
+
+    Arrows and straight (two-point) lines are left at roughness 0 so
+    connectors, dividers and table rules stay crisp. Multi-point lines are
+    closed/curved shapes (pie wedges, logo marks) and follow the shapes.
+    """
+    if sloppiness not in SLOPPINESS_ROUGHNESS:
+        raise ValueError("sloppiness must be 1, 2 or 3")
+    roughness = SLOPPINESS_ROUGHNESS[sloppiness]
+    if not roughness:
+        return elements
+    for el in elements:
+        el_type = el.get("type")
+        if el_type in SLOPPY_TYPES or (
+                el_type == "line" and len(el.get("points") or []) > 2):
+            el["roughness"] = roughness
+    return elements
+
+
+# Corner style for boxes. `{"type": 3}` is Excalidraw's adaptive-radius
+# rounding; None is a sharp corner. Only box-like shapes are affected —
+# on arrows/lines `roundness` controls curve smoothing, not corners.
+CORNER_ROUNDNESS = {"sharp": None, "round": {"type": 3}}
+CORNER_TYPES = {"rectangle", "diamond"}
+
+
+def apply_corners(elements, corners):
+    """Force sharp or round corners on every box in the diagram.
+
+    `corners` of None leaves each emitter's own choice untouched.
+    """
+    if corners is None:
+        return elements
+    if corners not in CORNER_ROUNDNESS:
+        raise ValueError("corners must be 'sharp' or 'round'")
+    roundness = CORNER_ROUNDNESS[corners]
+    for el in elements:
+        if el.get("type") in CORNER_TYPES:
+            el["roundness"] = dict(roundness) if roundness else None
+    return elements
+
+
 def document(elements):
     finalise(elements)
     return {
@@ -699,14 +834,44 @@ def document(elements):
     }
 
 
-def main():
-    if len(sys.argv) != 3:
-        print("usage: convert.py <input.mmd> <output.excalidraw>", file=sys.stderr)
+USAGE = ("usage: convert.py <input.mmd> <output.excalidraw> "
+         "[--sloppiness 1|2|3] [--corners sharp|round] [--scale N]")
+
+
+def take_option(args, flag, allowed):
+    """Pull `--flag value` out of `args`, or return None if absent."""
+    if flag not in args:
+        return None
+    i = args.index(flag)
+    if i + 1 >= len(args) or args[i + 1] not in allowed:
+        print(USAGE, file=sys.stderr)
         sys.exit(1)
-    with open(sys.argv[1]) as f:
+    value = args[i + 1]
+    del args[i:i + 2]
+    return value
+
+
+def main():
+    args = sys.argv[1:]
+    sloppiness = take_option(args, "--sloppiness", ("1", "2", "3"))
+    sloppiness = int(sloppiness) if sloppiness else 1
+    corners = take_option(args, "--corners", ("sharp", "round"))
+    scale = DEFAULT_SCALE
+    if "--scale" in args:
+        i = args.index("--scale")
+        try:
+            scale = float(args[i + 1])
+        except (IndexError, ValueError):
+            print(USAGE, file=sys.stderr)
+            sys.exit(1)
+        del args[i:i + 2]
+    if len(args) != 2:
+        print(USAGE, file=sys.stderr)
+        sys.exit(1)
+    with open(args[0]) as f:
         text = f.read()
-    doc = convert(text)
-    with open(sys.argv[2], "w") as f:
+    doc = convert(text, sloppiness=sloppiness, corners=corners, scale=scale)
+    with open(args[1], "w") as f:
         json.dump(doc, f, indent=2)
 
 

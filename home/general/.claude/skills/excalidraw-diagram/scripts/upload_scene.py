@@ -8,8 +8,9 @@ The API key is read from $EXCALIDRAW_API_KEY (or --api-key). Mint one in the
 Excalidraw+ workspace settings; it is shown exactly once.
 
   ./upload_scene.py diagram.excalidraw --collection generated
-  ./upload_scene.py diagram.excalidraw --collection mFUPur2mwj --name 'My scene'
-  ./upload_scene.py diagram.excalidraw --scene-id APdEs2LYqDr    # replace in place
+  ./upload_scene.py diagram.excalidraw --collection private   # personal keys only
+  ./upload_scene.py diagram.excalidraw --collection <collection-id> --name 'My scene'
+  ./upload_scene.py diagram.excalidraw --scene-id <scene-id>      # replace in place
   ./upload_scene.py --list-collections
 '''
 from __future__ import annotations
@@ -85,17 +86,31 @@ def iter_collections(base_url: str, api_key: str) -> Iterator[JSONDict]:
         offset += len(data)
 
 
-def resolve_collection(base_url: str, api_key: str, ref: str) -> str:
-    'Map a collection name (case-insensitive) or id to its id'
+PRIVATE_HINT = (
+    "the API rejected 'private'. Personal API keys may use it for the key "
+    "owner's virtual private collection; workspace API keys cannot access "
+    'private collections - name a real collection instead'
+)
+
+
+def resolve_collection(base_url: str, api_key: str, ref: str) -> JSONDict:
+    '''Map a collection name (case-insensitive) or id to its record.
+
+    `private` is passed through untouched: it is the API's own alias for a
+    personal key's virtual private collection, and it is not listed by
+    GET /collections.
+    '''
+    if ref.casefold() == 'private':
+        return {'id': 'private', 'name': 'private'}
     collections = list(iter_collections(base_url, api_key))
     by_id = [c for c in collections if c.get('id') == ref]
     if by_id:
-        return ref
+        return by_id[0]
 
     wanted = ref.casefold()
     matches = [c for c in collections if str(c.get('name', '')).casefold() == wanted]
     if len(matches) == 1:
-        return str(matches[0]['id'])
+        return matches[0]
     if len(matches) > 1:
         ids = ', '.join(str(c.get('id')) for c in matches)
         raise ApiError(f'collection name {ref!r} is ambiguous: {ids}')
@@ -146,13 +161,20 @@ def upload(args: argparse.Namespace, api_key: str) -> int:
     raw, local_count = load_scene_file(path)
 
     scene_id = args.scene_id
-    collection_id = None
+    collection_id = workspace_id = None
     if scene_id is None:
-        collection_id = resolve_collection(args.base_url, api_key, args.collection)
+        collection = resolve_collection(args.base_url, api_key, args.collection)
+        collection_id = str(collection['id'])
+        workspace_id = collection.get('workspace')
         name = args.name or path.stem
-        scene_id = create_scene(
-            args.base_url, api_key, collection_id, name, args.pinned,
-        )
+        try:
+            scene_id = create_scene(
+                args.base_url, api_key, collection_id, name, args.pinned,
+            )
+        except ApiError as exc:
+            if collection_id == 'private' and '404' in str(exc):
+                raise ApiError(PRIVATE_HINT) from exc
+            raise
         print(f'{DIM}created scene {scene_id} in collection {collection_id}{RESET}')
 
     request(args.base_url, api_key, 'PUT', f'/scenes/{scene_id}/content', raw)
@@ -169,8 +191,16 @@ def upload(args: argparse.Namespace, api_key: str) -> int:
 
     print(f'{GREEN}uploaded {stored} elements{RESET}')
     print(f'scene id: {scene_id}')
-    if collection_id:
-        print(f'url:      {APP_URL}/o/{collection_id}/{scene_id}')
+    # scene links are keyed by workspace, not by collection. The private
+    # collection isn't listed by GET /collections, so fall back to the
+    # scene's own metadata for its workspace.
+    if not workspace_id:
+        metadata = request(args.base_url, api_key, 'GET', f'/scenes/{scene_id}')
+        metadata = metadata.get('metadata')
+        if isinstance(metadata, dict):
+            workspace_id = metadata.get('workspace')
+    if workspace_id:
+        print(f'url:      {APP_URL}/s/{workspace_id}/{scene_id}')
     return 0
 
 

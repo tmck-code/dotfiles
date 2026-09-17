@@ -1,0 +1,40 @@
+layout = 'river'
+title = 'Five diagrams, one scene.'
+footer = 'So, what will you create?'
+seed = 1
+sloppiness = 2
+shadow = 'colour'
+blobs = true
+double_stroke = true
+labels = 'branch'
+
+[[panels]]
+label = 'Flowchart'
+file = 'example-flowchart.mmd'
+scale = 0.7
+sloppiness = 1
+corners = 'round'
+
+[[panels]]
+label = 'ERD'
+file = 'example-erd.mmd'
+scale = 0.7
+sloppiness = 1
+
+[[panels]]
+label = 'Sequence'
+file = 'example-sequence.mmd'
+scale = 0.7
+sloppiness = 1
+
+[[panels]]
+label = 'Gantt'
+file = 'example-gantt.mmd'
+scale = 0.7
+sloppiness = 1
+
+[[panels]]
+label = 'Pie'
+file = 'example-pie.mmd'
+scale = 0.7
+sloppiness = 1
