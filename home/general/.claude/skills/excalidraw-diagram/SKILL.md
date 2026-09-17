@@ -474,6 +474,105 @@ See `references/element-templates.md` for copy-paste JSON templates for each ele
 
 ---
 
+## Mermaid → Excalidraw Converter
+
+For flowcharts, ER, class, sequence, gantt and pie diagrams, write mermaid
+first and convert it rather than hand-authoring JSON:
+
+```bash
+python3 scripts/convert.py <input.mmd> <output.excalidraw> [--sloppiness 1|2|3] [--corners sharp|round] [--scale N]
+```
+
+`convert.py` picks the emitter from the first directive line (`flowchart`/
+`graph`, `erDiagram`, `classDiagram`, `sequenceDiagram`, `gantt`, `pie`).
+`--sloppiness` maps to Excalidraw's control (1 architect, 2 artist, 3
+cartoonist) and only touches shapes; `--scale` (default 1.5) multiplies
+geometry and font size but not stroke widths. See the `example-*.mmd` /
+`example-*.excalidraw` pairs in this directory for what each emitter produces.
+
+---
+
+## Multi-Diagram Scenes (compose.py)
+
+To put several diagrams on one canvas in the style of Excalidraw's own
+"use-case examples" scene, describe the scene in TOML and run:
+
+```bash
+python3 scripts/compose.py <scene.toml> <output.excalidraw> [--seed N]
+```
+
+`example-scene.toml` is a complete example. Each `[[panels]]` entry names a
+mermaid file (path relative to the TOML) and is converted with `convert.py`
+(per-panel `scale`, `sloppiness`, `corners`), then framed and wired up.
+
+**Scene keys** (all optional except `panels`):
+
+| Key | Values | Default | Effect |
+|-----|--------|---------|--------|
+| `layout` | `river`, `grid`, `row` | `river` | `river`: wavy vertical spine, panels alternate left/right. `row`: horizontal spine, panels alternate above/below. `grid`: packed bands with tab labels and short S-curve connectors (see below). |
+| `title`, `footer` | text | none | Heading box at the spine start / end |
+| `sloppiness` | 1, 2, 3 | 2 | Roughness of the chrome only (inner diagrams keep their own) |
+| `shadow` | `colour`, `grey`, `none` | `colour` | Backing card offset under each panel |
+| `blobs` | bool | true | Pale hachure wash behind each panel |
+| `double_stroke` | bool | true | Lines drawn twice: colour width 4 under, ink width 2 over |
+| `labels` | `branch`, `tab`, `none` | `branch` | Label box on the branch line, or a tab on the panel's top-left |
+| `columns`, `connectors` | int, bool | 2, true | Grid only: max panels per horizontal band, and whether to draw panel-to-panel connectors |
+| `seed` | int | 1 | RNG seed for the line wobble (deterministic output) |
+
+Panel keys: `label`, `file`, `scale` (0.7), `sloppiness` (1), `corners`,
+`colour` (else cycles the palette below).
+
+**Grid layout rules** (from the user's hand-rearranged version of the
+generated grid):
+
+- Panels fill a horizontal band left to right, 260 px apart, top-aligned.
+  After `columns` slots the next panel wraps to a new band below the lowest
+  placed panel.
+- If the left neighbour is tall (more than twice the new panel's height),
+  the new panel starts a vertical stack in that slot; later panels join the
+  stack while they fit within the tall neighbour's height. The stack is
+  centred on it. This keeps a wide sequence diagram from forcing everything
+  else into a far-away row.
+- Connectors join panel *i* to *i+1* only, between the pair of facing edges
+  with the smallest gap, leaving and arriving perpendicular to the edge. They
+  are 4–6 point smoothstep S-curves with mild wobble, never elbows, never
+  routed through gaps between rows. Drawn twice like every other line.
+
+**The chrome recipe** (reverse-engineered from the reference scene, so hand
+edits and generated output match):
+
+- Every chrome element: `roughness 1`, `opacity 100`, `fillStyle solid`,
+  `fontFamily 1`. Rectangles `roundness {type: 3}`, ellipses and lines
+  `roundness {type: 2}`. No `frame` elements, no bindings, no per-panel
+  title text on the panel itself.
+- **Panel**: white rounded rect, stroke `#1e1e1e` width 2. **Shadow**: a
+  same-size rect at (+8, +10) with `strokeColor transparent` and the branch
+  colour as fill, drawn *under* the panel. It reads as a coloured backing
+  card, not a grey drop shadow.
+- **Lines** (spine, branches): freehand multi-point `line`, no arrowheads,
+  unbound. Drawn twice with identical points: colour width 4 underneath, ink
+  `#1e1e1e` width 2 on top shifted (-2, -5).
+- **Label box**: 170 × 69 white rounded rect with bound text (23.66 px,
+  fontFamily 1) over a colour backing rect at (+5, +4). Sits on the branch
+  about 170 px from its junction dot.
+- **Junction dot**: 28 px ellipse, white with `#000000` stroke, over a
+  colour backing ellipse at (+4, +3.4).
+- **Heading/footer**: same construction, 285 wide, backing `#6965db`, over
+  a `#6965db` hachure scribble blob at opacity 20.
+- **Wash blob**: closed freehand `line`, `fillStyle hachure`, stroke = fill =
+  the pale tint, extending 200–400 px past the panel toward the spine.
+- **Palette** (branch colour, cycled): `#ff8787 #d2bab0 #da77f2 #ffa94d
+  #38d9a9 #ffd43b #4dabf7`; spine and headings `#6965db`. Tints: `#fff5f5
+  #f8f0fc #f3f0ff #fff4e6 #e6fcf5 #fff9db #e7f5ff`.
+- Z-order bottom→top: blobs, colour lines, label/dot backings, panel
+  shadows, ink lines, panels + label boxes + dots, then diagram content.
+
+Render the result with `scripts/export_image.mjs` and inspect it as usual;
+the whole scene is API-valid (`finalise()` runs once over every element) so
+it can be pushed with `scripts/upload_scene.py` directly.
+
+---
+
 ## Pushing to an Excalidraw+ Collection
 
 Publishing a generated `.excalidraw` file into an Excalidraw+ collection is a
