@@ -490,9 +490,19 @@ Content-Type: application/json
 {"name": "<scene name>", "pinned": false}
 ```
 
-- `collectionId` — the collection's id (a personal key can also use the literal
-  `private` for the owner's default collection).
+- `collectionId` — the collection's id, or the literal `private` for the key
+  owner's virtual private collection. Per the API docs: "Personal API keys may
+  use 'private' for the key owner's virtual private collection. Workspace API
+  keys cannot access private collections." So a `404 Collection not found` on
+  `private` means the key is a **workspace** key, not that the collection is
+  missing — fall back to a named collection from `GET /api/v1/collections`
+  rather than silently writing to the default one.
+  (`scripts/upload_scene.py` takes a name, an id, or `private`.)
 - Response metadata includes the new scene's `id` — capture it for step 2.
+- The shareable link is keyed by **workspace**, not collection:
+  `https://app.excalidraw.com/s/{workspace}/{sceneId}`, where `workspace` is
+  the `workspace` field on the collection record. A `/o/{collectionId}/...`
+  URL is invalid.
 
 **Fetching current content** (e.g. after a hand-edit, or before re-touching a
 pushed diagram):
@@ -606,6 +616,23 @@ uv run playwright install chromium
 
 ---
 
+## Reporting Output Files (MANDATORY)
+
+When you finish, list **every** file you produced or modified as a clickable
+`file://` URL with an absolute path — the `.excalidraw` source, the rendered
+`.png`, the `.mmd` input, and anything else written. One per line, e.g.:
+
+```
+file:///Users/you/project/diagrams/pipeline.excalidraw
+file:///Users/you/project/diagrams/pipeline.png
+```
+
+Never report a bare relative path or describe a file without its URL. If a
+diagram was pushed to an Excalidraw+ collection, also give the scene URL
+alongside the local files.
+
+---
+
 ## Quality Checklist
 
 ### Depth & Evidence (Check First for Technical Diagrams)
@@ -646,3 +673,4 @@ uv run playwright install chromium
 25. **Arrows land correctly**: Arrows connect to intended elements without crossing others
 26. **Readable at export size**: Text is legible in the rendered PNG
 27. **Balanced composition**: No large empty voids or overcrowded regions
+28. **Output files reported**: every produced file listed as a `file://` URL
