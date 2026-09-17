@@ -1,464 +1,648 @@
 ---
 name: excalidraw-diagram
-description: Convert a mermaid `classDiagram` (with `direction LR`), `erDiagram`, `flowchart`/`graph`, `gantt`, `pie`, or `sequenceDiagram` into an Excalidraw `.excalidraw` file styled to match hand-drawn diagram conventions (elbow arrows, UML class boxes, ERD tables, rounded flowchart nodes, gantt timeline bars, pie wedges, sequence lifelines, pastel fills, left-aligned text), and render that `.excalidraw` file to a PNG/SVG screenshot. Use when the user wants a diagram, ER/database schema diagram, flowchart/architecture diagram, gantt/timeline chart, pie chart, or sequence diagram (from a mermaid diagram, code, or a prompt) turned into an editable Excalidraw file, or wants a screenshot/image of an existing `.excalidraw` file.
+description: Create Excalidraw diagram JSON files that make visual arguments. Use when the user wants to visualize workflows, architectures, or concepts.
 ---
 
-# Excalidraw Diagram
+# Excalidraw Diagram Creator
 
-Generates and renders Excalidraw diagrams. Generation always goes through
-mermaid as the intermediate — direct prompt/code → `.excalidraw` (skipping
-mermaid) is a planned future addition, not yet implemented; don't imply it
-works. `convert.py` picks its path from the input's diagram directive:
+Generate `.excalidraw` JSON files that **argue visually**, not just display information.
 
-| Input | Output |
-| --- | --- |
-| `classDiagram` | pastel UML class boxes + composition arrows |
-| `erDiagram` | ERD tables + crowfoot relationship arrows |
-| `flowchart` / `graph` | rounded nodes, subgraph containers, labelled arrows |
-| `gantt` | section bands, unit grid, rounded task bars, axis ticks, title pill |
-| `pie` | filled wedges, in-slice percentages, swatch legend |
-| `sequenceDiagram` | participant headers, lifelines, labelled message arrows, notes, block frames |
+**Setup:** If the user asks you to set up this skill (renderer, dependencies, etc.), see `README.md` for instructions.
 
-### classDiagram → UML boxes
+## Customization
 
-Each mermaid `class` becomes a UML-style box (rectangle + title text +
-divider line + member text), and each composition edge (`*--` / `--*`)
-becomes an elbowed arrow with a diamond at the "owner" end, bound to the two
-boxes' rectangles.
+**All colors and brand-specific styles live in one file:** `references/color-palette.md`. Read it before generating any diagram and use it as the single source of truth for all color choices — shape fills, strokes, text colors, evidence artifact backgrounds, everything.
 
-Styling (font, box padding, member-line spacing, elbow routing, diamond
-placement) was reverse-engineered from a hand-converted reference diagram of
-this exact kind. Boxes are colored from a small pastel palette, cycled per
-box; no attempt is made to match colors to specific box roles.
+To make this skill produce diagrams in your own brand style, edit `color-palette.md`. Everything else in this file is universal design methodology and Excalidraw best practices.
 
-### erDiagram → ERD tables
+---
 
-Each entity becomes a database-table box: a colored header band with the
-entity's white centered title, a matching light body tint, and one monospace
-row per attribute separated by grey (`#ced4da`) full-width divider lines.
-Rows are `name`/`type`/`key` space-padded into aligned columns and colored by
-key — PK `#e67700`, UK `#2f9e44`, FK `#c92a2a`, plain `#1e1e1e`. Header/tint
-pairs cycle per entity from a six-colour palette.
+## Core Philosophy
 
-Relationships become elbowed arrows bound to both tables, with crowfoot
-arrowheads mapped from the mermaid cardinality (`||` → one, `|o`/`o|` →
-zero-or-one, `}o`/`o{` → many, `}|`/`|{` → one-or-many); a `..` link renders
-dashed, `--` solid, and the `: "label"` becomes a bound arrow label.
+**Diagrams should ARGUE, not DISPLAY.**
 
-This styling was reverse-engineered from a hand-drawn ERD reference
-diagram, which contained two equivalent table styles; the tinted-body one
-("style B") is what's implemented. Its
-geometry was drawn at a large zoom, so every constant in `scripts/convert.py`
-is expressed as a ratio of `ERD_ROW_FONT` (see the `ERD_*` block).
+A diagram isn't formatted text. It's a visual argument that shows relationships, causality, and flow that words alone can't express. The shape should BE the meaning.
 
-See `example-erd.mmd` for a worked input.
+**The Isomorphism Test**: If you removed all text, would the structure alone communicate the concept? If not, redesign.
 
-### flowchart → boxes and arrows
+**The Education Test**: Could someone learn something concrete from this diagram, or does it just label boxes? A good diagram teaches—it shows actual formats, real event names, concrete examples.
 
-Each node becomes a shape (rounded rectangle by default) with its label
-centre-bound inside it, coloured from `classDef`/`class`/`style` if the
-diagram declares any and left neutral otherwise; a diagram that declares no
-styles at all gets the pastel palette cycled over its nodes instead. Each
-`subgraph` becomes a dashed rounded container drawn behind its members, with
-its title sitting *above* the container's top edge and flush to its left
-edge (as in the hand-drawn reference).
+---
 
-Styling here is taken from the decision tree in the same reference diagram:
-`FONT_FAMILY = 8` (Comic Shanns; used for node labels, edge labels and
-cluster titles alike), 8px corner radius, a saturated stroke over a matching
-pale fill, and the label in the stroke colour.
+## Depth Assessment (Do This First)
 
-Layout collapses every subgraph to a single node of a *cluster graph* and
-runs the same longest-path column assignment over that, so a subgraph's
-members always stay together in one column and containers never interleave.
-Cycles are broken deterministically — edges are taken in declaration order
-and any that would close a cycle is dropped — so both the column assignment
-and the intra-cluster member order (by longest-path depth) describe the
-diagram's flow and don't vary between runs.
+Before designing, determine what level of detail this diagram needs:
 
-Spacing is derived from what has to fit in it:
+### Simple/Conceptual Diagrams
+Use abstract shapes when:
+- Explaining a mental model or philosophy
+- The audience doesn't need technical specifics
+- The concept IS the abstraction (e.g., "separation of concerns")
 
-- the vertical gap between two stacked members is `NODE_GAP` (46) for an
-  unlabelled edge, grown to the edge label's height + `2 * LABEL_PAD` when
-  the two are joined by a labelled edge;
-- the horizontal gutter between two columns is `COL_GAP` (150) or, if wider,
-  the widest label on an edge crossing that gutter plus label and routing
-  padding;
-- long edge labels are word-wrapped to `EDGE_LABEL_WRAP` (24) chars, which
-  both stops them sticking out sideways over neighbouring boxes and keeps the
-  gutters sane;
-- the vertical gap above a titled cluster reserves the title band
-  (`TITLE_TEXT_H + TITLE_GAP`), since the title now lives outside the box.
+### Comprehensive/Technical Diagrams
+Use concrete examples when:
+- Diagramming a real system, protocol, or architecture
+- The diagram will be used to teach or explain (e.g., YouTube video)
+- The audience needs to understand what things actually look like
+- You're showing how multiple technologies integrate
 
-Arrows are routed by an obstacle-avoiding orthogonal router
-(`route()`/`_shortest()`): every node box except the two endpoints, every
-cluster title, and every cluster container that belongs to neither endpoint
-is inflated by `ROUTE_MARGIN` and treated as solid; candidate lanes are those
-inflated edges, the endpoints' anchor stubs, and a ring `ROUTE_RING` outside
-the whole diagram bbox (so a route can go all the way around). Dijkstra over
-that lane grid minimises length + `TURN_PENALTY` per elbow across all 16
-side-anchor pairs, biased toward anchors that face the other endpoint.
-Arrows are emitted as Excalidraw's native elbow arrows (`elbowed: true`) with
-both bindings kept, so a later hand-nudge in the app re-routes orthogonally
-instead of collapsing back to a diagonal.
+**For technical diagrams, you MUST include evidence artifacts** (see below).
 
-See `example-flowchart.mmd` / `.png` for a worked input — subgraphs, a
-cylinder node, `<br/>` labels, `classDef`, and `linkStyle`.
+---
 
-### gantt → banded timeline
+## Research Mandate (For Technical Diagrams)
 
-Each `section` becomes a full-width band tinted from a (bar fill, band
-tint) palette cycled per section, with the section name wrapped (and
-hyphenated if a word is too long) into a label column on the left. Each
-task gets its own row inside its band and is drawn as a rounded solid bar
-(`GANTT_UNIT_W` = 95 px per axis unit, 31 px tall, 2 px stroke). The task
-name is centred inside the bar when it fits; otherwise it is set to the
-right of the bar in a smaller face over a band-tinted backing rectangle so
-it stays readable across the grid lines. One vertical grid line per axis
-unit spans all bands, with a tick label beneath (zero-padded to two digits
-for `%S`/`%M`/`%H` `axisFormat`s), and the `title` sits in a hand-drawn
-(roughness 2) pill above the chart.
+**Before drawing anything technical, research the actual specifications.**
 
-Styling was reverse-engineered from a hand-converted reference of this
-exact kind; the constants live in the `GANTT_*` block of
-`scripts/gantt.py`. See `example-gantt.mmd` / `.png` for a worked input.
+If you're diagramming a protocol, API, or framework:
+1. Look up the actual JSON/data formats
+2. Find the real event names, method names, or API endpoints
+3. Understand how the pieces actually connect
+4. Use real terminology, not generic placeholders
 
-### pie → filled wedges
+Bad: "Protocol" → "Frontend"
+Good: "AG-UI streams events (RUN_STARTED, STATE_DELTA, A2UI_UPDATE)" → "CopilotKit renders via createA2UIMessageRenderer()"
 
-Values are normalised to fractions of their total and drawn clockwise from 12
-o'clock into a `PIE_RADIUS`-radius circle. Each slice is a solid-filled
-`line` element whose points run centre → rim → arc samples (every
-`PIE_ARC_STEP` degrees) → centre, so it stays a closed wedge if it is nudged
-in the app; the base ellipse underneath carries the last slice's fill, so any
-seam between wedges shows that colour rather than white. Slice colours cycle
-`PIE_PALETTE`.
+**Research makes diagrams accurate AND educational.**
 
-Each slice gets its percentage centred on its mid-angle at
-`PIE_SLICE_LABEL_R` of the radius — a narrow slice is only as wide as its
-chord there, so the label slides outward (capped at `PIE_SLICE_LABEL_R_MAX`)
-until the chord can hold it and then shrinks its face down to a
-`PIE_SLICE_MIN_FONT` floor; slices under `PIE_MIN_LABEL_SWEEP` degrees get no
-label at all. A legend of colour swatches plus labels sits to the right of the circle,
-vertically centred on it. `showData` puts the raw value in the legend label
-alongside the name; `title` is a plain centred line above the whole chart (the
-reference has no title pill).
+---
 
-Styling was reverse-engineered from a hand-drawn reference pie (roughness 1,
-1px black stroke, solid fills); the constants live in the `PIE_*` block of
-`scripts/pie.py`. See `example-pie.mmd` / `.png` for a worked input.
+## Evidence Artifacts
 
-### sequenceDiagram → lifelines and messages
+Evidence artifacts are concrete examples that prove your diagram is accurate and help viewers learn. Include them in technical diagrams.
 
-Each `participant` becomes a rounded grey (`#eaeaea` on `#666`) header box
-with its label bound inside it; each `actor` becomes a stick figure — an
-ellipse head, four `#000` strokes for body, arms and legs, and its name as
-free text below — instead of a box. The whole participant row is repeated,
-identically, as a mirrored footer at the bottom of the diagram, and a thin
-`#999` lifeline runs between the two.
+**Types of evidence artifacts** (choose what's relevant to your diagram):
 
-Messages are 2-point horizontal arrows bound to both participants' header
-boxes (an actor's binds to its head ellipse), with the label bound to the
-arrow itself. The single-dash forms (`->`, `->>`, `-x`, `-)`) draw solid and
-the double-dash ones (`-->`, `-->>`, `--x`, `--)`) dotted. A self-message
-(`A->>A`) is the one non-horizontal case: a four-point hook out to the right
-of its own lifeline, with the label set beside it. `note over A[,B]` and
-`note left of` / `note right of` become dashed `#EDF2AE` boxes with bound
-text; a two-party `note over` is the span between the two lifelines plus a
-25px overhang each side, and the text is word-wrapped to fit it.
+| Artifact Type | When to Use | How to Render |
+|---------------|-------------|---------------|
+| **Code snippets** | APIs, integrations, implementation details | Dark rectangle + syntax-colored text (see color palette for evidence artifact colors) |
+| **Data/JSON examples** | Data formats, schemas, payloads | Dark rectangle + colored text (see color palette) |
+| **Event/step sequences** | Protocols, workflows, lifecycles | Timeline pattern (line + dots + labels) |
+| **UI mockups** | Showing actual output/results | Nested rectangles mimicking real UI |
+| **Real input content** | Showing what goes IN to a system | Rectangle with sample content visible |
+| **API/method names** | Real function calls, endpoints | Use actual names from docs, not placeholders |
 
-Only the participant "legend" rows — the header labels and actor names, top
-and bottom — are set in Excalifont (`fontFamily 5`), as in the reference.
-Everything drawn between them (message labels, notes, keyword tabs, branch
-descriptions) is Comic Shanns (`fontFamily 8`), as elsewhere in this skill.
-Comic Shanns is the wider face, so `SEQ_CHAR_W` is `0.58` rather than the
-reference's Excalifont-sized `0.55`; that feeds the gutter solver and the
-note boxes, which otherwise let labels crowd the neighbouring lifelines.
+**Example**: For a diagram about a streaming protocol, you might show:
+- The actual event names from the spec (not just "Event 1", "Event 2")
+- A code snippet showing how to connect
+- What the streamed data actually looks like
 
-`autonumber` prefixes each message's label with its 1-based index (`1. `,
-`2. `, …) rather than emitting a separate badge element next to the arrow —
-one fewer element, and the number survives being dragged or re-worded in the
-app.
+**Example**: For a diagram about a data transformation pipeline:
+- Show sample input data (actual format, not "Input")
+- Show sample output data (actual format, not "Output")
+- Show intermediate states if relevant
 
-`rect <colour>` draws a single background rectangle (emitted first, so it has
-the lowest index and sits *behind* everything) around the bounding box of
-what it encloses. `par`/`and`, `alt`/`else`, `loop` and `opt` draw no
-rectangle at all: four dotted `#adb5bd` lines, one dotted divider per extra
-branch, a `#e9ecef` keyword tab straddling the top-left corner, and each
-branch's description as free text in square brackets under its own top line.
-Blocks nest, so layout is a recursive walk over a parsed event tree; a nested
-frame is inset by `SEQ_FRAME_INSET` per level so its edges never land exactly
-on its parent's.
+The key principle: **show what things actually look like**, not just what they're called.
 
-Column spacing is `w_a/2 + w_b/2 + 50` (mermaid's actorMargin) or, if wider,
-whatever the labels crossing that gutter need — every message and note
-contributes a minimum-span constraint over the gutters it spans, and a span
-that is too narrow is widened proportionally across those gutters. The
-constraints interact, so they are iterated to a fixed point. Vertically
-everything is one rhythm: `SEQ_GAP` (42) of air between items, an item being
-`20 + 26 * (extra label lines)` tall for a message and `42 + 28.75 * (extra
-lines)` for a note.
+---
 
-Styling was reverse-engineered from a conversion of `example-sequence.mmd`
-made by Excalidraw's *own* mermaid importer; the constants live in the
-`SEQ_*` block of `scripts/sequence.py`. Three of that reference's losses are
-deliberately not reproduced: it keeps `<br/>` as literal text (here it is a
-real newline), it drops `autonumber` entirely, and it renders `-x` with a
-plain arrowhead (that last one is unavoidable — see Scope). See
-`example-sequence.mmd` / `.png` for a worked input.
+## Multi-Zoom Architecture
 
-## Quick start
+Comprehensive diagrams operate at multiple zoom levels simultaneously. Think of it like a map that shows both the country borders AND the street names.
 
-```bash
-python3 .claude/skills/excalidraw-diagram/scripts/convert.py <input.mmd> <output.excalidraw>
+### Level 1: Summary Flow
+A simplified overview showing the full pipeline or process at a glance. Often placed at the top or bottom of the diagram.
+
+*Example*: `Input → Processing → Output` or `Client → Server → Database`
+
+### Level 2: Section Boundaries
+Labeled regions that group related components. These create visual "rooms" that help viewers understand what belongs together.
+
+*Example*: Grouping by responsibility (Backend / Frontend), by phase (Setup / Execution / Cleanup), or by team (User / System / External)
+
+### Level 3: Detail Inside Sections
+Evidence artifacts, code snippets, and concrete examples within each section. This is where the educational value lives.
+
+*Example*: Inside a "Backend" section, you might show the actual API response format, not just a box labeled "API Response"
+
+**For comprehensive diagrams, aim to include all three levels.** The summary gives context, the sections organize, and the details teach.
+
+### Bad vs Good
+
+| Bad (Displaying) | Good (Arguing) |
+|------------------|----------------|
+| 5 equal boxes with labels | Each concept has a shape that mirrors its behavior |
+| Card grid layout | Visual structure matches conceptual structure |
+| Icons decorating text | Shapes that ARE the meaning |
+| Same container for everything | Distinct visual vocabulary per concept |
+| Everything in a box | Free-floating text with selective containers |
+
+### Simple vs Comprehensive (Know Which You Need)
+
+| Simple Diagram | Comprehensive Diagram |
+|----------------|----------------------|
+| Generic labels: "Input" → "Process" → "Output" | Specific: shows what the input/output actually looks like |
+| Named boxes: "API", "Database", "Client" | Named boxes + examples of actual requests/responses |
+| "Events" or "Messages" label | Timeline with real event/message names from the spec |
+| "UI" or "Dashboard" rectangle | Mockup showing actual UI elements and content |
+| ~30 seconds to explain | ~2-3 minutes of teaching content |
+| Viewer learns the structure | Viewer learns the structure AND the details |
+
+**Simple diagrams** are fine for abstract concepts, quick overviews, or when the audience already knows the details. **Comprehensive diagrams** are needed for technical architectures, tutorials, educational content, or when you want the diagram itself to teach.
+
+---
+
+## Container vs. Free-Floating Text
+
+**Not every piece of text needs a shape around it.** Default to free-floating text. Add containers only when they serve a purpose.
+
+| Use a Container When... | Use Free-Floating Text When... |
+|------------------------|-------------------------------|
+| It's the focal point of a section | It's a label or description |
+| It needs visual grouping with other elements | It's supporting detail or metadata |
+| Arrows need to connect to it | It describes something nearby |
+| The shape itself carries meaning (decision diamond, etc.) | Typography alone creates sufficient hierarchy |
+| It represents a distinct "thing" in the system | It's a section title, subtitle, or annotation |
+
+**Typography as hierarchy**: Use font size, weight, and color to create visual hierarchy without boxes. A 28px title doesn't need a rectangle around it.
+
+**The container test**: For each boxed element, ask "Would this work as free-floating text?" If yes, remove the container.
+
+---
+
+## Design Process (Do This BEFORE Generating JSON)
+
+### Step 0: Assess Depth Required
+Before anything else, determine if this needs to be:
+- **Simple/Conceptual**: Abstract shapes, labels, relationships (mental models, philosophies)
+- **Comprehensive/Technical**: Concrete examples, code snippets, real data (systems, architectures, tutorials)
+
+**If comprehensive**: Do research first. Look up actual specs, formats, event names, APIs.
+
+### Step 1: Understand Deeply
+Read the content. For each concept, ask:
+- What does this concept **DO**? (not what IS it)
+- What relationships exist between concepts?
+- What's the core transformation or flow?
+- **What would someone need to SEE to understand this?** (not just read about)
+
+### Step 2: Map Concepts to Patterns
+For each concept, find the visual pattern that mirrors its behavior:
+
+| If the concept... | Use this pattern |
+|-------------------|------------------|
+| Spawns multiple outputs | **Fan-out** (radial arrows from center) |
+| Combines inputs into one | **Convergence** (funnel, arrows merging) |
+| Has hierarchy/nesting | **Tree** (lines + free-floating text) |
+| Is a sequence of steps | **Timeline** (line + dots + free-floating labels) |
+| Loops or improves continuously | **Spiral/Cycle** (arrow returning to start) |
+| Is an abstract state or context | **Cloud** (overlapping ellipses) |
+| Transforms input to output | **Assembly line** (before → process → after) |
+| Compares two things | **Side-by-side** (parallel with contrast) |
+| Separates into phases | **Gap/Break** (visual separation between sections) |
+
+### Step 3: Ensure Variety
+For multi-concept diagrams: **each major concept must use a different visual pattern**. No uniform cards or grids.
+
+### Step 4: Sketch the Flow
+Before JSON, mentally trace how the eye moves through the diagram. There should be a clear visual story.
+
+### Step 5: Generate JSON
+Only now create the Excalidraw elements. **See below for how to handle large diagrams.**
+
+### Step 6: Render & Validate (MANDATORY)
+After generating the JSON, you MUST run the render-view-fix loop until the diagram looks right. This is not optional — see the **Render & Validate** section below for the full process.
+
+---
+
+## Large / Comprehensive Diagram Strategy
+
+**For comprehensive or technical diagrams, you MUST build the JSON one section at a time.** Do NOT attempt to generate the entire file in a single pass. This is a hard constraint — Claude Code has a ~32,000 token output limit per response, and a comprehensive diagram easily exceeds that in one shot. Even if it didn't, generating everything at once leads to worse quality. Section-by-section is better in every way.
+
+### The Section-by-Section Workflow
+
+**Phase 1: Build each section**
+
+1. **Create the base file** with the JSON wrapper (`type`, `version`, `appState`, `files`) and the first section of elements.
+2. **Add one section per edit.** Each section gets its own dedicated pass — take your time with it. Think carefully about the layout, spacing, and how this section connects to what's already there.
+3. **Use descriptive string IDs** (e.g., `"trigger_rect"`, `"arrow_fan_left"`) so cross-section references are readable.
+4. **Namespace seeds by section** (e.g., section 1 uses 100xxx, section 2 uses 200xxx) to avoid collisions.
+5. **Update cross-section bindings** as you go. When a new section's element needs to bind to an element from a previous section (e.g., an arrow connecting sections), edit the earlier element's `boundElements` array at the same time.
+
+**Phase 2: Review the whole**
+
+After all sections are in place, read through the complete JSON and check:
+- Are cross-section arrows bound correctly on both ends?
+- Is the overall spacing balanced, or are some sections cramped while others have too much whitespace?
+- Do IDs and bindings all reference elements that actually exist?
+
+Fix any alignment or binding issues before rendering.
+
+**Phase 3: Render & validate**
+
+Now run the render-view-fix loop from the Render & Validate section. This is where you'll catch visual issues that aren't obvious from JSON — overlaps, clipping, imbalanced composition.
+
+### Section Boundaries
+
+Plan your sections around natural visual groupings from the diagram plan. A typical large diagram might split into:
+
+- **Section 1**: Entry point / trigger
+- **Section 2**: First decision or routing
+- **Section 3**: Main content (hero section — may be the largest single section)
+- **Section 4-N**: Remaining phases, outputs, etc.
+
+Each section should be independently understandable: its elements, internal arrows, and any cross-references to adjacent sections.
+
+### What NOT to Do
+
+- **Don't generate the entire diagram in one response.** You will hit the output token limit and produce truncated, broken JSON. Even if the diagram is small enough to fit, splitting into sections produces better results.
+- **Don't use a coding agent** to generate the JSON. The agent won't have sufficient context about the skill's rules, and the coordination overhead negates any benefit.
+- **Don't write a Python generator script.** The templating and coordinate math seem helpful but introduce a layer of indirection that makes debugging harder. Hand-crafted JSON with descriptive IDs is more maintainable.
+
+---
+
+## Visual Pattern Library
+
+### Fan-Out (One-to-Many)
+Central element with arrows radiating to multiple targets. Use for: sources, PRDs, root causes, central hubs.
+```
+        ○
+       ↗
+  □ → ○
+       ↘
+        ○
 ```
 
-Open the output in https://excalidraw.com (or the desktop/VS Code app) via
-File → Open.
-
-## Scope
-
-### classDiagram
-
-Only supports:
-
-- `classDiagram` with `direction LR`
-- `class Id["Label"] { +member ... }` or bare `class Id` (no body)
-- composition edges: `A *-- B` (diamond at A) or `A --* B` (diamond at B)
-
-Layering (left-to-right columns) is computed from longest-path depth from
-root nodes (nodes with no incoming edge); boxes within a column are stacked
-and vertically centered. Other mermaid diagram types (flowchart, sequence,
-ER, etc.) and other edge styles (inheritance `<|--`, association `-->`,
-aggregation `o--`) are **not** supported by this path — extend
-`parse_mermaid` / `EDGE_RE` in `scripts/convert.py` if you need them.
-
-### flowchart
-
-Supports `flowchart`/`graph` with any direction keyword — `TD`/`TB` lays
-out top-down (columns become rows, arrows biased to top/bottom anchors);
-anything else is left-to-right — and:
-
-- shapes `[x]`, `(x)`, `([x])`, `[[x]]`, `[(x)]`, `((x))`, `{x}`, `{{x}}`,
-  `>x]`, with or without quotes, and `<br/>` for line breaks
-- `subgraph ID["Title"] ... end`, including nesting (a nested subgraph's
-  members are laid out in the innermost one)
-- links `-->`, `---`, `-.->`, `-.-`, `==>`, `===`, `->`, with `|label|` or
-  the `-- label -->` form
-- `classDef`, `class`, `style` (`fill`, `stroke`, `stroke-width`) and
-  `linkStyle <indices> stroke:...,stroke-width:...`
-
-Not supported: `direction` inside a subgraph, edge chains
-(`A --> B --> C`), multi-target edges (`A --> B & C`), `click`/`href`, and
-mermaid's remaining shape and link syntaxes. Excalidraw has no cylinder
-shape, so `[(db)]` renders as a rounded rectangle.
-
-### erDiagram
-
-Supports:
-
-- `ENTITY { <type> <name> [PK|FK|UK[, ...]] ["comment"] }` attribute blocks
-  (mermaid's type-then-name order; rendered name-then-type), bare `ENTITY`,
-  and the `ENTITY["label"]` alias form
-- relationships `A <card>--<card> B : label` and the dotted `..` variant,
-  with cardinalities `||`, `|o`/`o|`, `}o`/`o{`, `}|`/`|{`
-
-Attribute comments are parsed but not rendered. Columns are laid out
-left-to-right by the same longest-path depth rule as `classDiagram`, and an
-arrow is always drawn from the left-hand column to the right-hand one
-(cardinalities swap with it, so the crowfoot stays on the correct entity).
-
-### gantt
-
-Supports `title`, `axisFormat`, `section`, and tasks of the form
-`name : [tags,] [id,] [start,] end|duration` where `start` is a plain
-number or `after <id>` (omitted → previous task's end), a bare-number `end`
-is absolute and a suffixed one (`5s`, `2d`) is a duration. `dateFormat` is
-parsed but ignored: times are always treated as plain numbers on a unit
-axis, so real calendar dates (`2024-01-01`) are **not** supported. Tags
-(`done`/`active`/`crit`/`milestone`) are accepted and ignored — every bar
-is drawn the same way. `excludes`, `todayMarker`, `tickInterval` and
-`weekday` are skipped.
-
-### pie
-
-Supports `pie` / `pie showData`, an optional `title`, and slices of the form
-`"Label" : <number>`. The label must be quoted (mermaid's own requirement).
-Negative values are not meaningful and are not guarded against. A one-slice
-pie draws as a bare filled circle, since a 100% wedge is degenerate.
-
-### sequenceDiagram
-
-Supports:
-
-- `participant Id` / `actor Id`, with or without `as Label`; an id used in a
-  message but never declared is registered on first use as a plain
-  participant labelled with its own id
-- `autonumber` (no argument forms — the counter always starts at 1 and steps
-  by 1)
-- messages `->>`, `-->>`, `->`, `-->`, `-x`, `--x`, `-)`, `--)`, including
-  self-messages, and `<br/>` for line breaks in any label
-- `note over A`, `note over A,B`, `note left of A`, `note right of A`
-- `rect <colour>` — `rgb(r, g, b)`, a hex value or a bare CSS colour name,
-  passed through to Excalidraw's `backgroundColor` as written
-- `par`/`and`, `alt`/`else`, `loop`, `opt`, including nesting
-
-Not supported:
-
-- activation bars. `activate`/`deactivate` lines and the `+`/`-` suffixes on
-  a message target are parsed and then ignored, so a diagram that uses them
-  still renders — it just has no activation rectangles on its lifelines.
-- `box` participant grouping, `critical`/`option`, `break`, `link`/`links`,
-  and `%%{init}%%` directives. These are skipped; a `box ... end` in
-  particular will leave its `end` unbalanced, so strip it first.
-- Excalidraw has only `triangle`, `arrow`, `bar`, `dot`, `diamond` and the
-  crowfoot heads, with no cross or open head, so `-x`/`--x` (lost message)
-  and `-)`/`--)` (async) all render with the same triangle head as `->>`.
-  Only the solid/dotted stroke distinguishes the single- from the
-  double-dash forms. The reference conversion has the same limitation.
-
-Text widths are the same `chars × font × CHAR_W` heuristic used everywhere
-else in this skill, so header boxes and gutters carry a few px of slack
-rather than being measured exactly.
-
-## Notes
-
-- Output is upload-ready for the Excalidraw+ REST API: `document()` runs
-  `finalise()`, which sets each element's fractional `index` and each arrow
-  binding's `mode`/`fixedPoint` (the API validator rejects files without
-  them). To publish one, use `scripts/upload_scene.py` (below). `fixedPoint`
-  is deliberately *not* clamped to `[0, 1]`: a sequence message binds to its
-  participant's header box while sitting far below it, so its `fy` is
-  legitimately much greater than 1 (as it is in the hand-converted
-  reference). Every other path anchors on the shape's own edge, where the
-  clamp was a no-op anyway.
-- Flowchart arrows use `triangle` heads.
-
-- Box width/height and text-line spacing are heuristics calibrated against
-  the hand-drawn reference's real element geometry (see constants at the top of
-  `scripts/convert.py`: `CHAR_W`, `MEMBER_LINE_H`, `BASE_HEIGHT`, etc.), not
-  an exact text-measurement engine — expect a few px of slack, same as the
-  hand-converted reference.
-- `classDiagram`/`erDiagram` arrow routing is simple Manhattan (two elbows),
-  not pixel-identical to a hand-drawn version, but valid elbowed excalidraw
-  arrows bound to both rectangles. `flowchart` uses the obstacle-avoiding
-  router described above instead.
-- Excalidraw (and the headless export) repositions a *bound* arrow label onto
-  the arrow's own route midpoint, so the longest-segment position the
-  generator writes into the label's `x`/`y` is advisory only. The gap sizing
-  above is what actually keeps labels off the boxes.
-- The flowchart router's anchors are the midpoints of a node's bounding-box
-  sides, so on a diamond or ellipse an arrow leaves near the bbox corner;
-  Excalidraw's binding tidies this up when the shape is dragged.
-
-## Uploading to Excalidraw+
-
-`scripts/upload_scene.py` publishes a rendered `.excalidraw` file to a
-collection. Stdlib only, no npm or Docker needed.
-
-```bash
-# list collections (id + name)
-scripts/upload_scene.py --list-collections
-
-# create a scene in a collection, named after the file stem
-scripts/upload_scene.py diagram.excalidraw --collection generated
-
-# name it explicitly, and pin it
-scripts/upload_scene.py diagram.excalidraw -c generated -n 'Handoff pipeline' -p
-
-# re-upload over an existing scene, leaving its id and URL stable
-scripts/upload_scene.py diagram.excalidraw --scene-id APdEs2LYqDr
+### Convergence (Many-to-One)
+Multiple inputs merging through arrows to single output. Use for: aggregation, funnels, synthesis.
+```
+  ○ ↘
+  ○ → □
+  ○ ↗
 ```
 
-`--collection` takes either a collection id or its name (case-insensitive);
-names are resolved by listing collections, and an ambiguous or unknown name
-errors out with the known names rather than guessing. The file is parsed and
-checked for an `elements` key *before* any scene is created, so a malformed
-input can't leave an empty scene behind. After upload the script reads the
-content back and warns if the stored element count differs from the local one.
+### Tree (Hierarchy)
+Parent-child branching with connecting lines and free-floating text (no boxes needed). Use for: file systems, org charts, taxonomies.
+```
+  label
+  ├── label
+  │   ├── label
+  │   └── label
+  └── label
+```
+Use `line` elements for the trunk and branches, free-floating text for labels.
 
-The key comes from `$EXCALIDRAW_API_KEY` (or `--api-key`); mint one in
-Excalidraw+ workspace settings, where it is shown exactly once.
-
-Two API details worth knowing, both learned the hard way:
-
-- The base URL is `https://api.excalidraw.com/api/v1` — note the doubled path
-  segment. The bare `/v1` and `/v2` forms return a 404 whose body looks like a
-  routing error rather than an auth failure, which is easy to misread.
-- `GET /collections` pages at 5 by default, so a collection can be entirely
-  invisible in an unpaginated first response. The script follows `hasNextPage`.
-
-The API is in public beta; endpoints and payload shapes may still change.
-
-## Rendering to an image (screenshot)
-
-`scripts/export_image.mjs` renders any `.excalidraw` file to SVG and/or PNG,
-headlessly (no browser needed) via Excalidraw's own official export API
-(`@excalidraw/utils`'s `exportToSvg`, run under jsdom).
-
-**Always print the `file://` URL of every PNG/SVG produced**, as the last
-step of the render — resolve the output path to absolute
-(`realpath <output>`) and print `file://<absolute-path>`, one line per file.
-Do this whether the render came from the Docker route or the local npm
-route, and do it even when the user didn't ask for the path explicitly.
-
-### Recommended: Docker
-
-Avoids installing Node/npm/`rsvg-convert` on the host. The container only
-ever writes into the directory you bind-mount — it never writes "real"
-output anywhere else — so afterwards you move/copy the produced file(s)
-wherever you want (e.g. into `.scratch/` for throwaway work, or straight to
-their final destination).
-
-The build context must contain real files: if the skill's `scripts/*` are
-symlinks (e.g. into a dotfiles repo), `COPY` follows the build context rather
-than the link and the build fails — `cp -L` the skill into a temp dir and
-build from there.
-
-```bash
-docker build -t excalidraw-diagram-export .claude/skills/excalidraw-diagram
-
-# bind-mount the directory holding your input, output paths are relative to it
-docker run --rm -v "$(pwd):/data" excalidraw-diagram-export \
-  .claude/skills/excalidraw-diagram/example-output.excalidraw \
-  .scratch/example-output.png
+### Spiral/Cycle (Continuous Loop)
+Elements in sequence with arrow returning to start. Use for: feedback loops, iterative processes, evolution.
+```
+  □ → □
+  ↑     ↓
+  □ ← □
 ```
 
-Both the input and output paths are resolved relative to whatever host
-directory you bind-mount to `/data` (the repo root in the example above).
-Use `.svg` as the output extension for SVG instead of PNG. Add `--dark`
-(before or after the paths) for a dark-background export using Excalidraw's
-own dark-mode theme.
+### Cloud (Abstract State)
+Overlapping ellipses with varied sizes. Use for: context, memory, conversations, mental states.
 
-### Fallback: local npm install
-
-```bash
-cd .claude/skills/excalidraw-diagram/scripts
-npm install   # first time only — installs @excalidraw/utils + jsdom locally
-node export_image.mjs ../example-output.excalidraw ../example-output.png
-# or: node export_image.mjs ../example-output.excalidraw ../example-output.svg
+### Assembly Line (Transformation)
+Input → Process Box → Output with clear before/after. Use for: transformations, processing, conversion.
+```
+  ○○○ → [PROCESS] → □□□
+  chaos              order
 ```
 
-Requirements:
+### Side-by-Side (Comparison)
+Two parallel structures with visual contrast. Use for: before/after, options, trade-offs.
 
-- Node.js + npm with registry access, to install `@excalidraw/utils` and
-  `jsdom` into `scripts/node_modules` (one-time `npm install`, not committed).
-- For `.png` output: the `rsvg-convert` CLI (from `librsvg`) on `PATH`, used
-  to rasterize the SVG that `exportToSvg` produces. `.svg` output has no
-  extra dependency beyond the npm packages. If `rsvg-convert` is missing,
-  the script still writes the `.svg` next to the requested `.png` path and
-  tells you to rasterize it yourself (e.g. `inkscape`, ImageMagick
-  `convert`/`magick`) — or just use the Docker route above, which bundles
-  `rsvg-convert`.
+### Gap/Break (Separation)
+Visual whitespace or barrier between sections. Use for: phase changes, context resets, boundaries.
 
-### Both routes
+### Lines as Structure
+Use lines (type: `line`, not arrows) as primary structural elements instead of boxes:
+- **Timelines**: Vertical or horizontal line with small dots (10-20px ellipses) at intervals, free-floating labels beside each dot
+- **Tree structures**: Vertical trunk line + horizontal branch lines, with free-floating text labels (no boxes needed)
+- **Dividers**: Thin dashed lines to separate sections
+- **Flow spines**: A central line that elements relate to, rather than connecting boxes
 
-- ERD tables rely on Excalidraw's monospace face (`fontFamily: 3`) to keep
-  their name/type/key columns aligned. The headless export has no such font
-  (see below), so exported ERD rows look ragged even though they line up
-  perfectly in Excalidraw itself — don't "fix" the padding based on a PNG.
-- jsdom has no `FontFace` API, so font inlining is skipped
-  (`skipInliningFonts: true`); instead `export_image.mjs` points fontconfig
-  at the skill's bundled `fonts/` dir (Excalifont, Comic Shanns — sources in
-  `fonts/README.md`) before calling `rsvg-convert`, so both routes render
-  the real faces with no font install. Fonts there must be `.ttf`/`.otf` —
-  rsvg cannot load `.woff2`.
+```
+Timeline:           Tree:
+  ●─── Label 1        │
+  │                   ├── item
+  ●─── Label 2        │   ├── sub
+  │                   │   └── sub
+  ●─── Label 3        └── item
+```
+
+Lines + free-floating text often creates a cleaner result than boxes + contained text.
+
+---
+
+## Shape Meaning
+
+Choose shape based on what it represents—or use no shape at all:
+
+| Concept Type | Shape | Why |
+|--------------|-------|-----|
+| Labels, descriptions, details | **none** (free-floating text) | Typography creates hierarchy |
+| Section titles, annotations | **none** (free-floating text) | Font size/weight is enough |
+| Markers on a timeline | small `ellipse` (10-20px) | Visual anchor, not container |
+| Start, trigger, input | `ellipse` | Soft, origin-like |
+| End, output, result | `ellipse` | Completion, destination |
+| Decision, condition | `diamond` | Classic decision symbol |
+| Process, action, step | `rectangle` | Contained action |
+| Abstract state, context | overlapping `ellipse` | Fuzzy, cloud-like |
+| Hierarchy node | lines + text (no boxes) | Structure through lines |
+
+**Rule**: Default to no container. Add shapes only when they carry meaning. Aim for <30% of text elements to be inside containers.
+
+---
+
+## Color as Meaning
+
+Colors encode information, not decoration. Every color choice should come from `references/color-palette.md` — the semantic shape colors, text hierarchy colors, and evidence artifact colors are all defined there.
+
+**Key principles:**
+- Each semantic purpose (start, end, decision, AI, error, etc.) has a specific fill/stroke pair
+- Free-floating text uses color for hierarchy (titles, subtitles, details — each at a different level)
+- Evidence artifacts (code snippets, JSON examples) use their own dark background + colored text scheme
+- Always pair a darker stroke with a lighter fill for contrast
+
+**Do not invent new colors.** If a concept doesn't fit an existing semantic category, use Primary/Neutral or Secondary.
+
+---
+
+## Flowchart House Style (Lexer)
+
+Derived from the user's hand-edit pass on "Identity resolution — bird's-eye
+pipeline" (`AGdGHYQB3tL`). Apply to any diagram with boxes/ovals connected by
+arrows — flowcharts, ER diagrams, sequence/state/class diagrams. Does not
+apply to pure charts (pie, xychart-beta) or mindmaps.
+
+- **Arrows**: `strokeColor: "#1e1e1e"` (near-black, not a semantic color),
+  `strokeStyle: "solid"`, `startArrowhead: null`, `endArrowhead: "triangle"`.
+- **Every arrow must be bound on both ends** — real `startBinding`/`endBinding`
+  objects with a `fixedPoint` tuple and `mode` (`"orbit"` for arrows
+  approaching a shape from outside; `"inside"` when the endpoint lands inside/
+  overlapping the target, e.g. a label box nested in a larger box). No
+  floating arrow endpoints, no arrows merely positioned near a shape.
+- **Background/async job boxes** (a Databricks job, a queue worker, any
+  "runs later / not inline" process box): use a sufficiently dark background
+  fill paired with white (`#ffffff`) text — light fills read poorly for this
+  category and get flagged.
+- **Well-known systems get their real symbol, not a text label.** E.g.
+  Elasticsearch/OpenSearch nodes are drawn as the actual multi-color Elastic
+  logo (bent-line shape in the brand palette: `#f4bd19`, `#3cbeb1`,
+  `#e9478c`, `#2c458f`, `#95c63d`, `#176655`) rather than a box labeled "ES".
+  Reuse this pattern for other recognizable third-party systems where a
+  simple brand mark exists.
+- After hand-edits land in the live collection, re-fetch via `GET
+  /api/v1/scenes/{sceneId}/content` before touching a diagram again — don't
+  work from a stale local copy.
+
+---
+
+## Modern Aesthetics
+
+For clean, professional diagrams:
+
+### Roughness
+- `roughness: 0` — Clean, crisp edges. Use for modern/technical diagrams.
+- `roughness: 1` — Hand-drawn, organic feel. Use for brainstorming/informal diagrams.
+
+**Default to 0** for most professional use cases.
+
+### Stroke Width
+- `strokeWidth: 1` — Thin, elegant. Good for lines, dividers, subtle connections.
+- `strokeWidth: 2` — Standard. Good for shapes and primary arrows.
+- `strokeWidth: 3` — Bold. Use sparingly for emphasis (main flow line, key connections).
+
+### Opacity
+**Always use `opacity: 100` for all elements.** Use color, size, and stroke width to create hierarchy instead of transparency.
+
+### Small Markers Instead of Shapes
+Instead of full shapes, use small dots (10-20px ellipses) as:
+- Timeline markers
+- Bullet points
+- Connection nodes
+- Visual anchors for free-floating text
+
+---
+
+## Layout Principles
+
+### Hierarchy Through Scale
+- **Hero**: 300×150 - visual anchor, most important
+- **Primary**: 180×90
+- **Secondary**: 120×60
+- **Small**: 60×40
+
+### Whitespace = Importance
+The most important element has the most empty space around it (200px+).
+
+### Flow Direction
+Guide the eye: typically left→right or top→bottom for sequences, radial for hub-and-spoke.
+
+### Connections Required
+Position alone doesn't show relationships. If A relates to B, there must be an arrow.
+
+---
+
+## Text Rules
+
+**CRITICAL**: The JSON `text` property contains ONLY readable words.
+
+```json
+{
+  "id": "myElement1",
+  "text": "Start",
+  "originalText": "Start"
+}
+```
+
+Settings: `fontSize: 16`, `fontFamily: 3`, `textAlign: "center"`, `verticalAlign: "middle"`
+
+---
+
+## JSON Structure
+
+```json
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [...],
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": 20
+  },
+  "files": {}
+}
+```
+
+## Element Templates
+
+See `references/element-templates.md` for copy-paste JSON templates for each element type (text, line, dot, rectangle, arrow). Pull colors from `references/color-palette.md` based on each element's semantic purpose.
+
+---
+
+## Pushing to an Excalidraw+ Collection
+
+Publishing a generated `.excalidraw` file into an Excalidraw+ collection is a
+two-step call. Auth token for both calls comes from the `EXCALIDRAW_API_KEY`
+env var — never hardcode it.
+
+**1. Create the scene (registers a name/slot in the collection):**
+
+```
+POST https://api.excalidraw.com/api/v1/collections/{collectionId}/scenes
+Authorization: Bearer $EXCALIDRAW_API_KEY
+Content-Type: application/json
+
+{"name": "<scene name>", "pinned": false}
+```
+
+- `collectionId` — the collection's id (a personal key can also use the literal
+  `private` for the owner's default collection).
+- Response metadata includes the new scene's `id` — capture it for step 2.
+
+**Fetching current content** (e.g. after a hand-edit, or before re-touching a
+pushed diagram):
+
+```
+GET https://api.excalidraw.com/api/v1/scenes/{sceneId}/content
+Authorization: Bearer $EXCALIDRAW_API_KEY
+```
+
+Returns the same `type`/`version`/`source`/`appState`/`elements`/`files`
+shape as the PUT body, plus `sceneVersion` and `filesFailedToEmbed`.
+
+**2. Upload the diagram content (authoritative full replace):**
+
+```
+PUT https://api.excalidraw.com/api/v1/scenes/{sceneId}/content
+Authorization: Bearer $EXCALIDRAW_API_KEY
+Content-Type: application/json
+
+{"type": "excalidraw", "version": 2, "source": "...", "appState": {...}, "elements": [...], "files": {}}
+```
+
+- Body is exactly the `.excalidraw` file's JSON (`type`/`version`/`source`/
+  `appState`/`elements`/`files`) — the same structure this skill already
+  produces.
+- This is a **full replace**: any elements omitted are removed, and connected
+  editors reload rather than incrementally reconcile. Treat each PUT as
+  overwriting the scene's entire content, not patching it.
+- This writes to a live, possibly-shared collection — confirm scope (which
+  collection, how many scenes) with the user before running this in bulk.
+
+**Stricter element schema than the bare `.excalidraw` format:** the scene-content
+PUT endpoint validates elements more strictly than what this skill's templates
+produce. Every element additionally needs `index` (fractional-index string),
+`roundness` (null if unused), `frameId` (null), `updated` (number), and
+`autoResize` (boolean, text only). Every arrow — and even plain structural
+`line` elements — needs `startArrowhead`/`endArrowhead` present (null if
+unused) and, if bound to a shape, `startBinding`/`endBinding` objects that
+include a `fixedPoint` tuple and a `mode` (`"inside"`/`"orbit"`/`"skip"`)
+field. A shape's `boundElements` entry must reference a text element whose own
+`containerId` points back to that shape — never list a free-floating label
+positioned near a shape/arrow in its `boundElements`. Write a small
+normalize/backfill helper that adds these defaults to generated JSON before
+every PUT rather than hand-authoring them per element.
+
+---
+
+## Render & Validate (MANDATORY)
+
+You cannot judge a diagram from JSON alone. After generating or editing the Excalidraw JSON, you MUST render it to PNG, view the image, and fix what you see — in a loop until it's right. This is a core part of the workflow, not a final check.
+
+### How to Render
+
+```bash
+cd .claude/skills/excalidraw-diagram/references && uv run python render_excalidraw.py <path-to-file.excalidraw>
+```
+
+This outputs a PNG next to the `.excalidraw` file. Then use the **Read tool** on the PNG to actually view it.
+
+### The Loop
+
+After generating the initial JSON, run this cycle:
+
+**1. Render & View** — Run the render script, then Read the PNG.
+
+**2. Audit against your original vision** — Before looking for bugs, compare the rendered result to what you designed in Steps 1-4. Ask:
+- Does the visual structure match the conceptual structure you planned?
+- Does each section use the pattern you intended (fan-out, convergence, timeline, etc.)?
+- Does the eye flow through the diagram in the order you designed?
+- Is the visual hierarchy correct — hero elements dominant, supporting elements smaller?
+- For technical diagrams: are the evidence artifacts (code snippets, data examples) readable and properly placed?
+
+**3. Check for visual defects:**
+- Text clipped by or overflowing its container
+- Text or shapes overlapping other elements
+- Arrows crossing through elements instead of routing around them
+- Arrows landing on the wrong element or pointing into empty space
+- Labels floating ambiguously (not clearly anchored to what they describe)
+- Uneven spacing between elements that should be evenly spaced
+- Sections with too much whitespace next to sections that are too cramped
+- Text too small to read at the rendered size
+- Overall composition feels lopsided or unbalanced
+
+**4. Fix** — Edit the JSON to address everything you found. Common fixes:
+- Widen containers when text is clipped
+- Adjust `x`/`y` coordinates to fix spacing and alignment
+- Add intermediate waypoints to arrow `points` arrays to route around elements
+- Reposition labels closer to the element they describe
+- Resize elements to rebalance visual weight across sections
+
+**5. Re-render & re-view** — Run the render script again and Read the new PNG.
+
+**6. Repeat** — Keep cycling until the diagram passes both the vision check (Step 2) and the defect check (Step 3). Typically takes 2-4 iterations. Don't stop after one pass just because there are no critical bugs — if the composition could be better, improve it.
+
+### When to Stop
+
+The loop is done when:
+- The rendered diagram matches the conceptual design from your planning steps
+- No text is clipped, overlapping, or unreadable
+- Arrows route cleanly and connect to the right elements
+- Spacing is consistent and the composition is balanced
+- You'd be comfortable showing it to someone without caveats
+
+### First-Time Setup
+If the render script hasn't been set up yet:
+```bash
+cd .claude/skills/excalidraw-diagram/references
+uv sync
+uv run playwright install chromium
+```
+
+---
+
+## Quality Checklist
+
+### Depth & Evidence (Check First for Technical Diagrams)
+1. **Research done**: Did you look up actual specs, formats, event names?
+2. **Evidence artifacts**: Are there code snippets, JSON examples, or real data?
+3. **Multi-zoom**: Does it have summary flow + section boundaries + detail?
+4. **Concrete over abstract**: Real content shown, not just labeled boxes?
+5. **Educational value**: Could someone learn something concrete from this?
+
+### Conceptual
+6. **Isomorphism**: Does each visual structure mirror its concept's behavior?
+7. **Argument**: Does the diagram SHOW something text alone couldn't?
+8. **Variety**: Does each major concept use a different visual pattern?
+9. **No uniform containers**: Avoided card grids and equal boxes?
+
+### Container Discipline
+10. **Minimal containers**: Could any boxed element work as free-floating text instead?
+11. **Lines as structure**: Are tree/timeline patterns using lines + text rather than boxes?
+12. **Typography hierarchy**: Are font size and color creating visual hierarchy (reducing need for boxes)?
+
+### Structural
+13. **Connections**: Every relationship has an arrow or line
+14. **Flow**: Clear visual path for the eye to follow
+15. **Hierarchy**: Important elements are larger/more isolated
+
+### Technical
+16. **Text clean**: `text` contains only readable words
+17. **Font**: `fontFamily: 3`
+18. **Roughness**: `roughness: 0` for clean/modern (unless hand-drawn style requested)
+19. **Opacity**: `opacity: 100` for all elements (no transparency)
+20. **Container ratio**: <30% of text elements should be inside containers
+
+### Visual Validation (Render Required)
+21. **Rendered to PNG**: Diagram has been rendered and visually inspected
+22. **No text overflow**: All text fits within its container
+23. **No overlapping elements**: Shapes and text don't overlap unintentionally
+24. **Even spacing**: Similar elements have consistent spacing
+25. **Arrows land correctly**: Arrows connect to intended elements without crossing others
+26. **Readable at export size**: Text is legible in the rendered PNG
+27. **Balanced composition**: No large empty voids or overcrowded regions
