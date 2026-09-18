@@ -476,19 +476,42 @@ See `references/element-templates.md` for copy-paste JSON templates for each ele
 
 ## Mermaid → Excalidraw Converter
 
-For flowcharts, ER, class, sequence, gantt and pie diagrams, write mermaid
-first and convert it rather than hand-authoring JSON:
+For flowcharts, ER, class, sequence, gantt, pie, quadrant and bar/line
+charts, write mermaid first and convert it rather than hand-authoring JSON:
 
 ```bash
 python3 scripts/convert.py <input.mmd> <output.excalidraw> [--sloppiness 1|2|3] [--corners sharp|round] [--scale N]
 ```
 
-`convert.py` picks the emitter from the first directive line (`flowchart`/
-`graph`, `erDiagram`, `classDiagram`, `sequenceDiagram`, `gantt`, `pie`).
+`convert.py` picks the emitter from the first directive line:
+
+| Directive | Emitter |
+|---|---|
+| `flowchart` / `graph` | `flowchart.py` |
+| `erDiagram` | `convert.py` (built in) |
+| `classDiagram` | `convert.py` (built in), also the fallback |
+| `sequenceDiagram` | `sequence.py` |
+| `gantt` | `gantt.py` |
+| `pie` | `pie.py` |
+| `quadrantChart` | `quadrant.py` |
+| `xychart-beta` | `bar.py` |
+
+An unrecognised directive falls through to the `classDiagram` parser, which
+skips every line it doesn't understand — so a mermaid type with no emitter
+yields a near-empty diagram rather than an error. Check the output when
+converting a type not listed above.
+
 `--sloppiness` maps to Excalidraw's control (1 architect, 2 artist, 3
 cartoonist) and only touches shapes; `--scale` (default 1.5) multiplies
-geometry and font size but not stroke widths. See the `example-*.mmd` /
-`example-*.excalidraw` pairs in this directory for what each emitter produces.
+geometry and font size but not stroke widths.
+
+**[`EXAMPLES.md`](EXAMPLES.md) shows all eight side by side**, each with its
+mermaid source and rendered PNG, backed by the `example-*.mmd` /
+`example-*.excalidraw` pairs in this directory.
+
+When rendering a chart with numeric axis labels, don't rasterize with
+`inkscape` — it draws digit-only text nodes as blank, dropping every numeric
+tick while leaving the gridlines. See the rendering notes in `EXAMPLES.md`.
 
 ---
 

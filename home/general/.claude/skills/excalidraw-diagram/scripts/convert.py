@@ -30,6 +30,10 @@ Three input paths:
   rotated y-axis labels, solid dots with labels that flip to stay inside the
   chart and clear of each other, styled after a hand-drawn reference. See
   `quadrant.py`.
+- `xychart-beta` (optionally `horizontal`) + `title`, a categorical
+  `x-axis`, a `y-axis` label/range and `bar`/`line` series -> a bar chart
+  with grouped bars, optional line overlays, gridlines, tilted category
+  labels and a legend. See `bar.py`.
 
 The diagram type is taken from the first directive line in the input.
 
@@ -718,6 +722,9 @@ def _convert(mermaid_text):
     if re.search(r'^\s*sequenceDiagram\b', mermaid_text, re.M):
         from sequence import convert_sequence
         return document(convert_sequence(mermaid_text))
+    if re.search(r'^\s*xychart-beta\b', mermaid_text, re.M):
+        from bar import convert_bar
+        return document(convert_bar(mermaid_text))
     if re.search(r'^\s*quadrantChart\b', mermaid_text, re.M):
         from quadrant import convert_quadrant
         return document(convert_quadrant(mermaid_text))
