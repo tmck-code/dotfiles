@@ -73,13 +73,55 @@ CLASS_RE = re.compile(r'^class\s+([\w,\s]+?)\s+(\w+)\s*$')
 STYLE_RE = re.compile(r'^style\s+(\w+)\s+(.*)$')
 LINKSTYLE_RE = re.compile(r'^linkStyle\s+([\d,\s]+)\s+(.*)$')
 NODE_TOKEN = r'\w+(?:\[\(.*?\)\]|\(\(.*?\)\)|\(\[.*?\]\)|\[\[.*?\]\]|\{\{.*?\}\}|\[.*?\]|\(.*?\)|\{.*?\}|>.*?\])?'
-LINK = r'-\.->|-\.-|-->|---|==>|===|->'
-EDGE_RE = re.compile(
-    rf'^(?P<a>{NODE_TOKEN})\s*(?P<link>{LINK})\s*(?:\|\s*(?P<label>.*?)\s*\|\s*)?'
-    rf'(?P<b>{NODE_TOKEN})\s*$'
+NODE_TOKEN_RE = re.compile(NODE_TOKEN)
+# link bodies, longest spelling first so `-->` can never match as `--`
+LINK = r'-\.->|-\.-|==>|===|-->|---|->|--|=='
+# One connector, in either mermaid label spelling:
+#   `-- text -->` / `-. text .->`  (mid-label form)
+#   `-->` optionally followed by `|text|`  (pipe form)
+CONN_RE = re.compile(
+    rf'''\s*
+        (?:
+            (?P<dash>--|-\.|==)\s+(?P<mid>[^|]*?)\s+(?P<tail>-\.->|\.->|\.-|{LINK})
+          | (?P<link>{LINK})(?:\s*\|\s*(?P<pipe>[^|]*?)\s*\|)?
+        )\s*
+    ''',
+    re.X,
 )
-# `A -- text --> B` and `A -. text .-> B`, normalised to the `|text|` form
-MID_LABEL_RE = re.compile(r'(--|-\.)\s+(.+?)\s+(-->|---|\.->|\.-)')
+
+
+def parse_edge_chain(line):
+    """Split an edge line into (a_token, b_token, label, dotted, arrowhead) hops.
+
+    Handles chains (`A --> B --> C`), both label spellings, and node
+    declarations written inline (`A[foo] --> B[bar]`). Returns None if the
+    line is not an edge line at all.
+    """
+    pos = 0
+    m = NODE_TOKEN_RE.match(line, pos)
+    if not m or not m.group(0):
+        return None
+    prev, pos = m.group(0), m.end()
+    hops = []
+    while pos < len(line):
+        c = CONN_RE.match(line, pos)
+        if not c:
+            return None
+        pos = c.end()
+        n = NODE_TOKEN_RE.match(line, pos)
+        if not n or not n.group(0):
+            return None
+        if c.group('dash') is not None:
+            body = c.group('dash') + c.group('tail')
+            label = c.group('mid')
+        else:
+            body = c.group('link')
+            label = c.group('pipe')
+        hops.append((prev, n.group(0), label,
+                     '-.' in body or body.startswith('.') or '.-' in body,
+                     body.endswith('>')))
+        prev, pos = n.group(0), n.end()
+    return hops or None
 
 
 def new_id():
@@ -242,22 +284,17 @@ def parse_flowchart(text):
                     linkstyles[int(idx)] = decl
             continue
 
-        normalised = MID_LABEL_RE.sub(
-            lambda mm: f'{mm.group(1)}{"" if mm.group(1) == "--" else "."}'
-                       f'{mm.group(3).lstrip(".")}|{mm.group(2)}|',
-            line,
-        )
-        m = EDGE_RE.match(normalised)
-        if m:
-            a = ensure(m.group("a"))
-            b = ensure(m.group("b"))
-            link = m.group("link")
-            edges.append({
-                "a": a.id, "b": b.id,
-                "label": wrap_label(clean_label(m.group("label"))),
-                "dotted": link.startswith("-."),
-                "arrowhead": "triangle" if link.endswith(">") else None,
-            })
+        hops = parse_edge_chain(line)
+        if hops:
+            for a_tok, b_tok, label, dotted, arrowed in hops:
+                a = ensure(a_tok)
+                b = ensure(b_tok)
+                edges.append({
+                    "a": a.id, "b": b.id,
+                    "label": wrap_label(clean_label(label)),
+                    "dotted": dotted,
+                    "arrowhead": "triangle" if arrowed else None,
+                })
             continue
 
         if re.match(rf'^{NODE_TOKEN}$', line):
