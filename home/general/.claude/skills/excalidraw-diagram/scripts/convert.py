@@ -12,9 +12,12 @@ Three input paths:
 - `flowchart` / `graph` + subgraphs + `classDef`/`class`/`style`/`linkStyle`
   -> rounded boxes styled after a hand-drawn decision-tree reference. See
   `flowchart.py`.
-- `gantt` + sections + `name : start, end` tasks -> banded timeline with
-  rounded bars and a unit grid, styled after a hand-converted reference. See
-  `gantt.py`.
+- `gantt` + sections + `name : [tags,] [id,] [start,] end` tasks -> banded
+  timeline with rounded bars and a unit grid, styled after a hand-converted
+  reference. Numeric axis, or a date axis via `dateFormat YYYY-MM-DD` with
+  `Nd`/`Nh`/`Nw` durations, `after`/`until` references, `excludes weekends`
+  (axis compressed to working days), `done`/`active`/`crit` bar styling and
+  `milestone` diamonds. See `gantt.py`.
 - `pie` (optionally `showData`) + `"label" : value` slices -> a hand-drawn
   pie chart with solid-filled wedges, percentage labels and a swatch legend,
   styled after a hand-drawn reference pie. See `pie.py`.
@@ -22,6 +25,11 @@ Three input paths:
   `par`/`loop`/`alt`/`opt`/`rect` blocks -> participant headers over grey
   lifelines with bound message labels, styled after a reference conversion of
   this skill's own example. See `sequence.py`.
+- `quadrantChart` + `title`, `x-axis`/`y-axis` labels, `quadrant-1..4`
+  labels and `name: [x, y]` points -> a 2x2 grid of tinted squares with
+  rotated y-axis labels, solid dots with labels that flip to stay inside the
+  chart and clear of each other, styled after a hand-drawn reference. See
+  `quadrant.py`.
 
 The diagram type is taken from the first directive line in the input.
 
@@ -710,6 +718,9 @@ def _convert(mermaid_text):
     if re.search(r'^\s*sequenceDiagram\b', mermaid_text, re.M):
         from sequence import convert_sequence
         return document(convert_sequence(mermaid_text))
+    if re.search(r'^\s*quadrantChart\b', mermaid_text, re.M):
+        from quadrant import convert_quadrant
+        return document(convert_quadrant(mermaid_text))
     if re.search(r'^\s*erDiagram\b', mermaid_text, re.M):
         elements = convert_er(mermaid_text)
         return document(elements)
