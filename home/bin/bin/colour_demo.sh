@@ -3,16 +3,29 @@
 function print_256_colours() {
   # From https://misc.flogisoft.com/bash/tip_colors_and_formatting
   local fgbg=$1
+  local tmux=${2:-0}
 
-  echo "╭──────────────────────────────────────────────────────────────────────────╮"
+  if [ $tmux -eq 1 ]; then
+    echo "╭────────────────────────────────────────────────────────────────────────────────╮"
+  else
+    echo "╭──────────────────────────────────────────────────────────────────────────╮"
+  fi
   echo -n "│ "
   for color in {0..255} ; do
     # Display the color
-    printf "\e[${fgbg};5;%sm  ${fgbg};5;%-3s  \e[0m" $color $color
+    if [ $tmux -eq 1 ]; then
+      printf "\e[${fgbg};5;%sm\e[30m  %-9s  \e[0m" $color "colour$color"
+    else
+      printf "\e[${fgbg};5;%sm  ${fgbg};5;%-3s  \e[0m" $color $color
+    fi
     # Display 6 colors per lines
     if [ $((($color + 1) % 6)) == 4 ]; then
       if [ $color -eq 3 ] ; then
-        echo -ne "                         │\n│ "
+        if [ $tmux -eq 1 ]; then
+          echo -ne "                           │\n│ "
+        else
+          echo -ne "                         │\n│ "
+        fi
       elif [ $color -ne 255 ] ; then
         echo -ne " │\n│ "
       else
@@ -20,7 +33,11 @@ function print_256_colours() {
       fi
     fi
   done
-  echo "╰──────────────────────────────────────────────────────────────────────────╯"
+  if [ $tmux -eq 1 ]; then
+    echo "╰────────────────────────────────────────────────────────────────────────────────╯"
+  else
+    echo "╰──────────────────────────────────────────────────────────────────────────╯"
+  fi
 }
 
 function print_8_16_colours() {
@@ -95,8 +112,12 @@ print_256_colours 38
 echo -e "\nBackground Colours:"
 print_256_colours 48
 
+echo -e "\nTmux Colours:"
+print_256_colours 48 1
+
 echo -e "\n8/16 Colour Demo"
 print_8_16_colours 38
 
 echo -e "Graphic Rendition (SGR) Codes:"
 0r8ht_src_codes
+
