@@ -24,8 +24,7 @@ job, not yours.
 
 ## First move, always
 
-Orient before planning: read any `CLAUDE.md` / `CONTEXT.md` / `README` and the
-change's own artifacts. If the repo defines a domain or architecture skill, invoke
+Orient before planning: read any `CLAUDE.md` / `CONTEXT.md` / `README`. If the repo defines a domain or architecture skill, invoke
 it via the Skill tool — it's the source of truth for the architecture map and the
 invariants you must not break. Follow the repo's documented code-style conventions,
 and make sure every subagent you fork is told to follow them too.
@@ -40,10 +39,18 @@ openspec status --change "<name>" --json
 openspec instructions apply --change "<name>" --json
 ```
 
-Then read **every** path under `contextFiles` (for the spec-driven schema:
-`proposal.md`, `design.md`, `specs/*/spec.md`, `tasks.md`), plus enough of the
-target module(s) the tasks name and the matching tests to plan accurately. Capture
-a **baseline test pass count** before any edits.
+Then read `tasks.md` in full, and read `proposal.md`, `design.md` and the spec
+deltas for the decisions and invariants that set your task-group boundaries.
+Capture a **baseline test pass count** before any edits.
+
+**Stay thin: locate implementation files, don't read them.** For every module the
+tasks name, Grep for the symbols involved and record the **address** — `path:line`,
+symbol name, enclosing range — then stop. The child that owns the file reads it,
+so opening it here buys you nothing and costs the content twice: a coordinator
+that pre-reads its own fan-out arrives at the first Agent call tens of thousands
+of tokens heavier, on a plan the addresses already supported. Read a module
+yourself only when it decides the **plan** — a dependency you cannot infer from
+`tasks.md` — and then read the single range that settles it.
 
 Handle the states from the instructions output: `blocked` → report the missing
 artifacts and stop; `all_done` → say so and stop (archiving is the main agent's
@@ -77,30 +84,31 @@ job).
    `tasks.md` lines so their ticks never race. If two tasks would touch the same
    checklist region, put them in the same subagent or in different waves.
 
-## Brief digests — don't make children re-read what you already read
+## Briefs are maps, not copies
 
-By the time you fork, you have already read the change artifacts and the target
-modules. **Put that knowledge in the brief instead of making each child rediscover
-it.** Every child brief must inline:
+A brief is a **map**: it tells the child where to go and which constraints hold
+there. Keep each one **under ~2K tokens** — past that you are transcribing what
+you read instead of pointing at it, and the child reads the real file anyway.
 
-- the **verbatim task text** it owns (copied from `tasks.md`, not a pointer to it),
-- the **relevant excerpts** of `design.md` / the delta specs (decisions, requirements,
-  invariants that constrain its tasks — quoted, not cited),
-- for each file it will touch: the **key symbols and line ranges** involved (e.g.
-  "`applyPreset()` at src/foo.ts:210–260"), so it can read just that region.
+Every brief carries:
 
-Then state explicitly in the brief: **do not re-read `proposal.md` / `design.md` /
-`tasks.md` / the spec deltas — everything you need from them is quoted above.**
-(Ticking checkboxes in `tasks.md` is an Edit, not a Read — that stays.) Children
-read source files only in the ranges the brief points at, widening only when the
-pointed range proves insufficient.
+- the **verbatim task text** it owns, copied from `tasks.md` — short, and it is
+  the contract;
+- **addresses** for everything else: `design.md#<heading>`, the requirement ID in
+  `specs/<capability>/spec.md`, and `path:line` ranges for each file it will
+  touch (e.g. "`applyPreset()` at src/foo.ts:210–260");
+- the **one or two invariants** that would break silently if the child missed
+  them — quoted, because being wrong here ships a bug rather than costing a read.
+
+Children read the pointed sections and ranges, widening only when a pointed range
+proves insufficient.
 
 ## Read discipline (for you and every child)
 
 For any file over ~300 lines, don't Read from the top: Grep for the symbol you
 need and Read only the enclosing range (offset/limit). Whole-file reads are for
-small files, or one orientation pass per file at most. Pass this rule down in
-every brief.
+small files, and the one orientation pass per file belongs to the child that owns
+it. Pass this rule down in every brief.
 
 Never re-read content already in your context: if you read a file whole, don't
 later re-read slices of it — the content hasn't changed unless an Edit/Write hit

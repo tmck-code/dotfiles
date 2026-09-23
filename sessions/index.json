@@ -1,0 +1,243 @@
+{
+  "sessions": [
+    {
+      "id": "a2193105-26e0-4431-a873-af5efdf7f99c",
+      "title": "/tmp/audiovis-handoff-sidechain-timeline.md",
+      "startedAt": "2026-08-29T12:47:45.562Z",
+      "endedAt": "2026-08-29T12:50:16.614Z",
+      "agentCount": 2
+    },
+    {
+      "id": "c594bf27-756b-4949-a039-6fecf2714130",
+      "title": "/tmp/audiovis-handoff-animation-config-rethink.md",
+      "startedAt": "2026-08-29T09:06:04.858Z",
+      "endedAt": "2026-08-29T12:37:41.435Z",
+      "agentCount": 8
+    },
+    {
+      "id": "3183f907-de14-4582-9e1b-248602fe6a8f",
+      "title": "/tmp/audiovis-handoff-animation-config-rethink.md",
+      "startedAt": "2026-08-29T03:04:18.070Z",
+      "endedAt": "2026-08-29T09:05:22.361Z",
+      "agentCount": 17
+    },
+    {
+      "id": "b833f05d-cfab-4cab-9684-b3e73b54fbe9",
+      "title": "/dewey-decimal",
+      "startedAt": "2026-08-28T22:53:38.371Z",
+      "endedAt": "2026-08-29T03:17:39.012Z",
+      "agentCount": 6
+    },
+    {
+      "id": "0ccb1d8a-8657-40a6-89ad-d5c142ca1baa",
+      "title": "/tmp/audiovis-handoff-animation-config-rethink.md",
+      "startedAt": "2026-08-28T15:19:11.395Z",
+      "endedAt": "2026-08-29T03:03:46.714Z",
+      "agentCount": 5
+    },
+    {
+      "id": "3d4d25a6-d21f-4cf8-afe8-75fab2c80200",
+      "title": "/dewey-decimal",
+      "startedAt": "2026-08-28T06:26:53.538Z",
+      "endedAt": "2026-08-28T15:18:57.549Z",
+      "agentCount": 19
+    },
+    {
+      "id": "7e673552-38d5-4238-bee1-dec7688436ed",
+      "title": "{\"src\": \"api-analysis-gpu/log\", \"msg\": \"job d2cf8f248467a0d87e451c48b92d93fe3db189cbb1e61…",
+      "startedAt": "2026-08-27T16:37:48.387Z",
+      "endedAt": "2026-08-27T17:36:47.933Z",
+      "agentCount": 3
+    },
+    {
+      "id": "41be4838-da9b-42fc-a326-1b8f0b4ecdec",
+      "title": "your task is to rethink the config generation that the backend does, to make animations f…",
+      "startedAt": "2026-08-27T16:14:33.559Z",
+      "endedAt": "2026-08-27T16:38:07.401Z",
+      "agentCount": 4
+    },
+    {
+      "id": "3d2dba9c-9b58-44bb-b2ee-9b35edc1682f",
+      "title": "there's a session running atm in ~/dev/audiovis, where a subagent spend a lot of time try…",
+      "startedAt": "2026-08-27T14:35:25.065Z",
+      "endedAt": "2026-08-27T15:22:00.778Z",
+      "agentCount": 2
+    },
+    {
+      "id": "2db7a200-7984-4683-b20a-96c53331b556",
+      "title": "building the gpu image takes aaaaaaages now, I'm trying to think of ways to make it quick…",
+      "startedAt": "2026-08-27T15:06:14.088Z",
+      "endedAt": "2026-08-27T16:02:33.591Z",
+      "agentCount": 4
+    },
+    {
+      "id": "6efbaf1e-ec98-4e4e-ba67-bbad8bf92b5a",
+      "title": "/tmp/audiovis-handoff-audio-library-research.md .scratch/research-audio-library/audiovis-…",
+      "startedAt": "2026-08-27T11:32:58.378Z",
+      "endedAt": "2026-08-27T15:03:14.577Z",
+      "agentCount": 15
+    },
+    {
+      "id": "d5cbf916-b2c6-4609-8e22-3bac11881bb1",
+      "title": "when I run `make build-gpu ENV=prod PROFILE=gpu`, the build doesn't seem to cache the apt…",
+      "startedAt": "2026-08-27T07:29:26.824Z",
+      "endedAt": "2026-08-27T11:30:55.246Z",
+      "agentCount": 30
+    },
+    {
+      "id": "a21b3f5c-0f7b-4465-bd52-16008caab1aa",
+      "title": "/ultrareview https://github.com/tmck-code/audiovis/pull/51",
+      "startedAt": "2026-08-27T01:33:10.858Z",
+      "endedAt": "2026-08-27T02:31:17.037Z",
+      "agentCount": 3
+    },
+    {
+      "id": "5dfc5559-b1d2-4bb4-a982-2b94d80da772",
+      "title": "I'm using buildx pretty heavily in the docker image builds in this repo, but I'm having a…",
+      "startedAt": "2026-08-26T23:54:40.306Z",
+      "endedAt": "2026-08-27T01:39:08.863Z",
+      "agentCount": 2
+    },
+    {
+      "id": "62bbc8b3-fb42-4580-a88f-c1e3f8b24722",
+      "title": "/dewey-decimal use a worktree as there's another session working in this repo atm. make a…",
+      "startedAt": "2026-08-26T15:04:05.274Z",
+      "endedAt": "2026-08-26T17:57:36.272Z",
+      "agentCount": 15
+    },
+    {
+      "id": "d3be8a4f-6650-457a-8bd6-4ff043f60944",
+      "title": "/plugin",
+      "startedAt": "2026-08-26T14:00:07.663Z",
+      "endedAt": "2026-08-26T15:45:25.645Z",
+      "agentCount": 9
+    },
+    {
+      "id": "0eba86ff-8c78-46cb-9c6e-e0abf92f9cef",
+      "title": "/dewey-decimal feat/call-response-detection",
+      "startedAt": "2026-08-26T08:19:26.139Z",
+      "endedAt": "2026-08-26T11:29:20.011Z",
+      "agentCount": 12
+    },
+    {
+      "id": "17a3546b-3c9f-4821-8575-528c41fbe696",
+      "title": "I want to update the track analysis in this repo to support identifying repeated \"pattern…",
+      "startedAt": "2026-08-25T12:40:49.610Z",
+      "endedAt": "2026-08-26T08:19:18.072Z",
+      "agentCount": 5
+    },
+    {
+      "id": "68b37a73-75df-4a68-b28b-472e74eebf56",
+      "title": "the style that this produced doesn't look great - alignment - of row contents - and of he…",
+      "startedAt": "2026-08-25T22:56:37.636Z",
+      "endedAt": "2026-08-25T23:09:54.121Z",
+      "agentCount": 2
+    },
+    {
+      "id": "e9b98501-99ae-4cec-b7a0-bd3ed0e202df",
+      "title": "/dewey-decimal feat/more-library-columns",
+      "startedAt": "2026-08-25T17:12:04.307Z",
+      "endedAt": "2026-08-25T22:42:35.921Z",
+      "agentCount": 6
+    },
+    {
+      "id": "cf66a320-137a-42c4-b40d-1705b631330a",
+      "title": "/dewey-decimal in a new worktree & branch /goal optimise the track analysis as much as po…",
+      "startedAt": "2026-08-25T17:57:34.423Z",
+      "endedAt": "2026-08-25T22:40:24.338Z",
+      "agentCount": 11
+    },
+    {
+      "id": "610b7e13-6bfa-4afa-b804-3ec7a7bca91e",
+      "title": ".scratch/feat-call-response-detection/handoff-chalina-prototype.md",
+      "startedAt": "2026-08-25T16:51:32.982Z",
+      "endedAt": "2026-08-25T17:08:45.015Z",
+      "agentCount": 2
+    },
+    {
+      "id": "cc3f72be-746d-43f0-b96e-aa4f7330c468",
+      "title": "I'd like to add a feature to this game that calls mom_savestate_create every 0.5s. Then,…",
+      "startedAt": "2026-08-25T11:05:40.540Z",
+      "endedAt": "2026-08-25T13:02:17.203Z",
+      "agentCount": 3
+    },
+    {
+      "id": "abe2f0b7-692c-4670-b05e-67a5e899419c",
+      "title": "/dewey-decimal phase-g-rate-connection",
+      "startedAt": "2026-08-25T06:03:03.728Z",
+      "endedAt": "2026-08-25T11:49:26.763Z",
+      "agentCount": 11
+    },
+    {
+      "id": "dae574ed-de8a-4bf9-8325-4ded75b60ebc",
+      "title": "./handoff.md",
+      "startedAt": "2026-08-25T09:10:43.086Z",
+      "endedAt": "2026-08-25T10:55:28.009Z",
+      "agentCount": 5
+    },
+    {
+      "id": "c73f01de-5e09-4df1-bbe1-8f14ec35d468",
+      "title": "this fork is out of sync with the original master. I think there are some conflicts? how…",
+      "startedAt": "2026-08-11T12:50:22.371Z",
+      "endedAt": "2026-08-14T12:40:11.691Z",
+      "agentCount": 3
+    },
+    {
+      "id": "63a1da96-974f-447a-99ad-8779766169be",
+      "title": "/dewey-decimal phase-g-rate-connection",
+      "startedAt": "2026-08-25T05:01:16.215Z",
+      "endedAt": "2026-08-25T05:40:58.990Z",
+      "agentCount": 3
+    },
+    {
+      "id": "13734d4e-d44d-442b-a130-7046996549ad",
+      "title": "/dewey-decimal what's the next step from the master plan we've been working on?",
+      "startedAt": "2026-08-23T05:21:56.078Z",
+      "endedAt": "2026-08-23T07:10:56.247Z",
+      "agentCount": 33
+    },
+    {
+      "id": "a5090fee-29ad-45d5-a7be-54c1637ea53c",
+      "title": "/plugin",
+      "startedAt": "2026-08-23T04:00:32.870Z",
+      "endedAt": "2026-08-23T05:21:21.522Z",
+      "agentCount": 18
+    },
+    {
+      "id": "3a073c8f-bd58-4ae3-b28a-bbc3cc9ff292",
+      "title": "/dewey-decimal",
+      "startedAt": "2026-08-23T02:05:19.450Z",
+      "endedAt": "2026-08-23T03:59:57.038Z",
+      "agentCount": 17
+    },
+    {
+      "id": "9af64595-e273-436f-ad6b-ca537dca8b6a",
+      "title": "/ultrareview",
+      "startedAt": "2026-08-23T03:00:56.631Z",
+      "endedAt": "2026-08-23T03:50:19.564Z",
+      "agentCount": 2
+    },
+    {
+      "id": "417f15dc-5887-480a-9ebd-46a3ec55d9ae",
+      "title": "/dewey-decimal do next phase (e?)",
+      "startedAt": "2026-08-22T13:49:21.327Z",
+      "endedAt": "2026-08-22T14:49:52.137Z",
+      "agentCount": 7
+    },
+    {
+      "id": "06984cfc-1b1d-43b8-b869-1e64ee222900",
+      "title": "/dewey-decimal new-ui",
+      "startedAt": "2026-08-22T14:15:34.040Z",
+      "endedAt": "2026-08-22T14:45:25.607Z",
+      "agentCount": 7
+    },
+    {
+      "id": "9642c8b6-1862-4609-ad3d-dc26c1efed3d",
+      "title": "/dewey-decimal what was the next item from our session/master plan this morning?",
+      "startedAt": "2026-08-22T11:09:03.392Z",
+      "endedAt": "2026-08-22T13:47:54.522Z",
+      "agentCount": 10
+    }
+  ],
+  "generatedAt": 1788007869.0165842
+}

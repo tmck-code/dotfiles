@@ -16,6 +16,7 @@ Subcommands:
   release <skill> [<skill>...]   drop this session's lease (disables if no live lease)
   search  <query...>       rank disabled skills whose name/description match query
   status                   show alive sessions, leases, managed overrides
+  verify                   check for mismatches between intent and overrides
 
 All commands accept --session <id> (default: auto-detect newest transcript for cwd)
 and --project-dir <path> (default: $CLAUDE_PROJECT_DIR or cwd).
@@ -351,9 +352,31 @@ def cmd_status(args, cfg, state):
     print(f'pool off ({len(off)}): {", ".join(off) or "-"}')
 
 
+def cmd_verify(args, cfg, state):
+    '''Audit for stray overrides not in pool/leases/keep_on; suggest cleanup.'''
+    _, overrides = load_overrides(args.project_dir)
+    keep_on = set(cfg['keep_on'])
+    pool = set(cfg['pool'])
+    leases = project_leases(state, args.project_dir)
+    stray = []
+    for skill, value in overrides.items():
+        if skill not in keep_on and skill not in pool and skill not in leases:
+            stray.append((skill, value))
+    if stray:
+        print(f'found {len(stray)} override(s) not managed by overseer:')
+        for skill, value in sorted(stray):
+            print(f'  {skill}={value}')
+        print('\nthese may have been left by manual edits or prior sessions.')
+        print('to reclaim them into the managed pool, run:')
+        print(f'  overseer init')
+    else:
+        print('overrides are all accounted for in pool/leases/keep_on')
+
+
 COMMANDS = {
     'init': cmd_init, 'reap': cmd_reap, 'enable': cmd_enable,
     'release': cmd_release, 'search': cmd_search, 'status': cmd_status,
+    'verify': cmd_verify,
 }
 
 
