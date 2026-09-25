@@ -4,13 +4,11 @@ A **session handoff** is a document that one session writes so a later session c
 
 `shelf.sh` owns the ledger (`<shelf>/HANDOFF.md`). Change it only through the script.
 
-## Writing
-
-Run `shelf.sh handoff`. It adds the ledger row and prints the document path. Write the document to that exact path.
+The `/handoff-write` command writes handoffs. This file covers resuming.
 
 ## Resuming (from `pending:` lines)
 
-- If the user explicitly asked to resume (for example `/dewey-decimal resume from handoff` or "pick up the handoff"), read the newest pending document without asking.
+- If the user explicitly asked to resume (`/handoff-resume`, or "pick up the handoff"), read the newest pending document without asking.
 - Otherwise, list every pending line (path, `written_at`, `written_by`) and ask which one to resume, if any. Older ones are usually replaced by the newest. Do not read a handoff until the user says yes. If they decline, do not ask again this session.
 - Report any `MISSING` line to the user. Keep its ledger row.
 

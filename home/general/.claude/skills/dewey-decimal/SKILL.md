@@ -1,6 +1,6 @@
 ---
 name: dewey-decimal
-description: Shelve scratch files in <repo-root>/.scratch/<branch>/ and keep that shelf's session-handoff ledger. Use before writing any scratch or subagent-handoff file, when writing or resuming from a handoff ("resume from handoff"), or when the user refers vaguely to a past task ("the infra task from yesterday").
+description: Shelve scratch files in <repo-root>/.scratch/<branch>/ and keep that shelf's session-handoff ledger. Use before writing any scratch or subagent-handoff file, or when the user refers vaguely to a past task ("the infra task from yesterday").
 ---
 
 # Dewey Decimal
@@ -21,7 +21,6 @@ Each branch has one **shelf**: `<repo-root>/.scratch/<branch>/`. `shelf.sh` (in 
 - Filenames must not contain `research` or `report` (any case). A harness check blocks those writes. Use `findings`, `notes`, `summary`, `writeup` or `analysis`.
 - Never move, merge, prune or archive a shelf unless the user names it.
 
-## Other branches
+## Finding an old shelf
 
-- Writing a handoff for a later session, or resuming from one: [HANDOFFS.md](HANDOFFS.md).
-- A vague reference to a past task: [FINDING.md](FINDING.md).
+A vague reference to a past task: [FINDING.md](FINDING.md).
