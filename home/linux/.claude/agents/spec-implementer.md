@@ -69,18 +69,22 @@ job).
    inline. Spawn independent subagents **in parallel** (multiple Agent calls in one
    message); chain dependent ones **in sequence**, feeding the prior wave's outcome
    into the next. Prefer a repo-specific editor agent whose type matches the task's
-   domain (its definition pins the right model); otherwise use `general-purpose`
-   **with an explicit `model: "sonnet"` parameter** — a spawn without `model`
-   inherits the session's (expensive) model, and `subagent_type: "fork"` always
-   runs the parent model ignoring overrides, so never use `fork` for
-   implementation work. Each subagent gets, in its prompt: the exact tasks it owns (with the
+   domain (its definition pins the right model); otherwise use
+   `subagent_type: "worker"` (its definition pins Sonnet and has no Agent tool).
+   Never use `subagent_type: "fork"` for implementation work: a fork always runs
+   the parent model and ignores `model` overrides. Each subagent gets, in its prompt: the exact tasks it owns (with the
    file/line/function detail from `tasks.md`), the relevant context/invariants, the
    code-style rule, the instruction to run its task's targeted gate, the instruction
-   to **tick its own subtasks the moment each is done** (see below), the no-poll
-   rule (see "Waiting is free — never poll"), and the **report-file path** it
-   must write its outcome to (see "Reporting through files").
+   to **tick its own subtasks the moment each is done** (see below), and the no-poll
+   rule (see "Waiting is free — never poll"). Give no report path (see
+   "Reporting").
 
-3. **Avoid checklist collisions.** Parallel subagents must own **disjoint** sets of
+3. **Follow-ups go to a new worker.** Never `SendMessage` a finished child: each
+   resume reloads its whole context. Start a new `worker` whose brief points at
+   the previous child's report file (the path the hooks announced) and at the
+   files on disk.
+
+4. **Avoid checklist collisions.** Parallel subagents must own **disjoint** sets of
    `tasks.md` lines so their ticks never race. If two tasks would touch the same
    checklist region, put them in the same subagent or in different waves.
 
@@ -126,18 +130,18 @@ report file before its child's completion notification arrives, and never run
 `sleep`/timer loops in Bash while waiting. One `TaskOutput` call per child is
 legitimate only *after* its completion notification — and even then prefer
 reading its report file. This rule goes **verbatim into every child brief**
-(children hold the Agent tool too and hit the same failure mode when they nest).
+(a child that nests agents has the same failure mode).
 
-## Reporting through files, not return messages
+## Reporting
 
-Follow the global report-file-handoff convention (write full report to a
-scratchpad file, return only the path, read the file back rather than trusting
-the returned text; pass the same convention down to any nested forks). Give each
-subagent a distinct path up front, e.g. `<scratchpad>/spec-impl-<change>-<task-id>.md`,
-and tell it to include: tasks done, gate result, files touched, anything it
-paused on. As each completion notification arrives, read that child's report
-file **once**; start wave N+1 only in the turn where the **last** wave-N
-notification arrives — never check for stragglers on a timer.
+Follow the global rule: a child's final message is its report, and briefs name
+no report path. The user's hooks save each final message to disk and announce
+the file path on your next `Agent`/`SendMessage` call. Do not trust the returned
+message; it is truncated. Tell each child to make its final message cover: tasks
+done, gate result, files touched, anything it paused on. After each completion
+notification, read that child's announced report file **once**. Start wave N+1
+only in the turn where the **last** wave-N notification arrives. Never check for
+stragglers on a timer.
 
 ## Ticking subtasks — as soon as they're done
 
@@ -183,9 +187,8 @@ then confirm with that single gate, not a second full sweep.
 
 ## Reporting back
 
-Same convention upward: write your final report to the report-file path the main
-agent gave you (or a uniquely-named scratchpad file if it gave none), and return
-only that path. Report concisely, never raw file or test dumps:
+Same rule upward: your final message is your report (the hooks save it). Write
+no report file. Report concisely, never raw file or test dumps:
 - tasks completed (N/M) and any left unticked + why,
 - how you fanned out (waves / which tasks ran in parallel vs sequence),
 - before/after test pass counts,

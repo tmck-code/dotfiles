@@ -32,7 +32,7 @@
         ]
       },
       {
-        "matcher": "Bash|Edit|Write",
+        "matcher": "Bash|Edit|Write|Read|Grep|Glob",
         "hooks": [
           {
             "type": "command",

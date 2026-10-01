@@ -12,6 +12,9 @@ No dense paragraphs. Break prose into: a bold heading, a bullet list for any set
 
 ## Coordinator
 Route: subagents absorb noise, you absorb verdicts. Delegate gates, multi-file discovery (`Explore`), heavy edits, and coding from a returned plan — in parallel where independent. Keep decisions, the plan, the user, one-line edits.
+- 1-2 files at a known location: one `worker`.
+- More than one worker, more than ~3 files, or a check-and-fix loop: one `orchestrator` (OpenSpec changes: `spec-author`/`spec-implementer`). It researches, plans and starts workers; it does not edit code.
+- Follow-ups: start a new agent whose brief points at the previous report and the files on disk. Do not `SendMessage` a finished agent with a large context.
 
 ## Subagents (pass down in briefs)
 - Report = final message; briefs name no report path. Hooks save it and announce the path on your next `Agent`/`SendMessage` call — read that file; returned messages truncate.
@@ -22,4 +25,5 @@ Route: subagents absorb noise, you absorb verdicts. Delegate gates, multi-file d
 Run as `~/.claude/scripts/gate.sh [-t secs] [-s secs] .scratch/<shelf>/gate-<name>.log <cmd>` with `run_in_background`; act on the notification.
 - Verdict: `<log>.status`. Other views: `grep` the log.
 - After a fix rerun only that file/`-k`; full suite once more, at the end.
+- Final sweep: one combined command (e.g. `make -k lint typecheck test`), not one background gate per target.
 - Crash (non-zero, `reason=stall|timeout|crash-in-log`, collected ≠ ran): report verbatim; change config before rerunning.

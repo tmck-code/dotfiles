@@ -2,19 +2,41 @@
   "rules": [
     {
       "tool": "Bash",
+      "kind": "bashRead",
+      "maxLines": 100,
+      "maxBytes": 20000,
+      "action": "deny",
+      "appliesTo": [
+        "main",
+        "orchestrator",
+        "spec-implementer",
+        "spec-author"
+      ],
+      "hint": "this prints a large file onto the thread. Grep for the symbol you need and read a line range, or delegate it to a subagent"
+    },
+    {
+      "tool": "Bash",
       "match": "\\b(pytest|go test|cargo test|make test|make check)\\b|\\b(npm|yarn|pnpm|bun) (run )?test\\b",
-      "hint": "test runs belong in a subagent so their output stays off the main thread"
+      "hint": "test runs belong in a subagent so their output stays off the main thread",
+      "appliesTo": [
+        "main",
+        "orchestrator"
+      ]
     },
     {
       "tool": "Bash",
       "match": "\\b(ruff check|ruff|eslint|golangci-lint|clippy|flake8|mypy|tsc)\\b|\\b(npm|yarn|pnpm|bun) (run )?lint\\b",
-      "hint": "lint/typecheck runs belong in a subagent so their output stays off the main thread"
+      "hint": "lint/typecheck runs belong in a subagent so their output stays off the main thread",
+      "appliesTo": [
+        "main",
+        "orchestrator"
+      ]
     },
     {
       "tool": "Bash",
       "match": "(^|[;&]\\s*)(rg|ag|fd|find)\\b|\\bgrep\\s+-[a-zA-Z]*[rR]",
       "agent": "Explore",
-      "hint": "this looks like a codebase-wide discovery sweep — broad grep/find/rg searches belong on a subagent so the match dumps stay off the main thread. A single targeted Read/grep of a known file is fine inline; a multi-file sweep to understand how something works across the tree is the delegable unit"
+      "hint": "this looks like a codebase-wide discovery sweep \u2014 broad grep/find/rg searches belong on a subagent so the match dumps stay off the main thread. A single targeted Read/grep of a known file is fine inline; a multi-file sweep to understand how something works across the tree is the delegable unit"
     },
     {
       "tool": "Read",
@@ -22,17 +44,46 @@
       "maxBytes": 20000,
       "action": "deny",
       "agent": "Explore",
-      "hint": "this read pulls a large file onto the main thread (>=100 lines or >=20KB), which fills the context window with raw source. A subagent can read-and-summarise it and hand back just the conclusion; a targeted read (pass offset/limit) of the specific lines you need is fine inline"
+      "hint": "this read pulls a large file onto the main thread (>=100 lines or >=20KB), which fills the context window with raw source. A subagent can read-and-summarise it and hand back just the conclusion; a targeted read (pass offset/limit) of the specific lines you need is fine inline",
+      "appliesTo": [
+        "main",
+        "orchestrator",
+        "spec-implementer",
+        "spec-author"
+      ]
     },
     {
       "tool": "Write",
       "match": "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|rb|java|kt|kts|scala|c|cc|cpp|cxx|h|hpp|cs|php|swift|sql|md|json|yaml|yml|toml)$|(^|/)(Dockerfile|\\.dockerignore|docker-compose[^/]*\\.ya?ml|docker-bake\\.hcl|Makefile)$|(^|/)ops/|openspec/|(^|/)docs/|\\.claude/skills/|\\.env$",
-      "hint": "this is an implementation write — most often the research→implementation handover, where the main thread (fresh off a subagent's findings) starts writing the code itself. Delegate the implementation to a subagent: it writes and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception — delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
+      "hint": "this is an implementation write \u2014 most often the research\u2192implementation handover, where the main thread (fresh off a subagent's findings) starts writing the code itself. Delegate the implementation to a subagent: it writes and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception \u2014 delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
     },
     {
       "tool": "Edit",
       "match": "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|vue|svelte|go|rs|rb|java|kt|kts|scala|c|cc|cpp|cxx|h|hpp|cs|php|swift|sql|md|json|yaml|yml|toml)$|(^|/)(Dockerfile|\\.dockerignore|docker-compose[^/]*\\.ya?ml|docker-bake\\.hcl|Makefile)$|(^|/)ops/|openspec/|(^|/)docs/|\\.claude/skills/|\\.env$",
-      "hint": "this is an implementation edit — most often the research→implementation handover, where the main thread (fresh off a subagent's findings) starts editing the code itself. Delegate the implementation to a subagent: it edits and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception — delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
+      "hint": "this is an implementation edit \u2014 most often the research\u2192implementation handover, where the main thread (fresh off a subagent's findings) starts editing the code itself. Delegate the implementation to a subagent: it edits and self-verifies, you review the returned diff. If you just received a subagent's findings/results, the work that follows is the delegable unit, NOT a trivial exception \u2014 delegate it. Proceed inline only for an isolated one-line fix you did not just plan or research via a subagent"
+    },
+    {
+      "tool": [
+        "Edit",
+        "Write"
+      ],
+      "match": "^(?!.*(^|/)\\.scratch/)",
+      "action": "deny",
+      "appliesTo": [
+        "orchestrator"
+      ],
+      "agent": "worker",
+      "hint": "orchestrators write only their plan under .scratch/; delegate code changes to a worker"
+    },
+    {
+      "kind": "callBudget",
+      "appliesTo": [
+        "orchestrator",
+        "spec-implementer",
+        "spec-author"
+      ],
+      "maxCalls": 30,
+      "hint": "You have made {count} tool calls. An orchestrator plans and delegates; hand the remaining reads, edits and checks to workers."
     }
   ]
 }

@@ -54,10 +54,11 @@ more accurate than you grepping cold. Before you do your own reading:
    invariants, test conventions) — make explicit it should only research and
    report, not edit anything. Spawn independent areas **in parallel** (one
    message, multiple Agent calls).
-3. Give each spawned agent a distinct report-file path in the scratchpad
-   (e.g. `<scratchpad>/spec-author-<change>-<area>.md`), tell it to write its
-   findings there before returning, and read the file back yourself rather
-   than trusting the returned message.
+3. Give no report path in the brief. Each agent's final message is its
+   report. The user's hooks save it to disk and announce the file path on
+   your next `Agent`/`SendMessage` call. After each completion notification,
+   read that announced file **once**. Do not trust the returned message; it
+   is truncated.
 4. **Wait for every spawned research agent to return before doing any
    research of your own.** No parallel self-exploration while they run —
    duplicated reading wastes tokens and the reports may make it moot. Once
