@@ -24,6 +24,8 @@ spawn their own grandchildren should be nudged too.
 '''
 import json
 import sys
+import tempfile
+from pathlib import Path
 
 
 def main() -> int:
@@ -34,6 +36,17 @@ def main() -> int:
 
     if data.get('tool_name', '') not in ('Agent', 'Task'):
         return 0
+
+    # Once per session: the text never changes, so repeats only cost context.
+    session_id = data.get('session_id', '')
+    if session_id:
+        marker = Path(tempfile.gettempdir()) / f'subagent-handoff-{session_id}.seen'
+        if marker.exists():
+            return 0
+        try:
+            marker.touch()
+        except OSError:
+            pass
 
     nudge = (
         'Subagent-handoff reminder: do NOT give this subagent a report-file path and '

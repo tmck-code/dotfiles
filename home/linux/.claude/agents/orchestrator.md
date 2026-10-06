@@ -103,7 +103,8 @@ are re-invoked automatically when each completes — a completion notification i
 the **only** signal you act on. Never call `TaskOutput` to check on a running
 child, never re-list agents to see whether one finished, never probe for a
 report file before its child's completion notification arrives, and never run
-`sleep`/timer loops in Bash while waiting. One `TaskOutput` call per child is
+`sleep` in Bash while waiting, in any form (`cd x; sleep 570; cat *.status`
+included; a hook blocks a foreground sleep of 30s or more). One `TaskOutput` call per child is
 legitimate only *after* its completion notification — and even then prefer
 reading its report file. Start wave N+1 only in the turn where the **last**
 wave-N notification arrives.

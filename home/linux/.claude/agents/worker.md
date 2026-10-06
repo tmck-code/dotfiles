@@ -23,7 +23,8 @@ other agents.
 
 ## Read discipline
 
-- Grep for the symbol, then Read only the enclosing range (offset/limit).
+- Grep for the symbol, then Read only the enclosing range (offset/limit). If the
+  `Grep`/`Glob` tools are absent, search with bash `grep -rn` / `find`.
 - Whole-file reads only for small files (under about 300 lines), or for a file
   you own and will change heavily. At most one whole-file read per file.
 - Start from the addresses in the brief. Widen only when a range is not enough.
