@@ -57,6 +57,11 @@ def parse_pie(text):
             continue
         if line.startswith("pie"):
             show_data = "showData" in line
+            # `pie showData title "..."` keeps the title on the directive line
+            m = re.search(r'\btitle\s+(.+)$', line)
+            if m:
+                t = m.group(1).strip()
+                title = t[1:-1] if t[:1] == t[-1:] == '"' else t
             continue
         if line.startswith("title "):
             title = line[6:].strip()
@@ -157,7 +162,7 @@ def convert_pie(mermaid_text):
     ly = cy - len(slices) * PIE_LEGEND_STRIDE / 2
     legend_w = 0.0
     for (label, value), fill in zip(slices, colors):
-        text = f"{label} — {value:g}" if show_data else label
+        text = f"{label} — {value:,g}" if show_data else label
         w = len(text) * PIE_LEGEND_FONT * PIE_CHAR_W
         legend_w = max(legend_w, PIE_LEGEND_SWATCH + PIE_LEGEND_PAD_X + w)
         sy = ly + (PIE_LEGEND_STRIDE - PIE_LEGEND_SWATCH) / 2

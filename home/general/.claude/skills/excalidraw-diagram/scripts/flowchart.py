@@ -23,6 +23,7 @@ MIN_NODE_H = 62.0
 DIAMOND_SCALE = 1.55  # a diamond needs more box to fit the same text
 
 COL_GAP = 150.0
+ROW_GAP_TD = 110.0     # tier gap once a TD layout is transposed; rows are shorter than columns are wide
 NODE_GAP = 46.0        # floor gap between stacked members (unlabelled edge)
 CLUSTER_GAP = 60.0
 CLUSTER_PAD = 28.0
@@ -213,6 +214,10 @@ def parse_flowchart(text):
         m = SUBGRAPH_RE.match(line)
         if m:
             title = clean_label(m.group(2) or m.group(3) or m.group(1))
+            # `subgraph X[" "]`: a blank title means "group these for layout
+            # only" -- members share a tier but no container or title is drawn
+            if (m.group(2) or m.group(3)) is not None and not title:
+                title = None
             clusters.append(Cluster(m.group(1), title))
             stack.append(m.group(1))
             continue
@@ -242,9 +247,10 @@ def parse_flowchart(text):
                     linkstyles[int(idx)] = decl
             continue
 
+        # `-- text -->` -> `-->|text|`, `-. text .->` -> `-.->|text|`
         normalised = MID_LABEL_RE.sub(
-            lambda mm: f'{mm.group(1)}{"" if mm.group(1) == "--" else "."}'
-                       f'{mm.group(3).lstrip(".")}|{mm.group(2)}|',
+            lambda mm: (mm.group(3) if mm.group(1) == "--" else "-" + mm.group(3))
+                       + f'|{mm.group(2)}|',
             line,
         )
         m = EDGE_RE.match(normalised)
@@ -417,10 +423,13 @@ def layout(nodes, edges, clusters, vertical=False):
     # a two-line label, and left 54px where the edge had no label)
     def pair_gap(top, bottom):
         gap = NODE_GAP
+        # after `_transpose` the members sit side by side, so the gap between
+        # them has to fit the label's width, not its height
+        along_x = vertical or _FLOW_AXIS == "y"
         for edge in edges:
             if {edge["a"], edge["b"]} == {top, bottom} and edge["label"]:
                 label_w, label_h = text_size(edge["label"], EDGE_LABEL_FONT)
-                gap = max(gap, (label_w if vertical else label_h) + 2 * LABEL_PAD)
+                gap = max(gap, (label_w if along_x else label_h) + 2 * LABEL_PAD)
         return gap
 
     for group in groups:
@@ -639,6 +648,14 @@ def _shortest(start, goal, xs, ys, obstacles):
                 continue
             step = abs(x1 - x0) + abs(y1 - y0)
             turn = TURN_PENALTY if (dx, dy) not in ((0, 0), (ndx, ndy)) else 0.0
+            # tie-break between equal-length lanes: run the cross-axis bus
+            # close to the source, so a fan-out's final legs are long and
+            # separate (room for a label beside each) instead of a shared
+            # stub plus short drops into every target
+            if _FLOW_AXIS == "y" and ndy == 0:
+                turn += 0.002 * step * abs(y0 - ys[0])
+            elif _FLOW_AXIS == "x" and ndx == 0:
+                turn += 0.002 * step * abs(x0 - xs[0])
             heapq.heappush(heap, (cost + step + turn, nix, niy, ndx, ndy, state))
     return None, float("inf")
 
@@ -669,6 +686,10 @@ def route(a, b, obstacles, bbox):
     lane_xs = ring_xs + [c for r in obstacles for c in (r[0], r[2])]
     lane_ys = ring_ys + [c for r in obstacles for c in (r[1], r[3])]
 
+    # two nodes side by side in one TD row (same cluster) are joined
+    # horizontally, not looped over the top
+    same_row = (a.y < b.y + b.height and b.y < a.y + a.height)
+
     best_path, best_cost = None, float("inf")
     for (abp, asp, ad) in _anchors(a):
         for (bbp, bsp, bd) in _anchors(b):
@@ -684,7 +705,7 @@ def route(a, b, obstacles, bbox):
                 cost += 30.0
             if bd[0] * toward[0] + bd[1] * toward[1] >= 0:
                 cost += 30.0
-            if _FLOW_AXIS == "y":  # top-down: prefer vertical anchors
+            if _FLOW_AXIS == "y" and not same_row:  # top-down: prefer vertical anchors
                 cost += 400.0 * (abs(ad[0]) + abs(bd[0]))
             if cost < best_cost:
                 best_cost = cost
@@ -719,25 +740,41 @@ def make_edge(a, b, edge, style, obstacles, bbox):
     )
     els = [arrow]
     if edge["label"]:
-        # midpoint of the longest segment: the only place on a multi-elbow
-        # route with room for the label
-        seg = max(zip(points, points[1:]),
-                  key=lambda s: abs(s[1][0] - s[0][0]) + abs(s[1][1] - s[0][1]))
+        # midpoint of the longest segment that runs along the flow axis (the
+        # tier gutter is the only place on a multi-elbow route with room for
+        # the label); any segment if the route has none
+        def seg_len(s):
+            return abs(s[1][0] - s[0][0]) + abs(s[1][1] - s[0][1])
+
+        segs = list(zip(points, points[1:]))
+        along = [s for s in segs
+                 if (abs(s[1][1] - s[0][1]) if _FLOW_AXIS == "y"
+                     else abs(s[1][0] - s[0][0])) > 0.01]
+        seg = max(along or segs, key=seg_len)
         lx = (seg[0][0] + seg[1][0]) / 2.0
         ly = (seg[0][1] + seg[1][1]) / 2.0
         label_w, label_h = text_size(edge["label"], EDGE_LABEL_FONT)
+        # sit the label beside the line, not across it (the exporter draws no
+        # background behind bound text): above a horizontal run, right of a
+        # vertical one
+        if abs(seg[1][1] - seg[0][1]) < 0.01:
+            ly -= label_h / 2.0 + 4.0
+        else:
+            lx += label_w / 2.0 + 6.0
+        # free text, not bound to the arrow: excalidraw snaps a bound label to
+        # the arrow's middle segment, which on an elbowed route is the bus or
+        # a corner, not the run with room for it
         label = _text(
             edge["label"], lx - label_w / 2.0, ly - label_h / 2.0,
             label_w, label_h,
             EDGE_LABEL_COLOR, EDGE_LABEL_FONT, valign="middle",
         )
-        label["containerId"] = arrow["id"]
-        arrow["boundElements"] = [{"type": "text", "id": label["id"]}]
         els.append(label)
     return els
 
 
 _FLOW_AXIS = "x"
+_ALIGN_LEFT = False  # `%% align: left` -- TD rows share a left edge instead of a centre
 
 
 def _transpose(nodes, groups):
@@ -756,7 +793,7 @@ def _transpose(nodes, groups):
         total_w = sum(g.width for g in in_row) + CLUSTER_GAP * (len(in_row) - 1)
         row_h = max(g.height + (0 if g.title is None else TITLE_TEXT_H + TITLE_GAP)
                     for g in in_row)
-        x = -total_w / 2.0
+        x = 0.0 if _ALIGN_LEFT else -total_w / 2.0
         for group in in_row:
             group.x = x
             group.y = y + (0 if group.title is None else TITLE_TEXT_H + TITLE_GAP)
@@ -770,18 +807,20 @@ def _transpose(nodes, groups):
                 if slot < len(group.gaps):
                     node_x += group.gaps[slot]
             x += group.width + CLUSTER_GAP
-        y += row_h + COL_GAP
+        y += row_h + ROW_GAP_TD
 
 
 def convert_flowchart(text):
     nodes, edges, clusters, classdefs, linkstyles = parse_flowchart(text)
     resolve_styles(nodes, classdefs)
-    groups = layout(nodes, edges, clusters)
     m = DIRECTIVE_RE.search(text)
-    global _FLOW_AXIS
+    global _FLOW_AXIS, _ALIGN_LEFT
     _FLOW_AXIS = "x"
+    _ALIGN_LEFT = bool(re.search(r'^\s*%%\s*align:\s*left\s*$', text, re.M))
     if m and (m.group(1) or "").upper() in ("TD", "TB"):
         _FLOW_AXIS = "y"
+    groups = layout(nodes, edges, clusters)
+    if _FLOW_AXIS == "y":
         _transpose(nodes, groups)
 
     elements = []
