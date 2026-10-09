@@ -5,6 +5,33 @@ Data-driven successor to per-repo nudge hooks. When a tool call matches a rule i
 a routing table, inject a non-blocking reminder (or, for rules with
 "action": "deny", hard-block the call and return the hint to the model).
 
+This hook is one part of a set of files that keep agent context windows small
+(paths relative to ~/.claude):
+  - Delegation routing (this file + delegate-routing.json): nudge test/lint
+    runs and wide searches to subagents, deny whole-file reads >= 100 lines or
+    20 KB, cap orchestrator call counts, deny orchestrator code writes.
+  - Subagent reports on disk: hooks/subagent-report-capture.py (SubagentStop)
+    writes each subagent's final message to a scratch file;
+    hooks/subagent-report-announce.py (PostToolUse) gives the parent the path;
+    hooks/subagent-file-handoff.py (PreToolUse Agent|Task) reminds the spawner
+    to read that file and to keep one writer per file.
+  - Agent definitions (agents/): orchestrator plans and starts workers but
+    does not edit; worker edits only its named files, greps before reading,
+    reads ranges; Explore returns file:line conclusions.
+    CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=3 limits nesting.
+  - Gates (scripts/gate.sh): test/lint output goes to a log file, and a
+    one-line <log>.status file holds the result.
+  - Scratch and handoffs: skills/dewey-decimal shelves scratch files in
+    .scratch/<branch>/; /handoff-write and /handoff-resume start a new session
+    from a short document instead of a long transcript.
+  - Skill leasing: skills/skill-overseer keeps skills disabled until a session
+    enables one; hooks/skill-nudge.py (UserPromptSubmit + skill-routing.json)
+    names the relevant skill for a prompt.
+  - Write audit: hooks/same-file-write-audit.py warns when two agents write the
+    same file within 180 seconds.
+  - Settings: disableBundledSkills, autoMemoryEnabled=false, connectors and
+    workflows disabled, and permissions.deny remove unused tools and prompts.
+
 Routing table resolution (project overrides user):
   1. $CLAUDE_PROJECT_DIR/.claude/delegate-routing.json   (if present)
   2. ~/.claude/delegate-routing.json                      (fallback default)

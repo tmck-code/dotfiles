@@ -620,6 +620,10 @@ def convert(mermaid_text):
     if re.search(r'^\s*pie\b', mermaid_text, re.M):
         from pie import convert_pie
         return document(convert_pie(mermaid_text))
+    if re.search(r'^\s*xychart-beta\b', mermaid_text, re.M):
+        # no legend names via this path; run xychart.py directly for --legend
+        from xychart import convert_xychart
+        return document(convert_xychart(mermaid_text))
     if re.search(r'^\s*sequenceDiagram\b', mermaid_text, re.M):
         from sequence import convert_sequence
         return document(convert_sequence(mermaid_text))

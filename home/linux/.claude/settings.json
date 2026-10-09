@@ -103,11 +103,12 @@
     ],
     "Notification": [
       {
-        "matcher": "",
+        "matcher": "permission_prompt|elicitation_dialog|elicitation_url_dialog|agent_needs_input",
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code finished!' || true"
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/agent-notify.py\" claude",
+            "async": true
           }
         ]
       }
@@ -118,7 +119,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/bin/notify-send 'Claude Code' 'Claude Code stopped!' || true"
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/agent-notify.py\" claude",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/agent-notify.py\" claude",
+            "async": true
           }
         ]
       }
